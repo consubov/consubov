@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Scale, Syringe, FileText, Layers } from "lucide-react";
@@ -23,8 +24,8 @@ export default function SelecionarEventoModal({ open, onClose, onSelect, pastoNo
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-xs">
         <DialogHeader>
-          <DialogTitle>Registrar Evento</DialogTitle>
-          <DialogDescription>{pastoNome} — Selecione o tipo</DialogDescription>
+          <DialogTitle><LocalizedText source={"Registrar Evento"} /></DialogTitle>
+          <DialogDescription>{pastoNome} <LocalizedText source={"— Selecione o tipo"} /></DialogDescription>
         </DialogHeader>
         <div className="space-y-2 py-2">
           {opcoes.map((o) => (

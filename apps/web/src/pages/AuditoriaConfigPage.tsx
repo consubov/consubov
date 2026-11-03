@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -85,7 +86,7 @@ export default function AuditoriaConfigPage() {
   };
 
   if (loading) {
-    return <div className="p-6 text-muted-foreground">Carregando...</div>;
+    return <div className="p-6 text-muted-foreground"><LocalizedText source={"Carregando..."} /></div>;
   }
 
   return (
@@ -93,20 +94,18 @@ export default function AuditoriaConfigPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <Camera className="w-6 h-6" />
-          Intervalo / Auditoria
-        </h1>
+          <LocalizedText source={"Intervalo / Auditoria"} /></h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Configure quantas fotos de auditoria são sorteadas por bloco de 10 salgas.
-        </p>
+          <LocalizedText source={"Configure quantas fotos de auditoria são sorteadas por bloco de 10 salgas."} /></p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Configuração de Auditoria</CardTitle>
+          <CardTitle className="text-base"><LocalizedText source={"Configuração de Auditoria"} /></CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">Fazenda</label>
+            <label className="text-sm font-medium text-foreground mb-1 block"><LocalizedText source={"Fazenda"} /></label>
             <Select value={selectedFazendaId} onValueChange={setSelectedFazendaId}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione a fazenda" />
@@ -121,8 +120,7 @@ export default function AuditoriaConfigPage() {
 
           <div>
             <label className="text-sm font-medium text-foreground mb-1 block">
-              Fotos obrigatórias a cada 10 salgas
-            </label>
+              <LocalizedText source={"Fotos obrigatórias a cada 10 salgas"} /></label>
             <Input
               type="number"
               min={0}
@@ -151,29 +149,28 @@ export default function AuditoriaConfigPage() {
       {intervaloResumo && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Intervalo entre salgas</CardTitle>
+            <CardTitle className="text-base"><LocalizedText source={"Intervalo entre salgas"} /></CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <p className="text-sm text-foreground">
-              Modo: {intervaloResumo.modo === "fazenda" ? "fazenda" : intervaloResumo.modo === "retiro" ? "por retiro" : "por pasto"}
-              {" · "}Padrão da fazenda: {intervaloResumo.fazenda} dias
-              {intervaloResumo.itens.length > 0 && ` · ${intervaloResumo.itens.join(" · ")}`}
+              <LocalizedText source={"Modo:"} />{" "}{intervaloResumo.modo === "fazenda" ? "fazenda" : intervaloResumo.modo === "retiro" ? "por retiro" : "por pasto"}
+              {" · "}<LocalizedText source={"Padrão da fazenda:"} />{" "}{intervaloResumo.fazenda} <LocalizedText source={"dias"} />{intervaloResumo.itens.length > 0 && ` · ${intervaloResumo.itens.join(" · ")}`}
             </p>
             {intervaloResumo.modo !== "fazenda" && intervaloResumo.itens.length === 0 && (
-              <p className="text-xs text-muted-foreground">Nenhum valor próprio definido; todos usam o padrão da fazenda.</p>
+              <p className="text-xs text-muted-foreground"><LocalizedText source={"Nenhum valor próprio definido; todos usam o padrão da fazenda."} /></p>
             )}
-            <p className="text-xs text-muted-foreground">Definido pelos gerentes. Somente leitura.</p>
+            <p className="text-xs text-muted-foreground"><LocalizedText source={"Definido pelos gerentes. Somente leitura."} /></p>
           </CardContent>
         </Card>
       )}
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Retiros com configuração própria</CardTitle>
+          <CardTitle className="text-base"><LocalizedText source={"Retiros com configuração própria"} /></CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {retirosProprios.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Todos os retiros seguem a configuração da fazenda.</p>
+            <p className="text-sm text-muted-foreground"><LocalizedText source={"Todos os retiros seguem a configuração da fazenda."} /></p>
           ) : (
             retirosProprios.map(r => {
               const ef = resolverAuditoria(r, { auditoria_fotos_por_bloco: fotosPorBloco, exigir_foto_cocho: fazendaCocho });
@@ -185,7 +182,7 @@ export default function AuditoriaConfigPage() {
               );
             })
           )}
-          <p className="text-xs text-muted-foreground">Definido pelos gerentes. Somente leitura.</p>
+          <p className="text-xs text-muted-foreground"><LocalizedText source={"Definido pelos gerentes. Somente leitura."} /></p>
         </CardContent>
       </Card>
     </div>

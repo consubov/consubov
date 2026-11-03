@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -147,38 +148,37 @@ export default function MapaTransferenciaModal({
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>🔄 Transferir Animais</DialogTitle>
+          <DialogTitle><LocalizedText source={"🔄 Transferir Animais"} /></DialogTitle>
           <DialogDescription>
-            Origem: <strong>{pasto.pasto_nome}</strong> — {pasto.num_animais} animais · {pesoOrigemDisplay} kg
+            <LocalizedText source={"Origem:"} />{" "}<strong>{pasto.pasto_nome}</strong> — {pasto.num_animais} <LocalizedText source={"animais ·"} />{" "}{pesoOrigemDisplay} kg
           </DialogDescription>
         </DialogHeader>
 
         {step === "input" && (
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Quantidade (máx: {pasto.num_animais})</Label>
+              <Label><LocalizedText source={"Quantidade (máx:"} />{" "}{pasto.num_animais})</Label>
               <Input type="number" inputMode="numeric" min={1} max={pasto.num_animais}
                 value={quantidade} onChange={e => setQuantidade(e.target.value)} placeholder="0" />
             </div>
             <div className="space-y-2">
-              <Label>Peso médio dos animais (kg)</Label>
+              <Label><LocalizedText source={"Peso médio dos animais (kg)"} /></Label>
               <Input type="number" inputMode="decimal" step="0.1" min={0}
                 value={pesoMedio} onChange={e => setPesoMedio(e.target.value)}
                 placeholder={pasto.peso_medio_kg?.toString() || "0"} />
-              <p className="text-xs text-muted-foreground">Deixe vazio para usar o peso do lote ({pesoOrigemDisplay} kg)</p>
+              <p className="text-xs text-muted-foreground"><LocalizedText source={"Deixe vazio para usar o peso do lote ("} />{pesoOrigemDisplay} kg)</p>
             </div>
 
             <div className="space-y-2">
-              <Label>Pasto destino</Label>
+              <Label><LocalizedText source={"Pasto destino"} /></Label>
               {selectedDestino ? (
                 <div className="flex items-center justify-between bg-muted rounded-md p-3">
                   <span className="font-medium">{selectedDestino.pasto_nome} ({selectedDestino.num_animais} cab)</span>
-                  <Button size="sm" variant="outline" onClick={onSelectDestino}>Trocar</Button>
+                  <Button size="sm" variant="outline" onClick={onSelectDestino}><LocalizedText source={"Trocar"} /></Button>
                 </div>
               ) : (
                 <Button variant="outline" className="w-full" onClick={onSelectDestino}>
-                  Selecionar no mapa
-                </Button>
+                  <LocalizedText source={"Selecionar no mapa"} /></Button>
               )}
             </div>
 
@@ -188,10 +188,10 @@ export default function MapaTransferenciaModal({
 
             {qtd > 0 && selectedDestino && qtd <= pasto.num_animais && (
               <div className="bg-muted rounded-md p-3 text-sm space-y-1">
-                <p><strong>{qtd}</strong> animais → <strong>{selectedDestino.pasto_nome}</strong></p>
+                <p><strong>{qtd}</strong> <LocalizedText source={"animais →"} />{" "}<strong>{selectedDestino.pasto_nome}</strong></p>
                 {selectedDestino.num_animais > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Novo peso médio destino: {calcWeightedAvg(selectedDestino.num_animais, selectedDestino.peso_medio_kg ?? 0, qtd, pesoTransf).toFixed(1).replace(".", ",")} kg
+                    <LocalizedText source={"Novo peso médio destino:"} />{" "}{calcWeightedAvg(selectedDestino.num_animais, selectedDestino.peso_medio_kg ?? 0, qtd, pesoTransf).toFixed(1).replace(".", ",")} kg
                   </p>
                 )}
               </div>
@@ -202,16 +202,16 @@ export default function MapaTransferenciaModal({
         {step === "confirm" && selectedDestino && (
           <div className="bg-primary/10 border border-primary/30 rounded-md p-4 text-sm space-y-2">
             <p className="font-bold text-primary">
-              Transferir {qtd} animais de {pasto.pasto_nome} para {selectedDestino.pasto_nome}?
+              <LocalizedText source={"Transferir"} />{" "}{qtd} <LocalizedText source={"animais de"} />{" "}{pasto.pasto_nome} <LocalizedText source={"para"} />{" "}{selectedDestino.pasto_nome}?
             </p>
-            <p className="text-muted-foreground">Peso médio transferido: {pesoTransf.toFixed(1).replace(".", ",")} kg</p>
+            <p className="text-muted-foreground"><LocalizedText source={"Peso médio transferido:"} />{" "}{pesoTransf.toFixed(1).replace(".", ",")} kg</p>
           </div>
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>Cancelar</Button>
+          <Button variant="outline" onClick={handleClose}><LocalizedText source={"Cancelar"} /></Button>
           {step === "input" ? (
-            <Button onClick={() => setStep("confirm")} disabled={!isValid}>Avançar</Button>
+            <Button onClick={() => setStep("confirm")} disabled={!isValid}><LocalizedText source={"Avançar"} /></Button>
           ) : (
             <Button onClick={handleConfirm} disabled={confirmando}>
               {confirmando ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar"}

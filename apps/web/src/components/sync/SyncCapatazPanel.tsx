@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -187,19 +188,18 @@ export default function SyncCapatazPanel({ fazendaIdsScope, title = "Sincroniza√
           <CardTitle className="text-base">{title}</CardTitle>
           <Button variant="outline" size="sm" onClick={() => void fetchAll()} disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Atualizar
-          </Button>
+            <LocalizedText source={"Atualizar"} /></Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Fazenda</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block"><LocalizedText source={"Fazenda"} /></label>
             <Select value={fazendaId} onValueChange={handleFazendaChange}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>Todas as fazendas</SelectItem>
+                <SelectItem value={ALL}><LocalizedText source={"Todas as fazendas"} /></SelectItem>
                 {fazendas.map((f) => (
                   <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
                 ))}
@@ -207,11 +207,11 @@ export default function SyncCapatazPanel({ fazendaIdsScope, title = "Sincroniza√
             </Select>
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Retiro</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block"><LocalizedText source={"Retiro"} /></label>
             <Select value={retiroId} onValueChange={handleRetiroChange}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>Todos os retiros</SelectItem>
+                <SelectItem value={ALL}><LocalizedText source={"Todos os retiros"} /></SelectItem>
                 {retirosFiltered.map((r) => (
                   <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
                 ))}
@@ -219,11 +219,11 @@ export default function SyncCapatazPanel({ fazendaIdsScope, title = "Sincroniza√
             </Select>
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Capataz</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block"><LocalizedText source={"Capataz"} /></label>
             <Select value={capatazId} onValueChange={setCapatazId}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>Todos os capatazes</SelectItem>
+                <SelectItem value={ALL}><LocalizedText source={"Todos os capatazes"} /></SelectItem>
                 {capatazOptions.map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
                 ))}
@@ -236,7 +236,7 @@ export default function SyncCapatazPanel({ fazendaIdsScope, title = "Sincroniza√
           <div className="flex justify-end">
             <Button onClick={handleBulkSync} disabled={bulkSending} variant="default" size="sm">
               {bulkSending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-              For√ßar Sync em Todos ({capatazesByFilter.length})
+              <LocalizedText source={"For√ßar Sync em Todos ("} />{capatazesByFilter.length})
             </Button>
           </div>
         )}
@@ -248,8 +248,7 @@ export default function SyncCapatazPanel({ fazendaIdsScope, title = "Sincroniza√
           </div>
         ) : capatazesByFilter.length === 0 ? (
           <p className="text-center text-muted-foreground py-8 text-sm">
-            Nenhum capataz encontrado com os filtros selecionados.
-          </p>
+            <LocalizedText source={"Nenhum capataz encontrado com os filtros selecionados."} /></p>
         ) : (
           <div className="space-y-2">
             {capatazesByFilter.map((c) => {
@@ -272,7 +271,7 @@ export default function SyncCapatazPanel({ fazendaIdsScope, title = "Sincroniza√
                     </div>
                     {!neverSynced && (
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        √öltimo sync: {lastSyncFormatted}
+                        <LocalizedText source={"√öltimo sync:"} />{" "}{lastSyncFormatted}
                       </div>
                     )}
                   </div>
@@ -280,18 +279,16 @@ export default function SyncCapatazPanel({ fazendaIdsScope, title = "Sincroniza√
                     {neverSynced ? (
                       <Badge variant="destructive" className="gap-1">
                         <AlertTriangle className="w-3 h-3" />
-                        Nunca sincronizou
-                      </Badge>
+                        <LocalizedText source={"Nunca sincronizou"} /></Badge>
                     ) : pending > 0 ? (
                       <Badge variant="outline" className="gap-1 border-secondary bg-secondary/15 text-secondary-foreground">
                         <AlertTriangle className="w-3 h-3" />
-                        {pending} pendente{pending > 1 ? "s" : ""}
+                        {pending} <LocalizedText source={"pendente"} />{pending > 1 ? "s" : ""}
                       </Badge>
                     ) : (
                       <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary border-primary/20">
                         <CheckCircle2 className="w-3 h-3" />
-                        Em dia
-                      </Badge>
+                        <LocalizedText source={"Em dia"} /></Badge>
                     )}
                     <ForcarSyncButton
                       targetUserId={c.user_id}

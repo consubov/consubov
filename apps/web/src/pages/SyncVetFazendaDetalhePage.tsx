@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -140,39 +141,37 @@ export default function SyncVetFazendaDetalhePage() {
       ) : (
         <Tabs defaultValue="lotes">
           <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="lotes">Lotes</TabsTrigger>
-            <TabsTrigger value="estacoes">Estação de Monta</TabsTrigger>
+            <TabsTrigger value="lotes"><LocalizedText source={"Lotes"} /></TabsTrigger>
+            <TabsTrigger value="estacoes"><LocalizedText source={"Estação de Monta"} /></TabsTrigger>
           </TabsList>
 
           <TabsContent value="lotes" className="space-y-3 mt-3">
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => navigate(`/syncvet/fazendas/${fazendaId}/novo-manejo`)}>
-                <Plus className="w-4 h-4 mr-1" />Novo manejo
-              </Button>
+                <Plus className="w-4 h-4 mr-1" /><LocalizedText source={"Novo manejo"} /></Button>
               <Dialog open={loteOpen} onOpenChange={setLoteOpen}>
                 <DialogTrigger asChild>
-                  <Button onClick={openNewLote}><Plus className="w-4 h-4 mr-1" />Novo lote</Button>
+                  <Button onClick={openNewLote}><Plus className="w-4 h-4 mr-1" /><LocalizedText source={"Novo lote"} /></Button>
                 </DialogTrigger>
                 <DialogContent>
-                  <DialogHeader><DialogTitle>Novo lote</DialogTitle></DialogHeader>
+                  <DialogHeader><DialogTitle><LocalizedText source={"Novo lote"} /></DialogTitle></DialogHeader>
                   <div className="space-y-3">
-                    <div><Label className="text-xs">Nome*</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
-                    <div><Label className="text-xs">Categoria</Label><Input value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Ex: Novilhas, Vacas em lactação" /></div>
-                    <div><Label className="text-xs">Quantidade de animais</Label><Input type="number" value={qtd} onChange={(e) => setQtd(e.target.value)} /></div>
-                    <div><Label className="text-xs">Observações</Label><Textarea value={obs} onChange={(e) => setObs(e.target.value)} /></div>
+                    <div><Label className="text-xs"><LocalizedText source={"Nome*"} /></Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
+                    <div><Label className="text-xs"><LocalizedText source={"Categoria"} /></Label><Input value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Ex: Novilhas, Vacas em lactação" /></div>
+                    <div><Label className="text-xs"><LocalizedText source={"Quantidade de animais"} /></Label><Input type="number" value={qtd} onChange={(e) => setQtd(e.target.value)} /></div>
+                    <div><Label className="text-xs"><LocalizedText source={"Observações"} /></Label><Textarea value={obs} onChange={(e) => setObs(e.target.value)} /></div>
                   </div>
                   <DialogFooter>
-                    <Button variant="ghost" onClick={() => setLoteOpen(false)}>Cancelar</Button>
+                    <Button variant="ghost" onClick={() => setLoteOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
                     <Button onClick={saveLote} disabled={loteSaving}>
-                      {loteSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-                    </Button>
+                      {loteSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
             </div>
 
             {lotes.length === 0 ? (
-              <Card className="p-6 text-center text-sm text-muted-foreground">Nenhum lote cadastrado nesta fazenda.</Card>
+              <Card className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum lote cadastrado nesta fazenda."} /></Card>
             ) : (
               <div className="space-y-2">
                 {lotes.map((l) => (
@@ -199,30 +198,29 @@ export default function SyncVetFazendaDetalhePage() {
             <div className="flex justify-end">
               <Dialog open={estOpen} onOpenChange={setEstOpen}>
                 <DialogTrigger asChild>
-                  <Button onClick={openNewEstacao}><Plus className="w-4 h-4 mr-1" />Nova Estação de Monta</Button>
+                  <Button onClick={openNewEstacao}><Plus className="w-4 h-4 mr-1" /><LocalizedText source={"Nova Estação de Monta"} /></Button>
                 </DialogTrigger>
                 <DialogContent>
-                  <DialogHeader><DialogTitle>Nova estação de monta</DialogTitle></DialogHeader>
+                  <DialogHeader><DialogTitle><LocalizedText source={"Nova estação de monta"} /></DialogTitle></DialogHeader>
                   <div className="space-y-3">
-                    <div><Label className="text-xs">Nome*</Label><Input value={estNome} onChange={(e) => setEstNome(e.target.value)} placeholder="Ex: Estação 2026" /></div>
+                    <div><Label className="text-xs"><LocalizedText source={"Nome*"} /></Label><Input value={estNome} onChange={(e) => setEstNome(e.target.value)} placeholder="Ex: Estação 2026" /></div>
                     <div className="grid grid-cols-2 gap-2">
-                      <div><Label className="text-xs">Data início</Label><Input type="date" value={estIni} onChange={(e) => setEstIni(e.target.value)} /></div>
-                      <div><Label className="text-xs">Data fim</Label><Input type="date" value={estFim} onChange={(e) => setEstFim(e.target.value)} /></div>
+                      <div><Label className="text-xs"><LocalizedText source={"Data início"} /></Label><Input type="date" value={estIni} onChange={(e) => setEstIni(e.target.value)} /></div>
+                      <div><Label className="text-xs"><LocalizedText source={"Data fim"} /></Label><Input type="date" value={estFim} onChange={(e) => setEstFim(e.target.value)} /></div>
                     </div>
-                    <div><Label className="text-xs">Observações</Label><Textarea value={estObs} onChange={(e) => setEstObs(e.target.value)} /></div>
+                    <div><Label className="text-xs"><LocalizedText source={"Observações"} /></Label><Textarea value={estObs} onChange={(e) => setEstObs(e.target.value)} /></div>
                   </div>
                   <DialogFooter>
-                    <Button variant="ghost" onClick={() => setEstOpen(false)}>Cancelar</Button>
+                    <Button variant="ghost" onClick={() => setEstOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
                     <Button onClick={saveEstacao} disabled={estSaving}>
-                      {estSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-                    </Button>
+                      {estSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
             </div>
 
             {estacoes.length === 0 ? (
-              <Card className="p-6 text-center text-sm text-muted-foreground">Nenhuma estação cadastrada.</Card>
+              <Card className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhuma estação cadastrada."} /></Card>
             ) : (
               <div className="space-y-2">
                 {estacoes.map((e) => (

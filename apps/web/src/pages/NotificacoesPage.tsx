@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,36 +87,35 @@ export default function NotificacoesPage() {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Bell className="w-6 h-6 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground">Notificações</h1>
-          {naoLidas > 0 && <Badge variant="destructive">{naoLidas} nova{naoLidas > 1 ? "s" : ""}</Badge>}
+          <h1 className="text-2xl font-bold text-foreground"><LocalizedText source={"Notificações"} /></h1>
+          {naoLidas > 0 && <Badge variant="destructive">{naoLidas} <LocalizedText source={"nova"} />{naoLidas > 1 ? "s" : ""}</Badge>}
         </div>
         <Button size="sm" onClick={() => setNovoOpen(true)}>
-          <Plus className="w-4 h-4 mr-1" /> Novo aviso
-        </Button>
+          <Plus className="w-4 h-4 mr-1" /> <LocalizedText source={"Novo aviso"} /></Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Leads recebidos</CardTitle>
+          <CardTitle className="text-lg"><LocalizedText source={"Leads recebidos"} /></CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-muted-foreground text-sm">Carregando...</p>
+            <p className="text-muted-foreground text-sm"><LocalizedText source={"Carregando..."} /></p>
           ) : notificacoes.length === 0 ? (
-            <p className="text-muted-foreground text-sm">Nenhuma notificação encontrada.</p>
+            <p className="text-muted-foreground text-sm"><LocalizedText source={"Nenhuma notificação encontrada."} /></p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Status</TableHead>
-                    <TableHead>Módulo</TableHead>
-                    <TableHead>Nome</TableHead>
-                    <TableHead className="hidden md:table-cell">E-mail</TableHead>
-                    <TableHead className="hidden md:table-cell">Telefone</TableHead>
+                    <TableHead><LocalizedText source={"Módulo"} /></TableHead>
+                    <TableHead><LocalizedText source={"Nome"} /></TableHead>
+                    <TableHead className="hidden md:table-cell"><LocalizedText source={"E-mail"} /></TableHead>
+                    <TableHead className="hidden md:table-cell"><LocalizedText source={"Telefone"} /></TableHead>
                     <TableHead className="hidden lg:table-cell">WhatsApp</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Ações</TableHead>
+                    <TableHead><LocalizedText source={"Data"} /></TableHead>
+                    <TableHead><LocalizedText source={"Ações"} /></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -163,19 +163,19 @@ export default function NotificacoesPage() {
       <Dialog open={novoOpen} onOpenChange={setNovoOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Novo aviso de atualização</DialogTitle>
+            <DialogTitle><LocalizedText source={"Novo aviso de atualização"} /></DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="aviso-titulo">Título</Label>
+              <Label htmlFor="aviso-titulo"><LocalizedText source={"Título"} /></Label>
               <Input id="aviso-titulo" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex.: Novidades da versão" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="aviso-mensagem">Mensagem</Label>
+              <Label htmlFor="aviso-mensagem"><LocalizedText source={"Mensagem"} /></Label>
               <Textarea id="aviso-mensagem" value={mensagem} onChange={(e) => setMensagem(e.target.value)} rows={4} />
             </div>
             <div className="space-y-1.5">
-              <Label>Módulo</Label>
+              <Label><LocalizedText source={"Módulo"} /></Label>
               <Select value={modulo} onValueChange={(v) => setModulo(v as ModuloAviso)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -185,12 +185,11 @@ export default function NotificacoesPage() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Somente usuários do módulo escolhido verão este aviso. "Geral" aparece para todos.
-              </p>
+                <LocalizedText source={"Somente usuários do módulo escolhido verão este aviso. \"Geral\" aparece para todos."} /></p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setNovoOpen(false)}>Cancelar</Button>
+            <Button variant="ghost" onClick={() => setNovoOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={criarAviso} disabled={salvando}>{salvando ? "Publicando..." : "Publicar"}</Button>
           </DialogFooter>
         </DialogContent>
@@ -200,21 +199,20 @@ export default function NotificacoesPage() {
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Detalhes do Lead</DialogTitle>
+            <DialogTitle><LocalizedText source={"Detalhes do Lead"} /></DialogTitle>
           </DialogHeader>
           {selected && (
             <div className="space-y-3 text-sm">
-              <div><strong>Módulo:</strong> {MODULO_LABEL[selected.modulo ?? "geral"] ?? "Geral"}</div>
-              <div><strong>Nome:</strong> {selected.dados?.nome}</div>
+              <div><strong><LocalizedText source={"Módulo:"} /></strong> {MODULO_LABEL[selected.modulo ?? "geral"] ?? "Geral"}</div>
+              <div><strong><LocalizedText source={"Nome:"} /></strong> {selected.dados?.nome}</div>
               <div><strong>E-mail:</strong> {selected.dados?.email}</div>
-              <div><strong>Telefone:</strong> {selected.dados?.telefone}</div>
+              <div><strong><LocalizedText source={"Telefone:"} /></strong> {selected.dados?.telefone}</div>
               <div><strong>WhatsApp:</strong> {selected.dados?.whatsapp}</div>
-              <div><strong>Mensagem:</strong> {selected.dados?.mensagem || selected.mensagem || "Sem mensagem"}</div>
-              <div><strong>Data:</strong> {format(new Date(selected.criado_em), "dd/MM/yyyy HH:mm:ss")}</div>
+              <div><strong><LocalizedText source={"Mensagem:"} /></strong> {selected.dados?.mensagem || selected.mensagem || "Sem mensagem"}</div>
+              <div><strong><LocalizedText source={"Data:"} /></strong> {format(new Date(selected.criado_em), "dd/MM/yyyy HH:mm:ss")}</div>
               {!selected.lida && (
                 <Button size="sm" onClick={() => { marcarLida(selected.id); setSelected({ ...selected, lida: true }); }}>
-                  Marcar como lida
-                </Button>
+                  <LocalizedText source={"Marcar como lida"} /></Button>
               )}
             </div>
           )}

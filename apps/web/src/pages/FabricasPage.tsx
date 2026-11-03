@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -96,15 +97,13 @@ export default function FabricasPage() {
     <div className="max-w-5xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-          <Factory className="w-5 h-5" /> Fábrica
-        </h1>
+          <Factory className="w-5 h-5" /> <LocalizedText source={"Fábrica"} /></h1>
         <Button onClick={openNew} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4" /> Nova Fábrica
-        </Button>
+          <Plus className="w-4 h-4" /> <LocalizedText source={"Nova Fábrica"} /></Button>
       </div>
 
       {fabricas.length === 0 ? (
-        <Card><CardContent className="p-8 text-center text-muted-foreground">Nenhuma fábrica cadastrada.</CardContent></Card>
+        <Card><CardContent className="p-8 text-center text-muted-foreground"><LocalizedText source={"Nenhuma fábrica cadastrada."} /></CardContent></Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {fabricas.map(f => (
@@ -151,19 +150,18 @@ export default function FabricasPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nova Fábrica</DialogTitle>
-            <DialogDescription>O código e QR Code são gerados automaticamente.</DialogDescription>
+            <DialogTitle><LocalizedText source={"Nova Fábrica"} /></DialogTitle>
+            <DialogDescription><LocalizedText source={"O código e QR Code são gerados automaticamente."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div><Label>Nome *</Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
-            <div><Label>Descrição</Label><Textarea value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} rows={3} /></div>
-            <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: v })} /><Label>Ativo</Label></div>
+            <div><Label><LocalizedText source={"Nome *"} /></Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
+            <div><Label><LocalizedText source={"Descrição"} /></Label><Textarea value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} rows={3} /></div>
+            <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: v })} /><Label><LocalizedText source={"Ativo"} /></Label></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-            </Button>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -171,17 +169,15 @@ export default function FabricasPage() {
       <AlertDialog open={!!confirmDel} onOpenChange={(o) => !o && setConfirmDel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir fábrica?</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Excluir fábrica?"} /></AlertDialogTitle>
             <AlertDialogDescription>
-              Isto vai apagar permanentemente a fábrica <strong>{confirmDel?.nome}</strong> e todos os operadores vinculados. Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
+              <LocalizedText source={"Isto vai apagar permanentemente a fábrica"} />{" "}<strong>{confirmDel?.nome}</strong> <LocalizedText source={"e todos os operadores vinculados. Esta ação não pode ser desfeita."} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Excluir
-            </AlertDialogAction>
+              <LocalizedText source={"Excluir"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

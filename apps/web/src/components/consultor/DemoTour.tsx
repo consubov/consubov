@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -107,8 +108,7 @@ export default function DemoTour({ consultorId }: { consultorId: string }) {
           >
             <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <Sparkles className="w-4 h-4 text-primary" />
-              Demonstração — {concluidos}/3 passos
-            </span>
+              <LocalizedText source={"Demonstração —"} />{" "}{concluidos}<LocalizedText source={"/3 passos"} /></span>
             {collapsed ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
@@ -138,8 +138,7 @@ export default function DemoTour({ consultorId }: { consultorId: string }) {
                 </button>
               ))}
               <Button variant="outline" size="sm" className="w-full" onClick={() => setShowEnd(true)}>
-                Encerrar demonstração
-              </Button>
+                <LocalizedText source={"Encerrar demonstração"} /></Button>
             </div>
           )}
         </div>
@@ -150,27 +149,21 @@ export default function DemoTour({ consultorId }: { consultorId: string }) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PartyPopper className="w-5 h-5 text-primary" />
-              Gostou do Relatto?
-            </DialogTitle>
+              <LocalizedText source={"Gostou do Relatto?"} /></DialogTitle>
             <DialogDescription>
-              Fale com a gente para assinar e usar o Relatto com a sua marca, sem limites e com seus
-              dados salvos para sempre.
-            </DialogDescription>
+              <LocalizedText source={"Fale com a gente para assinar e usar o Relatto com a sua marca, sem limites e com seus dados salvos para sempre."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <a href={contatoWhatsapp} target="_blank" rel="noopener noreferrer" className="block">
-              <Button className="w-full">Falar com a equipe</Button>
+              <Button className="w-full"><LocalizedText source={"Falar com a equipe"} /></Button>
             </a>
             <Button variant="ghost" className="w-full" onClick={() => setShowEnd(false)}>
-              Continuar explorando
-            </Button>
+              <LocalizedText source={"Continuar explorando"} /></Button>
             <Button variant="outline" className="w-full" onClick={() => void encerrar()}>
-              Sair da demonstração
-            </Button>
+              <LocalizedText source={"Sair da demonstração"} /></Button>
           </div>
           <p className="text-[11px] text-muted-foreground text-center">
-            Os dados criados nesta demonstração são apagados automaticamente após 24 horas.
-          </p>
+            <LocalizedText source={"Os dados criados nesta demonstração são apagados automaticamente após 24 horas."} /></p>
         </DialogContent>
       </Dialog>
     </>

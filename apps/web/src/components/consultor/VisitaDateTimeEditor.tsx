@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -59,11 +60,10 @@ export default function VisitaDateTimeEditor({ horaInicio, horaFim, onChange, di
   return (
     <div className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: "#E7E3D6" }}>
       <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
-        Data e horário da visita
-      </div>
+        <LocalizedText source={"Data e horário da visita"} /></div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
-          <div className="text-[10px] uppercase tracking-wide font-semibold mb-0.5" style={{ color: "#767066" }}>Início</div>
+          <div className="text-[10px] uppercase tracking-wide font-semibold mb-0.5" style={{ color: "#767066" }}><LocalizedText source={"Início"} /></div>
           <Input
             type="datetime-local"
             value={ini}
@@ -74,7 +74,7 @@ export default function VisitaDateTimeEditor({ horaInicio, horaFim, onChange, di
           />
         </div>
         <div>
-          <div className="text-[10px] uppercase tracking-wide font-semibold mb-0.5" style={{ color: "#767066" }}>Término</div>
+          <div className="text-[10px] uppercase tracking-wide font-semibold mb-0.5" style={{ color: "#767066" }}><LocalizedText source={"Término"} /></div>
           <Input
             type="datetime-local"
             value={fim}

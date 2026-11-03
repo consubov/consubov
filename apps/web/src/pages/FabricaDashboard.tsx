@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -127,8 +128,7 @@ export default function FabricaDashboard() {
         </header>
         <div className="flex-1 flex items-center justify-center p-6">
           <Card className="max-w-md"><CardContent className="p-6 text-center text-muted-foreground">
-            Nenhuma fábrica vinculada ao seu perfil. Contate o administrador.
-          </CardContent></Card>
+            <LocalizedText source={"Nenhuma fábrica vinculada ao seu perfil. Contate o administrador."} /></CardContent></Card>
         </div>
       </div>
     );
@@ -153,7 +153,7 @@ export default function FabricaDashboard() {
                   <SheetTitle className="text-primary-foreground flex items-center gap-2">
                     <Factory className="w-5 h-5" /> {fabrica.nome}
                   </SheetTitle>
-                  <p className="text-xs text-primary-foreground/80 text-left">Operador: {nomeOperador}</p>
+                  <p className="text-xs text-primary-foreground/80 text-left"><LocalizedText source={"Operador:"} />{" "}{nomeOperador}</p>
                 </SheetHeader>
                 <nav className="p-2">
                   {TABS.map(t => {
@@ -176,7 +176,7 @@ export default function FabricaDashboard() {
 
             <img src={logoConsubov} alt="Consubov" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
             <div className="min-w-0">
-              <h1 className="text-base font-bold leading-tight">Operador de Fábrica</h1>
+              <h1 className="text-base font-bold leading-tight"><LocalizedText source={"Operador de Fábrica"} /></h1>
               <p className="max-w-[170px] truncate text-xs opacity-80 sm:max-w-[240px]">{nomeOperador}</p>
             </div>
           </div>

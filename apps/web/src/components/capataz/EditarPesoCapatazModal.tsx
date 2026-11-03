@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -52,21 +53,21 @@ export default function EditarPesoCapatazModal({ open, onClose, pastoId, pastoNo
     <Dialog open={open} onOpenChange={(o) => { if (o) handleOpen(); if (!o) handleClose(); }}>
       <DialogContent className="max-w-xs">
         <DialogHeader>
-          <DialogTitle>⚖️ Editar Peso Médio</DialogTitle>
+          <DialogTitle><LocalizedText source={"⚖️ Editar Peso Médio"} /></DialogTitle>
           <DialogDescription>
-            Pasto: <strong>{pastoNome}</strong> — Atual: {pesoAtual?.toFixed(1).replace(".", ",") ?? "—"} kg
+            <LocalizedText source={"Pasto:"} />{" "}<strong>{pastoNome}</strong> <LocalizedText source={"— Atual:"} />{" "}{pesoAtual?.toFixed(1).replace(".", ",") ?? "—"} kg
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label>Novo peso médio (kg)</Label>
+            <Label><LocalizedText source={"Novo peso médio (kg)"} /></Label>
             <Input type="number" inputMode="decimal" step="0.1" min={0}
               value={peso} onChange={e => setPeso(e.target.value)}
               placeholder={pesoAtual?.toString() || "0"} autoFocus />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>Cancelar</Button>
+          <Button variant="outline" onClick={handleClose}><LocalizedText source={"Cancelar"} /></Button>
           <Button onClick={handleSave} disabled={pesoNum <= 0 || salvando}>
             {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
           </Button>

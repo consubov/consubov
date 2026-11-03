@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState, useCallback } from "react";
 import {
   loadSyncVetAuditoria,
@@ -34,11 +35,10 @@ export default function SyncVetAuditoriaPage() {
   return (
     <div className="space-y-3">
       <h1 className="text-lg font-bold text-primary flex items-center gap-2">
-        <ShieldCheck className="w-5 h-5" /> Auditoria
-      </h1>
-      <div className="text-xs text-muted-foreground">Últimos 300 registros. Somente leitura.</div>
+        <ShieldCheck className="w-5 h-5" /> <LocalizedText source={"Auditoria"} /></h1>
+      <div className="text-xs text-muted-foreground"><LocalizedText source={"Últimos 300 registros. Somente leitura."} /></div>
       {rows.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">Nenhum registro de auditoria ainda.</Card>
+        <Card className="p-8 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum registro de auditoria ainda."} /></Card>
       ) : (
         <div className="space-y-1">
           {rows.map(r => {

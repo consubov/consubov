@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { diasCalendarioSP, dataLocalSP } from "@/lib/diasCalendario";
 import { useNavigate } from "react-router-dom";
@@ -1594,11 +1595,10 @@ export default function CapatazDashboard() {
     return (
       <div className={CAPATAZ_CLASS_5}>
         <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center space-y-3">
-          <h1 className="text-lg font-semibold text-foreground">Falha ao abrir o painel</h1>
+          <h1 className="text-lg font-semibold text-foreground"><LocalizedText source={"Falha ao abrir o painel"} /></h1>
           <p className="text-sm text-muted-foreground">{startupError}</p>
           <Button onClick={() => window.location.reload()} className="w-full">
-            Recarregar
-          </Button>
+            <LocalizedText source={"Recarregar"} /></Button>
         </div>
       </div>
     );
@@ -1608,8 +1608,8 @@ export default function CapatazDashboard() {
     return (
       <div className={CAPATAZ_CLASS_5}>
         <div className="text-center space-y-2">
-          <p className="text-base font-medium text-foreground">Preparando painel do capataz…</p>
-          <p className="text-sm text-muted-foreground">Carregando a interface antes dos dados offline.</p>
+          <p className="text-base font-medium text-foreground"><LocalizedText source={"Preparando painel do capataz…"} /></p>
+          <p className="text-sm text-muted-foreground"><LocalizedText source={"Carregando a interface antes dos dados offline."} /></p>
         </div>
       </div>
     );
@@ -1630,17 +1630,16 @@ export default function CapatazDashboard() {
         {prepStatus === 'loading' ? (
           <>
             <Loader2 className="w-12 h-12 text-primary animate-spin" />
-            <p className="text-foreground font-semibold text-lg">Preparando app para uso offline...</p>
-            <p className="text-muted-foreground text-sm text-center">Baixando dados de pastos e configurações</p>
+            <p className="text-foreground font-semibold text-lg"><LocalizedText source={"Preparando app para uso offline..."} /></p>
+            <p className="text-muted-foreground text-sm text-center"><LocalizedText source={"Baixando dados de pastos e configurações"} /></p>
           </>
         ) : (
           <>
             <CheckCircle2 className="w-16 h-16 text-primary" />
-            <p className="text-foreground font-semibold text-lg">✅ App pronto para uso offline</p>
-            <p className="text-muted-foreground text-sm">{pastos.length} pastos carregados</p>
+            <p className="text-foreground font-semibold text-lg"><LocalizedText source={"✅ App pronto para uso offline"} /></p>
+            <p className="text-muted-foreground text-sm">{pastos.length} <LocalizedText source={"pastos carregados"} /></p>
             <Button onClick={() => setScreen('salga')} className="w-full max-w-xs mt-4" size="lg">
-              Começar
-            </Button>
+              <LocalizedText source={"Começar"} /></Button>
           </>
         )}
       </div>
@@ -1663,7 +1662,7 @@ export default function CapatazDashboard() {
     <AlertDialog open={!!duplicadoPrompt} onOpenChange={(open) => { if (!open) setDuplicadoPrompt(null); }}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Pasto já salgado hoje</AlertDialogTitle>
+          <AlertDialogTitle><LocalizedText source={"Pasto já salgado hoje"} /></AlertDialogTitle>
           <AlertDialogDescription>
             {duplicadoPrompt
               ? `Esse pasto já foi salgado hoje${duplicadoPrompt.hora ? ` às ${duplicadoPrompt.hora}` : ""}. Confirma registrar mais um lançamento?`
@@ -1671,8 +1670,8 @@ export default function CapatazDashboard() {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={confirmarDuplicado}>Confirmar</AlertDialogAction>
+          <AlertDialogCancel><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
+          <AlertDialogAction onClick={confirmarDuplicado}><LocalizedText source={"Confirmar"} /></AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -1686,14 +1685,14 @@ export default function CapatazDashboard() {
           <Button variant="ghost" size="icon" onClick={() => setScreen('scanner')} className="text-primary-foreground hover:bg-primary/80">
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-lg font-bold">Seleção Manual</h1>
+          <h1 className="text-lg font-bold"><LocalizedText source={"Seleção Manual"} /></h1>
         </header>
         <main className="flex-1 px-4 py-6 space-y-4 overflow-auto">
           <Card>
             <CardContent className="p-4 space-y-3">
-              <p className="text-sm text-destructive font-medium">⚠ Falha na leitura do QR Code</p>
+              <p className="text-sm text-destructive font-medium"><LocalizedText source={"⚠ Falha na leitura do QR Code"} /></p>
               <div>
-                <label className="text-sm font-medium text-foreground mb-1 block">Justificativa *</label>
+                <label className="text-sm font-medium text-foreground mb-1 block"><LocalizedText source={"Justificativa *"} /></label>
                 <Textarea
                   value={manualJustificativa}
                   onChange={(e) => setManualJustificativa(e.target.value)}
@@ -1702,7 +1701,7 @@ export default function CapatazDashboard() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground mb-1 block">Selecionar pasto *</label>
+                <label className="text-sm font-medium text-foreground mb-1 block"><LocalizedText source={"Selecionar pasto *"} /></label>
                 <Select value={manualPastoId} onValueChange={setManualPastoId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o pasto" />
@@ -1715,8 +1714,7 @@ export default function CapatazDashboard() {
                 </Select>
               </div>
               <Button onClick={confirmManualSelect} className="w-full" disabled={!manualJustificativa.trim() || !manualPastoId}>
-                Continuar
-              </Button>
+                <LocalizedText source={"Continuar"} /></Button>
             </CardContent>
           </Card>
         </main>
@@ -1763,20 +1761,19 @@ export default function CapatazDashboard() {
             <Button variant="ghost" size="icon" onClick={() => { setScreen('home'); reportOperacao('cancelou', { userId: user?.id, retiroId: activeRetiroId, fazendaId, capatazNome: userName, pendentes: salgaCount }); }} className="text-primary-foreground hover:bg-primary/80">
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h1 className="text-lg font-bold">Modo Salga</h1>
+            <h1 className="text-lg font-bold"><LocalizedText source={"Modo Salga"} /></h1>
           </div>
-          <span className="text-xs bg-primary-foreground/20 rounded-full px-3 py-1">🟢 Salga liberada</span>
+          <span className="text-xs bg-primary-foreground/20 rounded-full px-3 py-1"><LocalizedText source={"🟢 Salga liberada"} /></span>
         </header>
         <main className="flex-1 px-4 py-6 space-y-4 overflow-auto">
           <Button onClick={() => setScreen('scanner')} className="w-full gap-2 h-14 text-base" size="lg">
             <ScanLine className="w-6 h-6" />
-            ESCANEAR QR CODE
-          </Button>
+            <LocalizedText source={"ESCANEAR QR CODE"} /></Button>
 
           <div>
-            <h3 className="text-sm font-semibold text-foreground mb-2">Salgas de hoje ({salgasHoje.length})</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-2"><LocalizedText source={"Salgas de hoje ("} />{salgasHoje.length})</h3>
             {salgasHoje.length === 0 ? (
-              <p className="text-muted-foreground text-sm text-center py-4">Nenhuma salga registrada hoje</p>
+              <p className="text-muted-foreground text-sm text-center py-4"><LocalizedText source={"Nenhuma salga registrada hoje"} /></p>
             ) : (
               <div className="space-y-2">
                 {salgasHoje.map((l) => (
@@ -1785,9 +1782,9 @@ export default function CapatazDashboard() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm text-foreground">{l.pasto_nome}</p>
                         {l.cocho_cheio ? (
-                          <p className="text-xs text-blue-600 font-medium">🫙 Cocho Cheio • {l.tipo === 'falha_qr' ? '⚠ Manual' : '✅ QR'}</p>
+                          <p className="text-xs text-blue-600 font-medium"><LocalizedText source={"🫙 Cocho Cheio •"} />{" "}{l.tipo === 'falha_qr' ? '⚠ Manual' : '✅ QR'}</p>
                         ) : (
-                          <p className="text-xs text-muted-foreground">{l.sacos} sacos • {l.tipo === 'falha_qr' ? '⚠ Manual' : '✅ QR'}</p>
+                          <p className="text-xs text-muted-foreground">{l.sacos} <LocalizedText source={"sacos •"} />{" "}{l.tipo === 'falha_qr' ? '⚠ Manual' : '✅ QR'}</p>
                         )}
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${l.status === 'pendente' ? 'bg-secondary/20 text-secondary-foreground' : 'bg-primary/10 text-primary'}`}>
@@ -1802,16 +1799,14 @@ export default function CapatazDashboard() {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Excluir este lançamento?</AlertDialogTitle>
+                              <AlertDialogTitle><LocalizedText source={"Excluir este lançamento?"} /></AlertDialogTitle>
                               <AlertDialogDescription>
-                                Salga de "{l.pasto_nome}" ({l.cocho_cheio ? "C — cocho cheio" : `${l.sacos} sacos`}) será removida. Esta ação não pode ser desfeita.
-                              </AlertDialogDescription>
+                                <LocalizedText source={"Salga de \""} />{l.pasto_nome}" ({l.cocho_cheio ? "C — cocho cheio" : `${l.sacos} sacos`}<LocalizedText source={") será removida. Esta ação não pode ser desfeita."} /></AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogCancel><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
                               <AlertDialogAction onClick={() => handleDeleteLancamento(l.id)} className={CAPATAZ_CLASS_4}>
-                                Excluir
-                              </AlertDialogAction>
+                                <LocalizedText source={"Excluir"} /></AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
@@ -1831,9 +1826,9 @@ export default function CapatazDashboard() {
     return (
       <div className={CAPATAZ_CLASS_3}>
         <Loader2 className="w-12 h-12 text-primary animate-spin" />
-        <p className="text-foreground font-semibold text-lg">Sincronizando dados...</p>
+        <p className="text-foreground font-semibold text-lg"><LocalizedText source={"Sincronizando dados..."} /></p>
         <p className="text-muted-foreground text-sm">
-          {syncProgress.current} de {syncProgress.total}
+          {syncProgress.current} <LocalizedText source={"de"} />{" "}{syncProgress.total}
         </p>
         <div className="w-full max-w-xs bg-muted rounded-full h-2 overflow-hidden">
           <div
@@ -1874,7 +1869,7 @@ export default function CapatazDashboard() {
     <div className={CAPATAZ_CLASS_2}>
       <UpdateBanner />
       <EnableNotificationsBanner />
-      {onlineReadError && <div role="alert" className="mx-4 my-2 rounded border border-destructive/50 p-3 flex items-center gap-3"><span className="text-sm">{onlineReadError} Dados locais podem estar desatualizados.</span><Button variant="outline" size="sm" onClick={() => void loadFromSupabase()}>Tentar novamente</Button></div>}
+      {onlineReadError && <div role="alert" className="mx-4 my-2 rounded border border-destructive/50 p-3 flex items-center gap-3"><span className="text-sm">{onlineReadError} <LocalizedText source={"Dados locais podem estar desatualizados."} /></span><Button variant="outline" size="sm" onClick={() => void loadFromSupabase()}><LocalizedText source={"Tentar novamente"} /></Button></div>}
       <div className="px-4 pt-2">
         <SyncStatusBanner
           status={sync.status}
@@ -1924,8 +1919,7 @@ export default function CapatazDashboard() {
                         className={CAPATAZ_CLASS_1}
                       >
                         <ClipboardList className="w-5 h-5 text-primary" />
-                        Lançamento Manual
-                      </button>
+                        <LocalizedText source={"Lançamento Manual"} /></button>
                     </li>
                     {activeRetiroId && (
                       <li>
@@ -1934,8 +1928,7 @@ export default function CapatazDashboard() {
                           className={CAPATAZ_CLASS_1}
                         >
                           <MapIcon className="w-5 h-5 text-primary" />
-                          Ver Mapa
-                        </button>
+                          <LocalizedText source={"Ver Mapa"} /></button>
                       </li>
                     )}
                     <li><Separator className="my-1" /></li>
@@ -1945,8 +1938,7 @@ export default function CapatazDashboard() {
                         className={CAPATAZ_CLASS_1}
                       >
                         <ArrowRightLeft className="w-5 h-5 text-primary" />
-                        Transferência entre Retiros
-                      </button>
+                        <LocalizedText source={"Transferência entre Retiros"} /></button>
                     </li>
                     <li>
                       <button
@@ -1954,8 +1946,7 @@ export default function CapatazDashboard() {
                         className={CAPATAZ_CLASS_1}
                       >
                         <FileText className="w-5 h-5 text-primary" />
-                        Relatório de Salga
-                      </button>
+                        <LocalizedText source={"Relatório de Salga"} /></button>
                     </li>
                   </ul>
                 </nav>
@@ -1964,7 +1955,7 @@ export default function CapatazDashboard() {
             <img src={logoConsubov} alt="Consubov" className="w-9 h-9 rounded-lg object-cover" />
             <div>
               <h1 className="text-base font-bold leading-tight">Consubov</h1>
-              <p className="text-xs opacity-80">Capataz • {userName}</p>
+              <p className="text-xs opacity-80"><LocalizedText source={"Capataz •"} />{" "}{userName}</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -2004,12 +1995,10 @@ export default function CapatazDashboard() {
         <div className="grid grid-cols-2 gap-3">
           <Button onClick={handleIniciarSalga} className="h-14 gap-2 text-sm font-semibold" size="lg">
             <QrCode className="w-5 h-5" />
-            Iniciar Salga
-          </Button>
+            <LocalizedText source={"Iniciar Salga"} /></Button>
           <Button onClick={() => sync.triggerSync(true)} variant="outline" className="h-14 gap-2 text-sm font-semibold relative" size="lg">
             <RefreshCw className="w-5 h-5" />
-            Sincronizar
-            {(pendingCount + obsPendentes.length + (fecharMesPendente ? 1 : 0) + pesagemPendingCount) > 0 && (
+            <LocalizedText source={"Sincronizar"} />{(pendingCount + obsPendentes.length + (fecharMesPendente ? 1 : 0) + pesagemPendingCount) > 0 && (
               <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 text-[10px] flex items-center justify-center font-bold">
                 {pendingCount + obsPendentes.length + (fecharMesPendente ? 1 : 0) + pesagemPendingCount}
               </span>
@@ -2019,12 +2008,10 @@ export default function CapatazDashboard() {
         <div className="grid grid-cols-2 gap-3">
           <Button onClick={() => setObservacaoOpen(true)} variant="outline" className="h-14 gap-2 text-sm font-semibold" size="lg">
             <Eye className="w-5 h-5" />
-            + Observação
-          </Button>
+            <LocalizedText source={"+ Observação"} /></Button>
           <Button onClick={() => setMortalidadeOpen(true)} variant="outline" className="h-14 gap-2 text-sm font-semibold border-destructive/50 text-destructive hover:bg-destructive/10" size="lg">
             <AlertTriangle className="w-5 h-5" />
-            🐄 Mortalidade
-          </Button>
+            <LocalizedText source={"🐄 Mortalidade"} /></Button>
         </div>
         {activeRetiroId && (
           <Button
@@ -2034,8 +2021,7 @@ export default function CapatazDashboard() {
             size="lg"
           >
             <MapIcon className="w-5 h-5" />
-            Ver Mapa
-          </Button>
+            <LocalizedText source={"Ver Mapa"} /></Button>
         )}
         {activeRetiroId && fazendaId && (
           <EstoqueCapatazSection retiroId={activeRetiroId} fazendaId={fazendaId} />
@@ -2044,9 +2030,9 @@ export default function CapatazDashboard() {
         {syncError && (
           <Card className="border-destructive bg-destructive/10">
             <CardContent className="p-3">
-              <p className="text-sm font-semibold text-destructive">Erro de sincronização:</p>
+              <p className="text-sm font-semibold text-destructive"><LocalizedText source={"Erro de sincronização:"} /></p>
               <p className="text-xs text-destructive mt-1 break-all">{syncError}</p>
-              <Button variant="ghost" size="sm" className="mt-2 text-xs text-muted-foreground" onClick={() => setSyncError(null)}>Fechar</Button>
+              <Button variant="ghost" size="sm" className="mt-2 text-xs text-muted-foreground" onClick={() => setSyncError(null)}><LocalizedText source={"Fechar"} /></Button>
             </CardContent>
           </Card>
         )}
@@ -2056,7 +2042,7 @@ export default function CapatazDashboard() {
           <CardContent className="p-3 space-y-2">
             <div className="flex items-center justify-between gap-2">
               <div>
-                <p className="text-xs text-muted-foreground">Mês atual de operação</p>
+                <p className="text-xs text-muted-foreground"><LocalizedText source={"Mês atual de operação"} /></p>
                 <p className="text-lg font-bold text-primary">{mesNome} {anoOperacional}</p>
               </div>
               <div className="flex gap-2">
@@ -2085,8 +2071,7 @@ export default function CapatazDashboard() {
                     }
                   }}
                 >
-                  ▶ Iniciar
-                </Button>
+                  <LocalizedText source={"▶ Iniciar"} /></Button>
 
                 {/* Fechar Mês */}
                 <AlertDialog>
@@ -2103,13 +2088,13 @@ export default function CapatazDashboard() {
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Fechar mês?</AlertDialogTitle>
+                      <AlertDialogTitle><LocalizedText source={"Fechar mês?"} /></AlertDialogTitle>
                       <AlertDialogDescription>
-                        Deseja fechar o ciclo de {selectedCiclo ? `${getMonthName(selectedCiclo.mes)} ${selectedCiclo.ano}` : ''}?
+                        <LocalizedText source={"Deseja fechar o ciclo de"} />{" "}{selectedCiclo ? `${getMonthName(selectedCiclo.mes)} ${selectedCiclo.ano}` : ''}?
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogCancel><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
                       <AlertDialogAction onClick={async () => {
                         const salgasPend = await getLancamentosPendentes();
                         if (salgasPend.length > 0) {
@@ -2132,8 +2117,7 @@ export default function CapatazDashboard() {
                         setFecharMesPendente(action);
                         toast.success("Mês fechado. Sincronize para confirmar.");
                       }}>
-                        Confirmar
-                      </AlertDialogAction>
+                        <LocalizedText source={"Confirmar"} /></AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
@@ -2143,11 +2127,11 @@ export default function CapatazDashboard() {
             {/* Ciclo date info */}
             {selectedCiclo?.data_inicio && (
               <div className="text-xs text-muted-foreground border-t border-primary/10 pt-2 space-y-0.5">
-                <p>Iniciado em: {new Date(selectedCiclo.data_inicio).toLocaleDateString("pt-BR")}</p>
+                <p><LocalizedText source={"Iniciado em:"} />{" "}{new Date(selectedCiclo.data_inicio).toLocaleDateString("pt-BR")}</p>
                 {selectedCiclo.data_fim && (
                   <>
-                    <p>Fechado em: {new Date(selectedCiclo.data_fim).toLocaleDateString("pt-BR")}</p>
-                    <p>Duração: {selectedCiclo.duracao_dias ?? '—'} dias</p>
+                    <p><LocalizedText source={"Fechado em:"} />{" "}{new Date(selectedCiclo.data_fim).toLocaleDateString("pt-BR")}</p>
+                    <p><LocalizedText source={"Duração:"} />{" "}{selectedCiclo.duracao_dias ?? '—'} <LocalizedText source={"dias"} /></p>
                   </>
                 )}
               </div>
@@ -2164,18 +2148,18 @@ export default function CapatazDashboard() {
             </div>
             <div className="text-right">
               <p className="text-lg font-bold text-primary">—</p>
-              <p className="text-[10px] text-muted-foreground">GMD kg/dia</p>
+              <p className="text-[10px] text-muted-foreground"><LocalizedText source={"GMD kg/dia"} /></p>
             </div>
           </div>
         )}
 
         {/* Lista de pastos */}
         <div>
-          <h3 className="text-sm font-semibold text-foreground mb-2">Pastos ({pastos.length})</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-2"><LocalizedText source={"Pastos ("} />{pastos.length})</h3>
           {pastos.length === 0 ? (
             <Card>
               <CardContent className="p-6 text-center">
-                <p className="text-muted-foreground text-sm">Nenhum pasto encontrado. Conecte-se à internet para carregar os dados.</p>
+                <p className="text-muted-foreground text-sm"><LocalizedText source={"Nenhum pasto encontrado. Conecte-se à internet para carregar os dados."} /></p>
               </CardContent>
             </Card>
           ) : (
@@ -2205,7 +2189,7 @@ export default function CapatazDashboard() {
         {/* Observações pendentes */}
         {obsPendentes.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold text-foreground mb-2">Observações pendentes ({obsPendentes.length})</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-2"><LocalizedText source={"Observações pendentes ("} />{obsPendentes.length})</h3>
             <div className="space-y-2">
               {obsPendentes.map((obs) => (
                 <Card key={obs.id}>
@@ -2232,14 +2216,13 @@ export default function CapatazDashboard() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Excluir observação?</AlertDialogTitle>
-                            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                            <AlertDialogTitle><LocalizedText source={"Excluir observação?"} /></AlertDialogTitle>
+                            <AlertDialogDescription><LocalizedText source={"Esta ação não pode ser desfeita."} /></AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogCancel><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
                             <AlertDialogAction className={CAPATAZ_CLASS_4} onClick={async () => { await deleteObservacaoOffline(obs.id); await refreshObservacoes(); toast.success("Observação excluída"); }}>
-                              Excluir
-                            </AlertDialogAction>
+                              <LocalizedText source={"Excluir"} /></AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
@@ -2254,7 +2237,7 @@ export default function CapatazDashboard() {
         {/* Histórico de observações enviadas */}
         {obsHistorico.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold text-foreground mb-2">Histórico de observações enviadas ({obsHistorico.length})</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-2"><LocalizedText source={"Histórico de observações enviadas ("} />{obsHistorico.length})</h3>
             <div className="space-y-2">
               {obsHistorico.map((obs) => (
                 <Card key={obs.id} className="opacity-70">
@@ -2263,7 +2246,7 @@ export default function CapatazDashboard() {
                       <p className="font-medium text-sm text-foreground capitalize">{obs.tipo?.replace(/_/g, ' ')}</p>
                       <p className="text-xs text-muted-foreground">{obs.pasto_nome || 'Sem pasto'} • {new Date(obs.criado_em).toLocaleDateString('pt-BR')}</p>
                     </div>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">✅ Enviada</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0"><LocalizedText source={"✅ Enviada"} /></span>
                   </CardContent>
                 </Card>
               ))}

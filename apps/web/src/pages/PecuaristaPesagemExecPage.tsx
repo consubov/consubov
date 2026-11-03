@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMaOffline } from "@/components/maisarrobas/ModoOfflinePanel";
 import { useCriticalOperation } from "@/lib/criticalOperations";
@@ -678,10 +679,10 @@ export default function PecuaristaPesagemExecPage() {
       <div className="max-w-3xl mx-auto space-y-4 pb-44">
         <Card className="p-4 space-y-3 text-center">
           <Check className="w-8 h-8 mx-auto text-primary" />
-          <div className="font-semibold">Pesagem finalizada</div>
-          <div className="text-sm text-muted-foreground">{lote.nome_lote} • {contagem} animais</div>
+          <div className="font-semibold"><LocalizedText source={"Pesagem finalizada"} /></div>
+          <div className="text-sm text-muted-foreground">{lote.nome_lote} • {contagem} <LocalizedText source={"animais"} /></div>
           {!lote.identificado && gmdLoteLocal != null && (
-            <div className="text-sm font-semibold text-foreground">GMD do lote: {gmdLoteLocal.toFixed(3)} kg/dia</div>
+            <div className="text-sm font-semibold text-foreground"><LocalizedText source={"GMD do lote:"} />{" "}{gmdLoteLocal.toFixed(3)} <LocalizedText source={"kg/dia"} /></div>
           )}
           {(() => {
             // Cálculo local (mesma regra do resumo: média / 30).
@@ -692,11 +693,11 @@ export default function PecuaristaPesagemExecPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg bg-muted">
                   <p className="text-xl font-bold text-foreground">{f(media, 1)} kg</p>
-                  <p className="text-xs text-muted-foreground">peso médio</p>
+                  <p className="text-xs text-muted-foreground"><LocalizedText source={"peso médio"} /></p>
                 </div>
                 <div className="p-3 rounded-lg bg-muted">
                   <p className="text-xl font-bold text-foreground">{f(media / 30, 2)} @</p>
-                  <p className="text-xs text-muted-foreground">média de @</p>
+                  <p className="text-xs text-muted-foreground"><LocalizedText source={"média de @"} /></p>
                 </div>
               </div>
             );
@@ -704,13 +705,13 @@ export default function PecuaristaPesagemExecPage() {
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-lg bg-muted">
               <p className="text-2xl font-bold text-primary">{contagem - pesosPend}</p>
-              <p className="text-xs text-muted-foreground">confirmados no servidor</p>
+              <p className="text-xs text-muted-foreground"><LocalizedText source={"confirmados no servidor"} /></p>
             </div>
             <div className="p-3 rounded-lg bg-muted">
               <p className="text-2xl font-bold text-primary flex items-center justify-center gap-1">
                 {pesosPend > 0 && <CloudOff className="w-5 h-5" />}{pesosPend}
               </p>
-              <p className="text-xs text-muted-foreground">pendentes de envio</p>
+              <p className="text-xs text-muted-foreground"><LocalizedText source={"pendentes de envio"} /></p>
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
@@ -720,7 +721,7 @@ export default function PecuaristaPesagemExecPage() {
           </p>
         </Card>
         <div className="fixed left-0 right-0 bottom-16 px-4 pb-3 pt-3 bg-background/95 backdrop-blur border-t flex gap-2">
-          <Button variant="outline" onClick={() => navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}`)}>Voltar</Button>
+          <Button variant="outline" onClick={() => navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}`)}><LocalizedText source={"Voltar"} /></Button>
           {!isMaOffline() && (<Button className="flex-1" onClick={() => void tentarGerarPdf()} disabled={finalizando}>
             {finalizando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
             {pend > 0 ? `Gerar PDF (${pend} pendente${pend > 1 ? "s" : ""})` : "Gerar PDF"}
@@ -733,7 +734,7 @@ export default function PecuaristaPesagemExecPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-4 pb-44">
       <Card className="p-3">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">Lote</div>
+        <div className="text-xs uppercase tracking-wide text-muted-foreground"><LocalizedText source={"Lote"} /></div>
         <div className="font-semibold flex items-center gap-2 flex-wrap">
           {lote.nome_lote}
           <Badge variant="outline">{lote.identificado ? "Identificado" : "Sem identificação"}</Badge>
@@ -743,11 +744,11 @@ export default function PecuaristaPesagemExecPage() {
       <div className="grid grid-cols-2 gap-3 text-center">
         <div className="p-3 rounded-lg bg-muted">
           <p className="text-2xl font-bold text-primary">{contagem}</p>
-          <p className="text-xs text-muted-foreground">animais pesados</p>
+          <p className="text-xs text-muted-foreground"><LocalizedText source={"animais pesados"} /></p>
         </div>
         <div className="p-3 rounded-lg bg-muted">
           <p className="text-2xl font-bold text-primary">{media > 0 ? media.toFixed(1).replace(".", ",") : "—"}</p>
-          <p className="text-xs text-muted-foreground">média (kg)</p>
+          <p className="text-xs text-muted-foreground"><LocalizedText source={"média (kg)"} /></p>
         </div>
       </div>
 
@@ -756,7 +757,7 @@ export default function PecuaristaPesagemExecPage() {
           {pendingLeituraId && pendingRestante > 0 ? (
             <>
               <div className="text-sm font-medium">
-                Leitura em andamento — {pendingPesoIndiv?.toFixed(1)} kg/animal • faltam {pendingRestante}
+                <LocalizedText source={"Leitura em andamento —"} />{" "}{pendingPesoIndiv?.toFixed(1)} <LocalizedText source={"kg/animal • faltam"} />{" "}{pendingRestante}
               </div>
               <Input
                 ref={inputRef}
@@ -774,12 +775,11 @@ export default function PecuaristaPesagemExecPage() {
                 onClick={() => void confirmarNumeroBalancao()}
                 disabled={!numeroAtual.trim()}
               >
-                Confirmar animal
-              </Button>
+                <LocalizedText source={"Confirmar animal"} /></Button>
             </>
           ) : (
             <>
-              <div className="text-sm font-medium">Nova leitura em Balanção — Peso total (kg)</div>
+              <div className="text-sm font-medium"><LocalizedText source={"Nova leitura em Balanção — Peso total (kg)"} /></div>
               <div className="flex gap-2">
                 <Input
                   ref={inputRef}
@@ -797,7 +797,7 @@ export default function PecuaristaPesagemExecPage() {
                   onChange={(e) => setQtdBalancaoAtual(Number(e.target.value))}
                   className="h-14 rounded-md border border-input bg-background px-3 text-sm"
                 >
-                  {[2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} animais</option>)}
+                  {[2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} <LocalizedText source={"animais"} /></option>)}
                 </select>
               </div>
               <Button
@@ -806,12 +806,10 @@ export default function PecuaristaPesagemExecPage() {
                 disabled={!pesoBalancao || parseFloat(pesoBalancao.replace(",", ".")) <= 0 || salvandoLeitura}
               >
                 {salvandoLeitura ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Próximo ➜
-              </Button>
+                <LocalizedText source={"Próximo ➜"} /></Button>
               {leiturasBalancao.length > 0 && (
                 <div className="text-xs text-muted-foreground">
-                  {leiturasBalancao.length} leitura(s) • {leiturasBalancao.reduce((s, l) => s + l.quantidade_animais, 0)} animais
-                </div>
+                  {leiturasBalancao.length} <LocalizedText source={"leitura(s) •"} />{" "}{leiturasBalancao.reduce((s, l) => s + l.quantidade_animais, 0)} <LocalizedText source={"animais"} /></div>
               )}
             </>
           )}
@@ -825,14 +823,14 @@ export default function PecuaristaPesagemExecPage() {
           </div>
           {step === "peso" && prev?.peso_anterior_kg != null && (
             <Card className="p-3 bg-muted/50 text-sm">
-              <div><strong>Pesagem anterior:</strong></div>
-              <div>Peso: {prev.peso_anterior_kg.toFixed(1)} kg</div>
-              {prev.lote_anterior && <div>Lote: {prev.lote_anterior}</div>}
-              {prev.data_anterior && <div>Data: {new Date(prev.data_anterior).toLocaleString("pt-BR")}</div>}
+              <div><strong><LocalizedText source={"Pesagem anterior:"} /></strong></div>
+              <div><LocalizedText source={"Peso:"} />{" "}{prev.peso_anterior_kg.toFixed(1)} kg</div>
+              {prev.lote_anterior && <div><LocalizedText source={"Lote:"} />{" "}{prev.lote_anterior}</div>}
+              {prev.data_anterior && <div><LocalizedText source={"Data:"} />{" "}{new Date(prev.data_anterior).toLocaleString("pt-BR")}</div>}
             </Card>
           )}
           {step === "peso" && prev?.peso_anterior_kg == null && (
-            <div className="text-xs text-muted-foreground">Primeira pesagem deste animal.</div>
+            <div className="text-xs text-muted-foreground"><LocalizedText source={"Primeira pesagem deste animal."} /></div>
           )}
           <Input
             key="main-input-id"
@@ -877,7 +875,7 @@ export default function PecuaristaPesagemExecPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="text-sm font-medium">Animal {animalNum} — Peso (kg)</div>
+          <div className="text-sm font-medium">Animal {animalNum} <LocalizedText source={"— Peso (kg)"} /></div>
           <Input
             ref={inputRef}
             type="number"
@@ -896,8 +894,7 @@ export default function PecuaristaPesagemExecPage() {
             onClick={() => { inputRef.current?.focus(); void handleSalvarPesoSem(); }}
             disabled={!pesoSem || parseFloat(pesoSem.replace(",", ".")) <= 0}
           >
-            <Scale className="w-4 h-4 mr-2" /> Próximo ➜
-          </Button>
+            <Scale className="w-4 h-4 mr-2" /> <LocalizedText source={"Próximo ➜"} /></Button>
         </div>
       )}
 
@@ -905,11 +902,10 @@ export default function PecuaristaPesagemExecPage() {
       {(linhasId.length > 0 || linhasSem.length > 0) && (
         <Card className="p-3">
           <div className="text-xs text-muted-foreground mb-2 flex items-center justify-between">
-            <span>Histórico da rodada</span>
+            <span><LocalizedText source={"Histórico da rodada"} /></span>
             {syncSnap.pendingCount > 0 && (
               <span className="flex items-center gap-1">
-                <CloudOff className="w-3 h-3" /> {syncSnap.pendingCount} aguardando envio
-              </span>
+                <CloudOff className="w-3 h-3" /> {syncSnap.pendingCount} <LocalizedText source={"aguardando envio"} /></span>
             )}
           </div>
           <div className="max-h-40 overflow-y-auto text-xs space-y-1">
@@ -917,7 +913,7 @@ export default function PecuaristaPesagemExecPage() {
               ? linhasId.slice().reverse().map((l) => (
                 <div key={l.pesoRowId} className="flex justify-between border-b border-border/40 py-1">
                   <span className="flex items-center gap-1">
-                    Nº {l.numero}
+                    <LocalizedText source={"Nº"} />{" "}{l.numero}
                     {syncSnap.pendingRefIds.has(l.pesoRowId) && (
                       <CloudOff className="w-3 h-3 text-muted-foreground" aria-label="Pendente de envio" />
                     )}
@@ -943,11 +939,10 @@ export default function PecuaristaPesagemExecPage() {
         style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))", paddingBottom: "1rem" }}
       >
         <Button variant="outline" onClick={() => void (lote.identificado ? desfazerId() : desfazerSem())} disabled={contagem === 0 && step === "numero"}>
-          <Undo2 className="w-4 h-4 mr-1" /> Desfazer
-        </Button>
+          <Undo2 className="w-4 h-4 mr-1" /> <LocalizedText source={"Desfazer"} /></Button>
         <Button className="flex-1" onClick={() => void finalizar()} disabled={contagem === 0 || finalizando}>
           {finalizando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-          Finalizar ({contagem})
+          <LocalizedText source={"Finalizar ("} />{contagem})
         </Button>
       </div>
     </div>

@@ -20,6 +20,7 @@ import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Landmark, Map, FileDown, BarC
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useNomeUsuario } from "@/hooks/useNomeUsuario";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 
@@ -42,6 +43,7 @@ export default function FazendaDetailPage() {
   const { fazendaId } = useParams<{ fazendaId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const nomeAdmin = useNomeUsuario(["administradores", "gerentes"], "Administrador");
   const [fazenda, setFazenda] = useState<Fazenda | null>(null);
   const [relatorioOpen, setRelatorioOpen] = useState(false);
@@ -61,7 +63,7 @@ export default function FazendaDetailPage() {
       supabase.from("fazendas").select("*").eq("id", fazendaId).single(),
       supabase.from("retiros").select("*").eq("fazenda_id", fazendaId).order("nome"),
     ]);
-    if (fazRes.error) { toast.error("Fazenda não encontrada."); navigate("/admin/fazendas"); return; }
+    if (fazRes.error) { toast.error(t("farm.notFound")); navigate("/admin/fazendas"); return; }
     setFazenda(fazRes.data);
     setFazendaEdit({ intervalo_padrao_dias: (fazRes.data as any).intervalo_padrao_dias ?? 3 });
     setRetiros(retRes.data ?? []);
@@ -83,22 +85,22 @@ export default function FazendaDetailPage() {
   }
 
   async function handleSave() {
-    if (!form.nome.trim()) { toast.error("O nome é obrigatório."); return; }
-    if (!form.capataz.trim()) { toast.error("O nome do capataz é obrigatório."); return; }
+    if (!form.nome.trim()) { toast.error(t("farm.nameRequired")); return; }
+    if (!form.capataz.trim()) { toast.error(t("farm.foremanRequired")); return; }
     setSaving(true);
 
     if (editingId) {
       const { error } = await supabase.from("retiros").update({
         nome: form.nome.trim(), capataz: form.capataz.trim(), ativo: form.ativo,
       }).eq("id", editingId);
-      if (error) { toast.error("Erro ao atualizar retiro."); setSaving(false); return; }
-      toast.success("Retiro atualizado!");
+      if (error) { toast.error(t("farm.unitUpdateFailed")); setSaving(false); return; }
+      toast.success(t("farm.unitUpdated"));
     } else {
       const { error } = await supabase.from("retiros").insert({
         nome: form.nome.trim(), capataz: form.capataz.trim(), ativo: form.ativo, fazenda_id: fazendaId!,
       });
-      if (error) { toast.error("Erro ao criar retiro."); setSaving(false); return; }
-      toast.success("Retiro criado!");
+      if (error) { toast.error(t("farm.unitCreateFailed")); setSaving(false); return; }
+      toast.success(t("farm.unitCreated"));
     }
     setSaving(false);
     setDialogOpen(false);
@@ -106,10 +108,10 @@ export default function FazendaDetailPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Deseja realmente excluir este retiro?")) return;
+    if (!confirm(t("farm.unitDeleteConfirm"))) return;
     const { error } = await supabase.from("retiros").delete().eq("id", id);
-    if (error) { toast.error("Erro ao excluir retiro."); return; }
-    toast.success("Retiro excluído.");
+    if (error) { toast.error(t("farm.unitDeleteFailed")); return; }
+    toast.success(t("farm.unitDeleted"));
     loadData();
   }
 
@@ -128,7 +130,7 @@ export default function FazendaDetailPage() {
       <Breadcrumb className="mb-4">
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink asChild><Link to="/admin/fazendas">Fazendas</Link></BreadcrumbLink>
+            <BreadcrumbLink asChild><Link to="/admin/fazendas">{t("farm.title")}</Link></BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
@@ -138,7 +140,7 @@ export default function FazendaDetailPage() {
       </Breadcrumb>
 
       <Button variant="ghost" size="sm" className="mb-4 gap-1.5" onClick={() => navigate("/admin/fazendas")}>
-        <ArrowLeft className="w-4 h-4" /> Voltar
+        <ArrowLeft className="w-4 h-4" /> {t("farm.back")}
       </Button>
 
       <Card className="mb-6">
@@ -148,20 +150,20 @@ export default function FazendaDetailPage() {
               <Landmark className="w-5 h-5" /> {fazenda.nome}
             </CardTitle>
             <Badge variant={fazenda.ativo ? "default" : "secondary"}>
-              {fazenda.ativo ? "Ativo" : "Inativo"}
+              {fazenda.ativo ? t("farm.active") : t("farm.inactive")}
             </Badge>
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><span className="text-muted-foreground">Cidade:</span> {fazenda.cidade}</div>
-            <div><span className="text-muted-foreground">Estado:</span> {fazenda.estado}</div>
+            <div><span className="text-muted-foreground">{t("farm.city")}:</span> {fazenda.cidade}</div>
+            <div><span className="text-muted-foreground">{t("farm.state")}:</span> {fazenda.estado}</div>
           </div>
           <div className="mt-4 pt-4 border-t space-y-3">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <Label htmlFor="intervalo" className="text-sm font-medium">Intervalo padrão entre salgas (dias)</Label>
-                <p className="text-xs text-muted-foreground">Define o intervalo ideal de salga para todos os retiros</p>
+                <Label htmlFor="intervalo" className="text-sm font-medium">{t("farm.defaultInterval")}</Label>
+                <p className="text-xs text-muted-foreground">{t("farm.intervalDesc")}</p>
               </div>
               {editingIntervalo ? (
                 <div className="flex items-center gap-2">
@@ -184,25 +186,25 @@ export default function FazendaDetailPage() {
                         intervalo_padrao_dias: fazendaEdit.intervalo_padrao_dias,
                       } as any).eq("id", fazendaId!);
                       setSavingFazenda(false);
-                      if (error) { toast.error("Erro ao salvar"); return; }
+                      if (error) { toast.error(t("farm.saveFailed")); return; }
                       setFazenda(f => f ? { ...f, intervalo_padrao_dias: fazendaEdit.intervalo_padrao_dias } : f);
                       setEditingIntervalo(false);
-                      toast.success("Intervalo atualizado!");
+                      toast.success(t("farm.intervalUpdated"));
                     }}
                   >
-                    {savingFazenda ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
+                    {savingFazenda ? <Loader2 className="w-4 h-4 animate-spin" /> : t("farm.save")}
                   </Button>
                   <Button size="sm" variant="outline" disabled={savingFazenda} onClick={() => {
                     setFazendaEdit({ intervalo_padrao_dias: fazenda?.intervalo_padrao_dias ?? 3 });
                     setEditingIntervalo(false);
                   }}>
-                    Cancelar
+                    {t("farm.cancel")}
                   </Button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">
-                    {fazenda.intervalo_padrao_dias ?? 3} dia{(fazenda.intervalo_padrao_dias ?? 3) === 1 ? "" : "s"}
+                    {fazenda.intervalo_padrao_dias ?? 3} {t((fazenda.intervalo_padrao_dias ?? 3) === 1 ? "farm.day" : "farm.days")}
                   </span>
                   <Button
                     size="sm"
@@ -212,7 +214,7 @@ export default function FazendaDetailPage() {
                       setEditingIntervalo(true);
                     }}
                   >
-                    <Pencil className="w-4 h-4" /> Editar
+                    <Pencil className="w-4 h-4" /> {t("farm.edit")}
                   </Button>
                 </div>
               )}
@@ -222,16 +224,16 @@ export default function FazendaDetailPage() {
       </Card>
 
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-foreground">Retiros desta Fazenda</h2>
+        <h2 className="text-lg font-semibold text-foreground">{t("farm.retreats")}</h2>
         <div className="flex items-center gap-2">
           <Button onClick={() => navigate(`/admin/fazendas/${fazendaId}/painel`)} size="sm" variant="default" className="gap-1.5">
-            <BarChart3 className="w-4 h-4" /> Ver Painel
+            <BarChart3 className="w-4 h-4" /> {t("farm.panel")}
           </Button>
           <Button onClick={() => setRelatorioOpen(true)} size="sm" variant="outline" className="gap-1.5">
-            <FileDown className="w-4 h-4" /> Relatório PDF
+            <FileDown className="w-4 h-4" /> {t("farm.pdf")}
           </Button>
           <Button onClick={openNew} size="sm" className="gap-1.5" variant="outline">
-            <Plus className="w-4 h-4" /> Novo Retiro
+            <Plus className="w-4 h-4" /> {t("farm.newUnit")}
           </Button>
         </div>
       </div>
@@ -248,7 +250,7 @@ export default function FazendaDetailPage() {
         <Card>
           <CardContent className="p-8 text-center">
             <Map className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-            <p className="text-muted-foreground text-sm">Nenhum retiro cadastrado nesta fazenda.</p>
+            <p className="text-muted-foreground text-sm">{t("farm.noneUnits")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -257,10 +259,10 @@ export default function FazendaDetailPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Capataz</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-24 text-right">Ações</TableHead>
+                  <TableHead>{t("farm.name")}</TableHead>
+                  <TableHead>{t("farm.foreman")}</TableHead>
+                  <TableHead>{t("farm.status")}</TableHead>
+                  <TableHead className="w-24 text-right">{t("farm.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -274,15 +276,15 @@ export default function FazendaDetailPage() {
                     <TableCell>{r.capataz}</TableCell>
                     <TableCell>
                       <Badge variant={r.ativo ? "default" : "secondary"}>
-                        {r.ativo ? "Ativo" : "Inativo"}
+                        {r.ativo ? t("farm.active") : t("farm.inactive")}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(r)}>
+                        <Button aria-label={`${t("farm.editUnit")} ${r.nome}`} variant="ghost" size="icon" onClick={() => openEdit(r)}>
                           <Pencil className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id)} className="text-destructive hover:text-destructive">
+                        <Button aria-label={`${t("farm.unitDeleteConfirm")} ${r.nome}`} variant="ghost" size="icon" onClick={() => handleDelete(r.id)} className="text-destructive hover:text-destructive">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -298,26 +300,26 @@ export default function FazendaDetailPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Retiro" : "Novo Retiro"}</DialogTitle>
+            <DialogTitle>{editingId ? t("farm.editUnit") : t("farm.newUnit")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="nome">Nome *</Label>
-              <Input id="nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Retiro Norte" />
+              <Label htmlFor="nome">{t("farm.name")} *</Label>
+              <Input id="nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder={t("farm.unitNamePlaceholder")} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="capataz">Capataz *</Label>
-              <Input id="capataz" value={form.capataz} onChange={(e) => setForm({ ...form, capataz: e.target.value })} placeholder="Nome do capataz" />
+              <Label htmlFor="capataz">{t("farm.foreman")} *</Label>
+              <Input id="capataz" value={form.capataz} onChange={(e) => setForm({ ...form, capataz: e.target.value })} placeholder={t("farm.foremanPlaceholder")} />
             </div>
             <div className="flex items-center justify-between">
-              <Label htmlFor="ativo">Ativo</Label>
+              <Label htmlFor="ativo">{t("farm.active")}</Label>
               <Switch id="ativo" checked={form.ativo} onCheckedChange={(checked) => setForm({ ...form, ativo: checked })} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("farm.cancel")}</Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : t("farm.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -129,7 +130,7 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>+ Observação</DialogTitle>
+          <DialogTitle><LocalizedText source={"+ Observação"} /></DialogTitle>
         </DialogHeader>
 
         <input
@@ -151,15 +152,13 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
         {step === 'camera' && !fotoBase64 && (
           <div className="flex flex-col items-center gap-4 py-8">
             <Camera className="w-16 h-16 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground text-center">Tire uma foto ou escolha da galeria</p>
+            <p className="text-sm text-muted-foreground text-center"><LocalizedText source={"Tire uma foto ou escolha da galeria"} /></p>
             <Button onClick={() => cameraInputRef.current?.click()} className="w-full gap-2">
               <Camera className="w-4 h-4" />
-              📷 Abrir Câmera
-            </Button>
+              <LocalizedText source={"📷 Abrir Câmera"} /></Button>
             <Button onClick={() => galleryInputRef.current?.click()} variant="outline" className="w-full gap-2">
               <ImageIcon className="w-4 h-4" />
-              🖼️ Escolher da Galeria
-            </Button>
+              <LocalizedText source={"🖼️ Escolher da Galeria"} /></Button>
           </div>
         )}
 
@@ -180,7 +179,7 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
 
             {/* Category selection */}
             <div>
-              <p className="text-sm font-medium mb-2">Estrutura</p>
+              <p className="text-sm font-medium mb-2"><LocalizedText source={"Estrutura"} /></p>
               <div className="flex flex-wrap gap-2">
                 {CATEGORIAS_ESTRUTURA.map((c) => (
                   <Button
@@ -213,13 +212,13 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
 
             {/* Optional text */}
             <div>
-              <label className="text-sm font-medium mb-1 block">Descrição (opcional)</label>
+              <label className="text-sm font-medium mb-1 block"><LocalizedText source={"Descrição (opcional)"} /></label>
               <Textarea value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Descreva a situação..." rows={2} />
             </div>
 
             {/* Pasto select */}
             <div>
-              <label className="text-sm font-medium mb-1 block">Pasto</label>
+              <label className="text-sm font-medium mb-1 block"><LocalizedText source={"Pasto"} /></label>
               <Select value={pastoId} onValueChange={setPastoId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o pasto" />

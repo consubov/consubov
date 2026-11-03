@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { CheckCircle2, CloudOff, Loader2, AlertTriangle, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { SyncEngineState } from "@/hooks/useSyncEngine";
@@ -38,11 +39,10 @@ export function SyncStatusBanner({
     return (
       <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg px-3 py-2 flex items-center gap-2 text-sm">
         <LogIn className="w-4 h-4 shrink-0" />
-        <span className="flex-1 font-medium">Faça login novamente para sincronizar</span>
+        <span className="flex-1 font-medium"><LocalizedText source={"Faça login novamente para sincronizar"} /></span>
         {onLoginAgain && (
           <Button size="sm" variant="destructive" onClick={onLoginAgain} className="h-7 text-xs">
-            Entrar
-          </Button>
+            <LocalizedText source={"Entrar"} /></Button>
         )}
       </div>
     );
@@ -53,8 +53,7 @@ export function SyncStatusBanner({
       <div className="bg-secondary/30 border border-secondary text-secondary-foreground rounded-lg px-3 py-2 flex items-center gap-2 text-sm">
         <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
         <span className="flex-1 font-medium">
-          Sincronizando…
-          {retryAttempt > 0 && ` (tentativa ${retryAttempt})`}
+          <LocalizedText source={"Sincronizando…"} />{retryAttempt > 0 && ` (tentativa ${retryAttempt})`}
         </span>
       </div>
     );
@@ -66,20 +65,18 @@ export function SyncStatusBanner({
         <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <p className="font-semibold">
-            Falha ao sincronizar
-            {retryAttempt > 0 && ` — tentativa ${retryAttempt}`}
+            <LocalizedText source={"Falha ao sincronizar"} />{retryAttempt > 0 && ` — tentativa ${retryAttempt}`}
           </p>
           {errorMessage && (
             <p className="text-xs opacity-80 break-words mt-0.5">{errorMessage}</p>
           )}
           {pendingCount > 0 && (
-            <p className="text-xs mt-0.5">{pendingCount} registro(s) pendente(s)</p>
+            <p className="text-xs mt-0.5">{pendingCount} <LocalizedText source={"registro(s) pendente(s)"} /></p>
           )}
         </div>
         {onRetry && (
           <Button size="sm" variant="destructive" onClick={onRetry} className="h-7 text-xs shrink-0">
-            Tentar
-          </Button>
+            <LocalizedText source={"Tentar"} /></Button>
         )}
       </div>
     );
@@ -90,12 +87,10 @@ export function SyncStatusBanner({
       <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg px-3 py-2 flex items-center gap-2 text-sm">
         <CloudOff className="w-4 h-4 shrink-0" />
         <span className="flex-1 font-medium">
-          {pendingCount} registro{pendingCount === 1 ? "" : "s"} pendente{pendingCount === 1 ? "" : "s"} de sync
-        </span>
+          {pendingCount} <LocalizedText source={"registro"} />{pendingCount === 1 ? "" : "s"} <LocalizedText source={"pendente"} />{pendingCount === 1 ? "" : "s"} <LocalizedText source={"de sync"} /></span>
         {onRetry && (
           <Button size="sm" variant="destructive" onClick={onRetry} className="h-7 text-xs">
-            Sincronizar
-          </Button>
+            <LocalizedText source={"Sincronizar"} /></Button>
         )}
       </div>
     );
@@ -106,7 +101,7 @@ export function SyncStatusBanner({
       <div className="bg-primary/10 border border-primary/20 text-primary rounded-lg px-3 py-2 flex items-center gap-2 text-sm">
         <CheckCircle2 className="w-4 h-4 shrink-0" />
         <span className="flex-1 font-medium">
-          Sincronizado{lastSyncedAt ? ` às ${formatTime(lastSyncedAt)}` : ""}
+          <LocalizedText source={"Sincronizado"} />{lastSyncedAt ? ` às ${formatTime(lastSyncedAt)}` : ""}
         </span>
       </div>
     );

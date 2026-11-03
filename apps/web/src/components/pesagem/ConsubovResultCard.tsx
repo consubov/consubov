@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { LineChart, Line, Area, AreaChart, ResponsiveContainer, ReferenceDot } from "recharts";
 import bgImage from "@/assets/consubov-card-bg.jpg";
 import type { PesagemResultado } from "@/hooks/usePesagemResultado";
@@ -62,12 +63,11 @@ export default function ConsubovResultCard({ resultado }: Props) {
                   {sinal}
                   {gmd?.toFixed(2)}
                 </span>
-                <span className="text-white/90 text-lg font-medium">kg/dia</span>
+                <span className="text-white/90 text-lg font-medium"><LocalizedText source={"kg/dia"} /></span>
               </div>
               <div className="px-4 py-1 rounded-full border border-[#22c55e] bg-[#22c55e]/10">
                 <span className="text-[#22c55e] text-sm font-semibold">
-                  Últimos {dias} dias
-                </span>
+                  <LocalizedText source={"Últimos"} />{" "}{dias} <LocalizedText source={"dias"} /></span>
               </div>
             </>
           ) : (
@@ -80,8 +80,7 @@ export default function ConsubovResultCard({ resultado }: Props) {
               </div>
               <div className="px-4 py-1 rounded-full border border-white/30 bg-white/10">
                 <span className="text-white/80 text-sm font-semibold">
-                  Primeira pesagem registrada
-                </span>
+                  <LocalizedText source={"Primeira pesagem registrada"} /></span>
               </div>
             </>
           )}
@@ -129,15 +128,13 @@ export default function ConsubovResultCard({ resultado }: Props) {
           <div className="bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 flex items-center gap-3">
             <span className="text-2xl">🐄</span>
             <span className="text-white font-medium text-sm">
-              Lote {nomePasto || "—"} • {qtdAnimais} animais
-            </span>
+              <LocalizedText source={"Lote"} />{" "}{nomePasto || "—"} • {qtdAnimais} <LocalizedText source={"animais"} /></span>
           </div>
           {acimaDaMedia && (
             <div className="bg-[#22c55e]/90 rounded-2xl px-4 py-2 flex items-center gap-2">
               <span className="text-base">⭐</span>
               <span className="text-white font-semibold text-sm">
-                Acima da média da fazenda
-              </span>
+                <LocalizedText source={"Acima da média da fazenda"} /></span>
             </div>
           )}
         </div>

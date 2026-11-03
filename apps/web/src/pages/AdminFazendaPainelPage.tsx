@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -105,9 +106,9 @@ export default function AdminFazendaPainelPage() {
   if (painelError || painelMaeError) {
     return (
       <div role="alert" className="max-w-2xl mx-auto p-6 space-y-3">
-        <p className="font-medium text-destructive">Dados desta fazenda indisponíveis</p>
+        <p className="font-medium text-destructive"><LocalizedText source={"Dados desta fazenda indisponíveis"} /></p>
         <p className="text-sm">{painelError || painelMaeError}</p>
-        <Button onClick={() => void handleRefresh()} disabled={refreshing}>Tentar novamente</Button>
+        <Button onClick={() => void handleRefresh()} disabled={refreshing}><LocalizedText source={"Tentar novamente"} /></Button>
       </div>
     );
   }
@@ -116,29 +117,27 @@ export default function AdminFazendaPainelPage() {
     <div className="max-w-5xl mx-auto space-y-4">
       <Breadcrumb>
         <BreadcrumbList>
-          <BreadcrumbItem><BreadcrumbLink asChild><Link to="/admin/fazendas">Fazendas</Link></BreadcrumbLink></BreadcrumbItem>
+          <BreadcrumbItem><BreadcrumbLink asChild><Link to="/admin/fazendas"><LocalizedText source={"Fazendas"} /></Link></BreadcrumbLink></BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem><BreadcrumbLink asChild><Link to={`/admin/fazendas/${fazendaId}`}>{fazendaNome}</Link></BreadcrumbLink></BreadcrumbItem>
           <BreadcrumbSeparator />
-          <BreadcrumbItem><BreadcrumbPage>Painel</BreadcrumbPage></BreadcrumbItem>
+          <BreadcrumbItem><BreadcrumbPage><LocalizedText source={"Painel"} /></BreadcrumbPage></BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate(`/admin/fazendas/${fazendaId}`)}>
-          <ArrowLeft className="w-4 h-4" /> Voltar
-        </Button>
+          <ArrowLeft className="w-4 h-4" /> <LocalizedText source={"Voltar"} /></Button>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setRelatorioOpen(true)}>
-            <FileDown className="w-4 h-4" /> Relatório
-          </Button>
+            <FileDown className="w-4 h-4" /> <LocalizedText source={"Relatório"} /></Button>
           <Button size="sm" variant="outline" className="gap-1.5" onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           </Button>
         </div>
       </div>
 
-      <h1 className="text-xl font-bold text-foreground">{fazendaNome} — Painel</h1>
+      <h1 className="text-xl font-bold text-foreground">{fazendaNome} <LocalizedText source={"— Painel"} /></h1>
 
       <Card className="p-2">
         <MonthScroller selectedMonth={mes} selectedYear={ano} onChange={(month, year) => setPeriodo(month, year)} />
@@ -165,7 +164,7 @@ export default function AdminFazendaPainelPage() {
       {(metrics.statusDist.baixo + metrics.statusDist.ideal + metrics.statusDist.alto) > 0 && (
         <Card>
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Distribuição de Status</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase"><LocalizedText source={"Distribuição de Status"} /></CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3 space-y-2">
             <div className="flex h-3 rounded-full overflow-hidden bg-muted">
@@ -175,21 +174,21 @@ export default function AdminFazendaPainelPage() {
               {metrics.statusDist.altoPct > 0 && <div className="transition-all" style={{ width: `${metrics.statusDist.altoPct}%`, backgroundColor: "#1E88E5" }} />}
             </div>
             <div className="flex justify-between text-xs">
-              <span className="font-medium" style={{ color: "#E53935" }}>Baixo {fmtNum(metrics.statusDist.baixoPct, 0)}%</span>
+              <span className="font-medium" style={{ color: "#E53935" }}><LocalizedText source={"Baixo"} />{" "}{fmtNum(metrics.statusDist.baixoPct, 0)}%</span>
               {(metrics.statusDist as any).atencaoPct > 0 && (
-                <span className="font-medium" style={{ color: "#FBC02D" }}>Atenção {fmtNum((metrics.statusDist as any).atencaoPct, 0)}%</span>
+                <span className="font-medium" style={{ color: "#FBC02D" }}><LocalizedText source={"Atenção"} />{" "}{fmtNum((metrics.statusDist as any).atencaoPct, 0)}%</span>
               )}
               <span className="font-medium" style={{ color: "#43A047" }}>Ideal {fmtNum(metrics.statusDist.idealPct, 0)}%</span>
-              <span className="font-medium" style={{ color: "#1E88E5" }}>Alto {fmtNum(metrics.statusDist.altoPct, 0)}%</span>
+              <span className="font-medium" style={{ color: "#1E88E5" }}><LocalizedText source={"Alto"} />{" "}{fmtNum(metrics.statusDist.altoPct, 0)}%</span>
             </div>
 
           </CardContent>
         </Card>
       )}
 
-      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Retiros</h2>
+      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide"><LocalizedText source={"Retiros"} /></h2>
       {retirosResumo.length === 0 ? (
-        <p className="text-muted-foreground text-sm text-center py-8">Nenhum retiro ativo encontrado.</p>
+        <p className="text-muted-foreground text-sm text-center py-8"><LocalizedText source={"Nenhum retiro ativo encontrado."} /></p>
       ) : (
         <div className="space-y-3">
           {retirosResumo.map(r => (
@@ -207,10 +206,10 @@ export default function AdminFazendaPainelPage() {
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </div>
                 <div className="grid grid-cols-4 gap-2 text-center">
-                  <div><p className="text-xs text-muted-foreground">Animais</p><p className="text-sm font-bold">{r.totalAnimais}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Sacos</p><p className="text-sm font-bold">{r.sacosUtilizados}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Consumo</p><p className="text-sm font-bold text-secondary">{fmtNum(r.consumoMedio, 1)}</p></div>
-                  <div><p className="text-xs text-muted-foreground">GMD</p><p className="text-sm font-bold text-primary">{r.gmd == null ? "—" : fmtNum(r.gmd, 3)}</p></div>
+                  <div><p className="text-xs text-muted-foreground"><LocalizedText source={"Animais"} /></p><p className="text-sm font-bold">{r.totalAnimais}</p></div>
+                  <div><p className="text-xs text-muted-foreground"><LocalizedText source={"Sacos"} /></p><p className="text-sm font-bold">{r.sacosUtilizados}</p></div>
+                  <div><p className="text-xs text-muted-foreground"><LocalizedText source={"Consumo"} /></p><p className="text-sm font-bold text-secondary">{fmtNum(r.consumoMedio, 1)}</p></div>
+                  <div><p className="text-xs text-muted-foreground"><LocalizedText source={"GMD"} /></p><p className="text-sm font-bold text-primary">{r.gmd == null ? "—" : fmtNum(r.gmd, 3)}</p></div>
                 </div>
               </CardContent>
             </Card>

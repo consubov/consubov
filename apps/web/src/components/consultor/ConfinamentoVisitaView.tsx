@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -245,8 +246,7 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
   return (
     <div className="space-y-4">
       <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1 -ml-2">
-        <ArrowLeft className="w-4 h-4" /> Voltar
-      </Button>
+        <ArrowLeft className="w-4 h-4" /> <LocalizedText source={"Voltar"} /></Button>
 
       <Card className="p-3 bg-primary/5 border-primary/20">
         <div className="flex items-center justify-between gap-2">
@@ -254,20 +254,19 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
             <div className="font-bold text-foreground truncate">{fazenda?.nome_fazenda || "—"}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
               <Clock className="w-3 h-3" />
-              Início: {format(new Date(visita.hora_inicio), "dd/MM 'às' HH:mm", { locale: ptBR })}
+              <LocalizedText source={"Início:"} />{" "}{format(new Date(visita.hora_inicio), "dd/MM 'às' HH:mm", { locale: ptBR })}
               {visita.hora_fim && ` · Fim: ${format(new Date(visita.hora_fim), "HH:mm", { locale: ptBR })}`}
             </div>
           </div>
-          <Badge variant="secondary" className="capitalize shrink-0">Confinamento</Badge>
+          <Badge variant="secondary" className="capitalize shrink-0"><LocalizedText source={"Confinamento"} /></Badge>
         </div>
       </Card>
 
       {/* Avaliação da Fábrica (única por visita) */}
       <Card className="p-3 space-y-3">
-        <div className="text-sm font-semibold text-foreground">Avaliação da Fábrica</div>
+        <div className="text-sm font-semibold text-foreground"><LocalizedText source={"Avaliação da Fábrica"} /></div>
         <div className="text-[11px] text-muted-foreground -mt-2">
-          Avaliada uma única vez por visita
-        </div>
+          <LocalizedText source={"Avaliada uma única vez por visita"} /></div>
         <FabricaScore label="Organização de Fábrica" value={fabricaNota} onChange={n => upsertFabrica({ organizacao_fabrica_nota: n })} disabled={readOnly} />
         <FabricaScore label="Organização de Insumos" value={insumosNota} onChange={n => upsertFabrica({ organizacao_insumos_nota: n })} disabled={readOnly} />
       </Card>
@@ -284,18 +283,16 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
       />
 
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-foreground">Currais avaliados ({currais.length})</h2>
+        <h2 className="text-sm font-semibold text-foreground"><LocalizedText source={"Currais avaliados ("} />{currais.length})</h2>
         {!readOnly && (
           <Button size="sm" onClick={openNew} className="gap-1.5 bg-primary hover:bg-primary/90">
-            <Plus className="w-4 h-4" /> Curral
-          </Button>
+            <Plus className="w-4 h-4" /> <LocalizedText source={"Curral"} /></Button>
         )}
       </div>
 
       {currais.length === 0 ? (
         <Card className="p-6 text-center text-sm text-muted-foreground">
-          Nenhum curral adicionado ainda.
-        </Card>
+          <LocalizedText source={"Nenhum curral adicionado ainda."} /></Card>
       ) : (
         <div className="space-y-2">
           {currais.map(c => (
@@ -313,7 +310,7 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
                   {c.num_curral}
                 </div>
                 <div className="flex-1 min-w-0 space-y-1">
-                  <div className="text-sm font-medium text-foreground">Curral {c.num_curral}</div>
+                  <div className="text-sm font-medium text-foreground"><LocalizedText source={"Curral"} />{" "}{c.num_curral}</div>
                   <div className="flex gap-1.5 flex-wrap text-[10px]">
                     <ScorePill label="F" avg={c.scores?.fezes} n={c.samples.fezes.length} />
                     <ScorePill label="C" avg={c.scores?.corporal} n={c.samples.corporal.length} />
@@ -367,12 +364,10 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
             className="w-full gap-2"
             disabled={currais.length === 0}
           >
-            Salvar observações e conclusão
-          </Button>
+            <LocalizedText source={"Salvar observações e conclusão"} /></Button>
           {currais.length === 0 && (
             <p className="text-xs text-center text-muted-foreground">
-              Adicione pelo menos um curral para revisar
-            </p>
+              <LocalizedText source={"Adicione pelo menos um curral para revisar"} /></p>
           )}
         </div>
       )}
@@ -381,13 +376,13 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
         <Card className="p-3 space-y-2">
           {visita.observacoes_gerais && (
             <div>
-              <div className="text-xs font-semibold text-muted-foreground">Observações gerais</div>
+              <div className="text-xs font-semibold text-muted-foreground"><LocalizedText source={"Observações gerais"} /></div>
               <div className="text-sm text-foreground whitespace-pre-wrap">{visita.observacoes_gerais}</div>
             </div>
           )}
           {visita.conclusao && (
             <div>
-              <div className="text-xs font-semibold text-muted-foreground">Conclusão</div>
+              <div className="text-xs font-semibold text-muted-foreground"><LocalizedText source={"Conclusão"} /></div>
               <div className="text-sm text-foreground whitespace-pre-wrap">{visita.conclusao}</div>
             </div>
           )}
@@ -407,13 +402,12 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
       <AlertDialog open={!!curralExcluir} onOpenChange={(v) => { if (!v) setCurralExcluir(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir curral {curralExcluir?.num_curral}?</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Excluir curral"} />{" "}{curralExcluir?.num_curral}?</AlertDialogTitle>
             <AlertDialogDescription>
-              As avaliações e notas deste curral serão removidas desta visita. Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
+              <LocalizedText source={"As avaliações e notas deste curral serão removidas desta visita. Esta ação não pode ser desfeita."} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={excluindo}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={excluindo}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => { e.preventDefault(); void handleExcluirCurral(); }}
               disabled={excluindo}
@@ -430,24 +424,23 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
       <Dialog open={finalizarOpen} onOpenChange={setFinalizarOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Finalizar Visita</DialogTitle>
-            <DialogDescription>Adicione as observações gerais e a conclusão da visita.</DialogDescription>
+            <DialogTitle><LocalizedText source={"Finalizar Visita"} /></DialogTitle>
+            <DialogDescription><LocalizedText source={"Adicione as observações gerais e a conclusão da visita."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Observações gerais</Label>
+              <Label><LocalizedText source={"Observações gerais"} /></Label>
               <Textarea rows={3} value={obsGerais} onChange={e => setObsGerais(e.target.value)} />
             </div>
             <div>
-              <Label>Conclusão</Label>
+              <Label><LocalizedText source={"Conclusão"} /></Label>
               <Textarea rows={3} value={conclusao} onChange={e => setConclusao(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setFinalizarOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setFinalizarOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleFinalizar} disabled={finalizando} className="bg-primary hover:bg-primary/90">
-              {finalizando && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Confirmar
-            </Button>
+              {finalizando && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Confirmar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

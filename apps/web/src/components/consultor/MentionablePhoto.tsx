@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,7 @@ export default function MentionablePhoto({ numero, children, className, style }:
               className="gap-1.5 h-8"
               onClick={() => { target.insert(numero); setOpen(false); }}
             >
-              <Quote className="w-3.5 h-3.5" /> Mencionar Imagem {numero}
+              <Quote className="w-3.5 h-3.5" /> <LocalizedText source={"Mencionar Imagem"} />{" "}{numero}
             </Button>
           </PopoverContent>
         </Popover>

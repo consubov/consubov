@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -273,7 +274,7 @@ export default function SyncVetEstacaoDetalhePage() {
     return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   }
   if (!estacao) {
-    return <Card className="p-6 text-center text-sm text-muted-foreground">Estação não encontrada.</Card>;
+    return <Card className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Estação não encontrada."} /></Card>;
   }
 
   const cicloPreview = cicloProtoId ? (etapasPorProto[cicloProtoId] ?? []) : [];
@@ -296,20 +297,19 @@ export default function SyncVetEstacaoDetalhePage() {
 
       <Tabs defaultValue="protocolos">
         <TabsList className="grid grid-cols-3 w-full">
-          <TabsTrigger value="protocolos"><Workflow className="w-4 h-4 mr-1" />Protocolos</TabsTrigger>
-          <TabsTrigger value="semen"><Snowflake className="w-4 h-4 mr-1" />Sêmen</TabsTrigger>
-          <TabsTrigger value="ciclos"><Layers className="w-4 h-4 mr-1" />Lotes/Ciclos</TabsTrigger>
+          <TabsTrigger value="protocolos"><Workflow className="w-4 h-4 mr-1" /><LocalizedText source={"Protocolos"} /></TabsTrigger>
+          <TabsTrigger value="semen"><Snowflake className="w-4 h-4 mr-1" /><LocalizedText source={"Sêmen"} /></TabsTrigger>
+          <TabsTrigger value="ciclos"><Layers className="w-4 h-4 mr-1" /><LocalizedText source={"Lotes/Ciclos"} /></TabsTrigger>
         </TabsList>
 
         {/* PROTOCOLOS */}
         <TabsContent value="protocolos" className="space-y-3 mt-3">
           <div className="flex justify-end">
             <Button onClick={() => setAddProtoOpen(true)} disabled={protocolosDisponiveis.length === 0}>
-              <Plus className="w-4 h-4 mr-1" />Adicionar Protocolo
-            </Button>
+              <Plus className="w-4 h-4 mr-1" /><LocalizedText source={"Adicionar Protocolo"} /></Button>
           </div>
           {estProtos.length === 0 ? (
-            <Card className="p-6 text-center text-sm text-muted-foreground">Nenhum protocolo vinculado a esta estação.</Card>
+            <Card className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum protocolo vinculado a esta estação."} /></Card>
           ) : (
             <div className="space-y-2">
               {estProtos.map((ep) => (
@@ -317,8 +317,7 @@ export default function SyncVetEstacaoDetalhePage() {
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold truncate">{protoMap[ep.protocolo_id]?.nome ?? "Protocolo"}</div>
                     <div className="text-xs text-muted-foreground truncate">
-                      R$ {Number(ep.preco_por_cabeca).toFixed(2)} / cabeça
-                      {ep.observacoes ? ` • ${ep.observacoes}` : ""}
+                      R$ {Number(ep.preco_por_cabeca).toFixed(2)} <LocalizedText source={"/ cabeça"} />{ep.observacoes ? ` • ${ep.observacoes}` : ""}
                     </div>
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => removeProtocolo(ep)}><Trash2 className="w-4 h-4" /></Button>
@@ -332,11 +331,10 @@ export default function SyncVetEstacaoDetalhePage() {
         <TabsContent value="semen" className="space-y-3 mt-3">
           <div className="flex justify-end">
             <Button onClick={() => setAddSemOpen(true)} disabled={semensDisponiveis.length === 0}>
-              <Plus className="w-4 h-4 mr-1" />Adicionar Sêmen
-            </Button>
+              <Plus className="w-4 h-4 mr-1" /><LocalizedText source={"Adicionar Sêmen"} /></Button>
           </div>
           {estSemens.length === 0 ? (
-            <Card className="p-6 text-center text-sm text-muted-foreground">Nenhum sêmen vinculado a esta estação.</Card>
+            <Card className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum sêmen vinculado a esta estação."} /></Card>
           ) : (
             <div className="space-y-2">
               {estSemens.map((es) => {
@@ -362,8 +360,7 @@ export default function SyncVetEstacaoDetalhePage() {
         <TabsContent value="ciclos" className="space-y-3 mt-3">
           {lotes.length === 0 ? (
             <Card className="p-6 text-center text-sm text-muted-foreground">
-              Cadastre lotes nesta fazenda antes de criar ciclos.
-            </Card>
+              <LocalizedText source={"Cadastre lotes nesta fazenda antes de criar ciclos."} /></Card>
           ) : (
             <div className="space-y-3">
               {lotes.map((l) => {
@@ -376,16 +373,14 @@ export default function SyncVetEstacaoDetalhePage() {
                         {l.categoria && <div className="text-xs text-muted-foreground truncate">{l.categoria}</div>}
                       </div>
                       <Button size="sm" onClick={() => openNovoCiclo(l)} disabled={estProtos.length === 0}>
-                        <Plus className="w-3.5 h-3.5 mr-1" />Novo ciclo
-                      </Button>
+                        <Plus className="w-3.5 h-3.5 mr-1" /><LocalizedText source={"Novo ciclo"} /></Button>
                     </div>
                     {estProtos.length === 0 && (
                       <div className="text-xs text-muted-foreground mb-2">
-                        Vincule pelo menos um protocolo à estação para iniciar ciclos.
-                      </div>
+                        <LocalizedText source={"Vincule pelo menos um protocolo à estação para iniciar ciclos."} /></div>
                     )}
                     {cs.length === 0 ? (
-                      <div className="text-xs text-muted-foreground">Nenhum ciclo ainda.</div>
+                      <div className="text-xs text-muted-foreground"><LocalizedText source={"Nenhum ciclo ainda."} /></div>
                     ) : (
                       <div className="space-y-2">
                         {cs.map((c) => {
@@ -409,7 +404,7 @@ export default function SyncVetEstacaoDetalhePage() {
                                 <Button variant="ghost" size="icon" onClick={() => deleteCiclo(c)}><Trash2 className="w-3.5 h-3.5" /></Button>
                               </div>
                               {et.length === 0 ? (
-                                <div className="text-xs text-muted-foreground">Protocolo sem etapas.</div>
+                                <div className="text-xs text-muted-foreground"><LocalizedText source={"Protocolo sem etapas."} /></div>
                               ) : (
                                 <div className="flex flex-wrap gap-1.5">
                                   {et.map((e) => (
@@ -441,10 +436,10 @@ export default function SyncVetEstacaoDetalhePage() {
       {/* Add protocolo dialog */}
       <Dialog open={addProtoOpen} onOpenChange={setAddProtoOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Adicionar protocolo</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle><LocalizedText source={"Adicionar protocolo"} /></DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="text-xs">Protocolo*</Label>
+              <Label className="text-xs"><LocalizedText source={"Protocolo*"} /></Label>
               <Select value={addProtoId} onValueChange={setAddProtoId}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
@@ -454,12 +449,12 @@ export default function SyncVetEstacaoDetalhePage() {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label className="text-xs">Preço por cabeça (R$)*</Label><Input inputMode="decimal" value={addProtoPreco} onChange={(e) => setAddProtoPreco(e.target.value)} /></div>
-            <div><Label className="text-xs">Observações</Label><Textarea rows={2} value={addProtoObs} onChange={(e) => setAddProtoObs(e.target.value)} /></div>
+            <div><Label className="text-xs"><LocalizedText source={"Preço por cabeça (R$)*"} /></Label><Input inputMode="decimal" value={addProtoPreco} onChange={(e) => setAddProtoPreco(e.target.value)} /></div>
+            <div><Label className="text-xs"><LocalizedText source={"Observações"} /></Label><Textarea rows={2} value={addProtoObs} onChange={(e) => setAddProtoObs(e.target.value)} /></div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setAddProtoOpen(false)}>Cancelar</Button>
-            <Button onClick={addProtocolo}>Salvar</Button>
+            <Button variant="ghost" onClick={() => setAddProtoOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
+            <Button onClick={addProtocolo}><LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -467,10 +462,10 @@ export default function SyncVetEstacaoDetalhePage() {
       {/* Add sêmen dialog */}
       <Dialog open={addSemOpen} onOpenChange={setAddSemOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Adicionar sêmen</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle><LocalizedText source={"Adicionar sêmen"} /></DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="text-xs">Sêmen*</Label>
+              <Label className="text-xs"><LocalizedText source={"Sêmen*"} /></Label>
               <Select value={addSemId} onValueChange={setAddSemId}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
@@ -480,12 +475,12 @@ export default function SyncVetEstacaoDetalhePage() {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label className="text-xs">Valor unitário (R$)</Label><Input inputMode="decimal" value={addSemValor} onChange={(e) => setAddSemValor(e.target.value)} /></div>
-            <div><Label className="text-xs">Observações</Label><Textarea rows={2} value={addSemObs} onChange={(e) => setAddSemObs(e.target.value)} /></div>
+            <div><Label className="text-xs"><LocalizedText source={"Valor unitário (R$)"} /></Label><Input inputMode="decimal" value={addSemValor} onChange={(e) => setAddSemValor(e.target.value)} /></div>
+            <div><Label className="text-xs"><LocalizedText source={"Observações"} /></Label><Textarea rows={2} value={addSemObs} onChange={(e) => setAddSemObs(e.target.value)} /></div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setAddSemOpen(false)}>Cancelar</Button>
-            <Button onClick={addSemen}>Salvar</Button>
+            <Button variant="ghost" onClick={() => setAddSemOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
+            <Button onClick={addSemen}><LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -494,11 +489,11 @@ export default function SyncVetEstacaoDetalhePage() {
       <Dialog open={cicloOpen} onOpenChange={setCicloOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Novo ciclo — {cicloLote?.nome ?? ""}</DialogTitle>
+            <DialogTitle><LocalizedText source={"Novo ciclo —"} />{" "}{cicloLote?.nome ?? ""}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="text-xs">Protocolo*</Label>
+              <Label className="text-xs"><LocalizedText source={"Protocolo*"} /></Label>
               <Select value={cicloProtoId} onValueChange={setCicloProtoId}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
@@ -510,10 +505,9 @@ export default function SyncVetEstacaoDetalhePage() {
                 </SelectContent>
               </Select>
               <p className="text-[11px] text-muted-foreground mt-1">
-                Apenas protocolos vinculados a esta estação aparecem aqui.
-              </p>
+                <LocalizedText source={"Apenas protocolos vinculados a esta estação aparecem aqui."} /></p>
             </div>
-            <div><Label className="text-xs">Data do D-0*</Label><Input type="date" value={cicloD0} onChange={(e) => setCicloD0(e.target.value)} /></div>
+            <div><Label className="text-xs"><LocalizedText source={"Data do D-0*"} /></Label><Input type="date" value={cicloD0} onChange={(e) => setCicloD0(e.target.value)} /></div>
             <div>
               <Label className="text-xs">Status</Label>
               <Select value={cicloStatus} onValueChange={setCicloStatus}>
@@ -525,11 +519,11 @@ export default function SyncVetEstacaoDetalhePage() {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label className="text-xs">Observações</Label><Textarea rows={2} value={cicloObs} onChange={(e) => setCicloObs(e.target.value)} /></div>
+            <div><Label className="text-xs"><LocalizedText source={"Observações"} /></Label><Textarea rows={2} value={cicloObs} onChange={(e) => setCicloObs(e.target.value)} /></div>
 
             {cicloProtoId && cicloD0 && cicloPreview.length > 0 && (
               <div className="rounded-md bg-muted/50 p-2">
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Agenda calculada</div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5"><LocalizedText source={"Agenda calculada"} /></div>
                 <div className="flex flex-wrap gap-1.5">
                   {cicloPreview.map((e) => (
                     <div key={e.id} className="px-2 py-1 rounded-md bg-background text-xs border">
@@ -544,8 +538,8 @@ export default function SyncVetEstacaoDetalhePage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setCicloOpen(false)}>Cancelar</Button>
-            <Button onClick={saveCiclo}>Salvar</Button>
+            <Button variant="ghost" onClick={() => setCicloOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
+            <Button onClick={saveCiclo}><LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -553,7 +547,7 @@ export default function SyncVetEstacaoDetalhePage() {
       {/* Status dialog */}
       <Dialog open={statusOpen} onOpenChange={setStatusOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Status da estação</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle><LocalizedText source={"Status da estação"} /></DialogTitle></DialogHeader>
           <div className="space-y-3">
             <Select value={statusVal} onValueChange={setStatusVal}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -565,8 +559,8 @@ export default function SyncVetEstacaoDetalhePage() {
             </Select>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setStatusOpen(false)}>Cancelar</Button>
-            <Button onClick={saveEstacaoStatus}>Salvar</Button>
+            <Button variant="ghost" onClick={() => setStatusOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
+            <Button onClick={saveEstacaoStatus}><LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

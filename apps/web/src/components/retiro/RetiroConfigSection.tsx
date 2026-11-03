@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -147,17 +148,16 @@ export default function RetiroConfigSection({ retiroId }: Props) {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-        <Settings className="w-5 h-5" /> Configurações do Retiro
-      </h2>
+        <Settings className="w-5 h-5" /> <LocalizedText source={"Configurações do Retiro"} /></h2>
 
       {/* Produto do Retiro */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Produto Ativo</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="w-4 h-4" /> <LocalizedText source={"Produto Ativo"} /></CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
-            <Label>Produto</Label>
+            <Label><LocalizedText source={"Produto"} /></Label>
             <Select value={config.produto_id ?? ""} onValueChange={handleProductChange}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>
@@ -175,8 +175,8 @@ export default function RetiroConfigSection({ retiroId }: Props) {
               const prod = produtos.find((p) => p.id === config.produto_id);
               return prod ? (
                 <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
-                  <p>Peso do saco: <strong>{prod.peso_saco_kg} kg</strong> · Custo: <strong>R$ {Number(prod.preco_por_kg ?? 0).toFixed(2)}/kg</strong></p>
-                  {prod.consumo_recria1 != null && <p>Consumo R1: {prod.consumo_recria1} (±{prod.margem_recria1 ?? 0}) · R2: {prod.consumo_recria2 ?? "—"} (±{prod.margem_recria2 ?? 0}) · Eng: {prod.consumo_engorda ?? "—"} (±{prod.margem_engorda ?? 0})</p>}
+                  <p><LocalizedText source={"Peso do saco:"} />{" "}<strong>{prod.peso_saco_kg} kg</strong> <LocalizedText source={"· Custo:"} />{" "}<strong>R$ {Number(prod.preco_por_kg ?? 0).toFixed(2)}/kg</strong></p>
+                  {prod.consumo_recria1 != null && <p><LocalizedText source={"Consumo R1:"} />{" "}{prod.consumo_recria1} (±{prod.margem_recria1 ?? 0}) · R2: {prod.consumo_recria2 ?? "—"} (±{prod.margem_recria2 ?? 0}) · Eng: {prod.consumo_engorda ?? "—"} (±{prod.margem_engorda ?? 0})</p>}
                 </div>
               ) : null;
             })()}
@@ -187,13 +187,13 @@ export default function RetiroConfigSection({ retiroId }: Props) {
       {/* Estoque */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2"><Package className="w-4 h-4" /> Estoque</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2"><Package className="w-4 h-4" /> <LocalizedText source={"Estoque"} /></CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <Label>Sacos recebidos no mês</Label>
+            <Label><LocalizedText source={"Sacos recebidos no mês"} /></Label>
             <Input type="number" value={config.estoque_sacos ?? 0} onChange={(e) => update("estoque_sacos", parseInt(e.target.value) || 0)} />
-            <p className="text-sm font-medium text-muted-foreground">Estoque atual: <span className="text-foreground">{config.estoque_sacos ?? 0} sacos</span></p>
+            <p className="text-sm font-medium text-muted-foreground"><LocalizedText source={"Estoque atual:"} />{" "}<span className="text-foreground">{config.estoque_sacos ?? 0} <LocalizedText source={"sacos"} /></span></p>
           </div>
         </CardContent>
       </Card>
@@ -201,20 +201,20 @@ export default function RetiroConfigSection({ retiroId }: Props) {
       {/* GMD por Categoria */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="w-4 h-4" /> GMD por Categoria</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="w-4 h-4" /> <LocalizedText source={"GMD por Categoria"} /></CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">GMD Recria 1 (kg/dia)</Label>
+              <Label className="text-xs"><LocalizedText source={"GMD Recria 1 (kg/dia)"} /></Label>
               <Input type="number" step="0.001" value={config.gmd_recria1 ?? ""} onChange={(e) => update("gmd_recria1", numOrNull(e.target.value))} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">GMD Recria 2 (kg/dia)</Label>
+              <Label className="text-xs"><LocalizedText source={"GMD Recria 2 (kg/dia)"} /></Label>
               <Input type="number" step="0.001" value={config.gmd_recria2 ?? ""} onChange={(e) => update("gmd_recria2", numOrNull(e.target.value))} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">GMD Engorda (kg/dia)</Label>
+              <Label className="text-xs"><LocalizedText source={"GMD Engorda (kg/dia)"} /></Label>
               <Input type="number" step="0.001" value={config.gmd_engorda ?? ""} onChange={(e) => update("gmd_engorda", numOrNull(e.target.value))} />
             </div>
           </div>
@@ -224,22 +224,22 @@ export default function RetiroConfigSection({ retiroId }: Props) {
       {/* Peso de Abate + Sexo Padrão */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2"><Target className="w-4 h-4" /> Peso de Abate e Sexo Padrão</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2"><Target className="w-4 h-4" /> <LocalizedText source={"Peso de Abate e Sexo Padrão"} /></CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Peso alvo de abate (kg)</Label>
+            <Label><LocalizedText source={"Peso alvo de abate (kg)"} /></Label>
             <Input type="number" value={config.peso_abate_kg ?? ""} onChange={(e) => update("peso_abate_kg", numOrNull(e.target.value))} />
           </div>
           <div className="flex items-center justify-between">
-            <Label>Sexo padrão</Label>
+            <Label><LocalizedText source={"Sexo padrão"} /></Label>
             <div className="flex items-center gap-2">
-              <span className={`text-sm ${config.sexo_padrao === "Macho" ? "font-semibold text-foreground" : "text-muted-foreground"}`}>Macho</span>
+              <span className={`text-sm ${config.sexo_padrao === "Macho" ? "font-semibold text-foreground" : "text-muted-foreground"}`}><LocalizedText source={"Macho"} /></span>
               <Switch
                 checked={config.sexo_padrao === "Fêmea"}
                 onCheckedChange={(checked) => update("sexo_padrao", checked ? "Fêmea" : "Macho")}
               />
-              <span className={`text-sm ${config.sexo_padrao === "Fêmea" ? "font-semibold text-foreground" : "text-muted-foreground"}`}>Fêmea</span>
+              <span className={`text-sm ${config.sexo_padrao === "Fêmea" ? "font-semibold text-foreground" : "text-muted-foreground"}`}><LocalizedText source={"Fêmea"} /></span>
             </div>
           </div>
         </CardContent>
@@ -248,8 +248,7 @@ export default function RetiroConfigSection({ retiroId }: Props) {
       {/* Save Button */}
       <Button onClick={handleSave} disabled={saving} className="w-full">
         {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Weight className="w-4 h-4 mr-2" />}
-        Salvar Configurações
-      </Button>
+        <LocalizedText source={"Salvar Configurações"} /></Button>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -217,7 +218,7 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-          Análise Penn State ({analises.length})
+          <LocalizedText source={"Análise Penn State ("} />{analises.length})
           <button
             type="button"
             aria-label="Orientação de coleta"
@@ -229,8 +230,7 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
         </h2>
         {!readOnly && (
           <Button size="sm" onClick={abrirNova} className="gap-1.5 bg-primary hover:bg-primary/90">
-            <Plus className="w-4 h-4" /> Nova Análise
-          </Button>
+            <Plus className="w-4 h-4" /> <LocalizedText source={"Nova Análise"} /></Button>
         )}
       </div>
 
@@ -238,8 +238,7 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
         <Card className="p-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></Card>
       ) : analises.length === 0 ? (
         <Card className="p-6 text-center text-sm text-muted-foreground">
-          Nenhuma análise Penn State nesta visita.
-        </Card>
+          <LocalizedText source={"Nenhuma análise Penn State nesta visita."} /></Card>
       ) : (
         <div className="space-y-2">
           {analises.map(a => (
@@ -277,19 +276,18 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
 
       {!loading && analises.length >= 2 && (
         <Card className="p-3 space-y-2">
-          <div className="text-sm font-semibold text-foreground">Comparação entre Pontos</div>
+          <div className="text-sm font-semibold text-foreground"><LocalizedText source={"Comparação entre Pontos"} /></div>
           <p className="text-[11px] text-muted-foreground">
-            Compare a distribuição entre os pontos coletados para avaliar a uniformidade da mistura ao longo da distribuição do cocho.
-          </p>
+            <LocalizedText source={"Compare a distribuição entre os pontos coletados para avaliar a uniformidade da mistura ao longo da distribuição do cocho."} /></p>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-muted-foreground border-b border-border">
-                  <th className="text-left font-medium py-1.5 pr-2">Ponto</th>
+                  <th className="text-left font-medium py-1.5 pr-2"><LocalizedText source={"Ponto"} /></th>
                   <th className="text-right font-medium py-1.5 px-1.5">19mm</th>
                   <th className="text-right font-medium py-1.5 px-1.5">8mm</th>
                   <th className="text-right font-medium py-1.5 px-1.5">4mm</th>
-                  <th className="text-right font-medium py-1.5 px-1.5">Fundo (Bandeja)</th>
+                  <th className="text-right font-medium py-1.5 px-1.5"><LocalizedText source={"Fundo (Bandeja)"} /></th>
                   <th className="text-right font-medium py-1.5 px-1.5">fef</th>
                   {analises.some(a => a.peNDF != null) && (
                     <th className="text-right font-medium py-1.5 pl-1.5">peNDF</th>
@@ -323,11 +321,11 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
       <Dialog open={ajudaOpen} onOpenChange={setAjudaOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Orientação de coleta</DialogTitle>
+            <DialogTitle><LocalizedText source={"Orientação de coleta"} /></DialogTitle>
             <DialogDescription>{ORIENTACAO}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button onClick={() => setAjudaOpen(false)} className="bg-primary hover:bg-primary/90">Entendi</Button>
+            <Button onClick={() => setAjudaOpen(false)} className="bg-primary hover:bg-primary/90"><LocalizedText source={"Entendi"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -336,12 +334,12 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar Análise Penn State" : "Nova Análise Penn State"}</DialogTitle>
-            <DialogDescription>Pese cada fração retida nas peneiras e no fundo.</DialogDescription>
+            <DialogDescription><LocalizedText source={"Pese cada fração retida nas peneiras e no fundo."} /></DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
             <div>
-              <Label>Nome</Label>
+              <Label><LocalizedText source={"Nome"} /></Label>
               <Input value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex.: Linha 1" />
               <div className="flex gap-1.5 flex-wrap mt-1.5">
                 {SUGESTOES.map(s => (
@@ -356,23 +354,23 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
             </div>
 
             <div>
-              <Label>Peso da amostra (g)</Label>
+              <Label><LocalizedText source={"Peso da amostra (g)"} /></Label>
               <Input inputMode="decimal" value={amostra} onChange={e => setAmostra(e.target.value)} />
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <div><Label>Peneira 19mm (g)</Label><Input inputMode="decimal" value={p19} onChange={e => setP19(e.target.value)} /></div>
-              <div><Label>Peneira 8mm (g)</Label><Input inputMode="decimal" value={p8} onChange={e => setP8(e.target.value)} /></div>
-              <div><Label>Peneira 4mm (g)</Label><Input inputMode="decimal" value={p4} onChange={e => setP4(e.target.value)} /></div>
-              <div><Label>Fundo (Bandeja) (g)</Label><Input inputMode="decimal" value={pFundo} onChange={e => setPFundo(e.target.value)} /></div>
+              <div><Label><LocalizedText source={"Peneira 19mm (g)"} /></Label><Input inputMode="decimal" value={p19} onChange={e => setP19(e.target.value)} /></div>
+              <div><Label><LocalizedText source={"Peneira 8mm (g)"} /></Label><Input inputMode="decimal" value={p8} onChange={e => setP8(e.target.value)} /></div>
+              <div><Label><LocalizedText source={"Peneira 4mm (g)"} /></Label><Input inputMode="decimal" value={p4} onChange={e => setP4(e.target.value)} /></div>
+              <div><Label><LocalizedText source={"Fundo (Bandeja) (g)"} /></Label><Input inputMode="decimal" value={pFundo} onChange={e => setPFundo(e.target.value)} /></div>
             </div>
 
             <div>
-              <Label>Dieta (opcional)</Label>
+              <Label><LocalizedText source={"Dieta (opcional)"} /></Label>
               <Select value={dietaId} onValueChange={setDietaId}>
                 <SelectTrigger><SelectValue placeholder="Sem dieta vinculada" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="nenhuma">Sem dieta vinculada</SelectItem>
+                  <SelectItem value="nenhuma"><LocalizedText source={"Sem dieta vinculada"} /></SelectItem>
                   {dietas.map(d => (
                     <SelectItem key={d.id} value={d.id}>
                       {d.nome}{d.fdn_percentual != null ? ` · FDN ${fmt(d.fdn_percentual)}%` : ""}
@@ -384,7 +382,7 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
 
             {dietaId === "nenhuma" && (
               <div>
-                <Label>FDN (%) — opcional</Label>
+                <Label><LocalizedText source={"FDN (%) — opcional"} /></Label>
                 <Input inputMode="decimal" value={fdnManual} onChange={e => setFdnManual(e.target.value)} placeholder="Sem FDN, a análise segue sem peNDF" />
               </div>
             )}
@@ -407,7 +405,7 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
 
             {temEntradas && (
               <Card className="p-3 space-y-1.5 bg-muted/40">
-                <div className="text-xs font-semibold text-muted-foreground">Resultado</div>
+                <div className="text-xs font-semibold text-muted-foreground"><LocalizedText source={"Resultado"} /></div>
                 <div className="grid grid-cols-4 gap-2">
                   <ResCol label="Peneira 19mm" v={preview.percentual_19mm} />
                   <ResCol label="Peneira 8mm" v={preview.percentual_8mm} />
@@ -415,7 +413,7 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
                   <ResCol label="Fundo (Bandeja)" v={preview.percentual_fundo} />
                 </div>
                 <div className="text-[10px] text-muted-foreground">
-                  Total calculado: {fmt(
+                  <LocalizedText source={"Total calculado:"} />{" "}{fmt(
                     preview.percentual_19mm + preview.percentual_8mm +
                     preview.percentual_4mm + preview.percentual_fundo,
                   )}%
@@ -439,7 +437,7 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
                   <div>
                     <div className="text-[10px] text-muted-foreground">peNDF</div>
                     <div className="text-lg font-bold text-foreground leading-tight">{fmt(preview.peNDF)}%</div>
-                    <div className="text-[10px] text-muted-foreground">Fibra em Detergente Neutro Fisicamente Efetiva (peNDF)</div>
+                    <div className="text-[10px] text-muted-foreground"><LocalizedText source={"Fibra em Detergente Neutro Fisicamente Efetiva (peNDF)"} /></div>
                   </div>
                 )}
               </Card>
@@ -447,7 +445,7 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={salvando}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={salvando}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={salvar} disabled={salvando} className="bg-primary hover:bg-primary/90">
               {salvando && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {editing ? "Salvar" : "Calcular e salvar"}
@@ -459,11 +457,11 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
       <AlertDialog open={!!excluir} onOpenChange={v => { if (!v) setExcluir(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir análise {excluir?.nome}?</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+            <AlertDialogTitle><LocalizedText source={"Excluir análise"} />{" "}{excluir?.nome}?</AlertDialogTitle>
+            <AlertDialogDescription><LocalizedText source={"Esta ação não pode ser desfeita."} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={excluindo}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={excluindo}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <AlertDialogAction
               onClick={e => { e.preventDefault(); void confirmarExclusao(); }}
               disabled={excluindo}

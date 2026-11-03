@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -450,8 +451,7 @@ export default function PecuaristaFazendaDetalhePage() {
           <Settings className="w-4 h-4" />
         </Button>
         <Button onClick={openCreate} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4" /> Adicionar Lote
-        </Button>
+          <Plus className="w-4 h-4" /> <LocalizedText source={"Adicionar Lote"} /></Button>
       </div>
 
       <FazendaPecuaristaConfigModal open={configOpen} onOpenChange={setConfigOpen} fazendaId={fazendaId ?? null} />
@@ -467,12 +467,12 @@ export default function PecuaristaFazendaDetalhePage() {
       </div>
 
       {lotes.length === 0 ? (
-        <Card className="p-8 text-center text-muted-foreground">Nenhum lote cadastrado.</Card>
+        <Card className="p-8 text-center text-muted-foreground"><LocalizedText source={"Nenhum lote cadastrado."} /></Card>
       ) : (() => {
         const q = query.trim().toLowerCase();
         const filtrados = q ? lotes.filter(l => l.nome_lote.toLowerCase().includes(q)) : lotes;
         if (filtrados.length === 0) {
-          return <Card className="p-8 text-center text-muted-foreground">Nenhum lote encontrado para "{query}".</Card>;
+          return <Card className="p-8 text-center text-muted-foreground"><LocalizedText source={"Nenhum lote encontrado para \""} />{query}".</Card>;
         }
         return (
           <div className="space-y-2">
@@ -487,19 +487,18 @@ export default function PecuaristaFazendaDetalhePage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold">{l.nome_lote}</span>
                       <Badge variant={l.status === "ativo" ? "default" : "secondary"}>{l.status === "ativo" ? "Ativo" : "Encerrado"}</Badge>
-                      {!l.identificado && <Badge variant="outline">Sem identificação</Badge>}
+                      {!l.identificado && <Badge variant="outline"><LocalizedText source={"Sem identificação"} /></Badge>}
                     </div>
                     <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
                       <span>{labelCategoria(l)}</span>
                       {l.qtd_animais != null && l.qtd_animais > 0 && (
                         <span className="inline-flex items-center gap-1 text-foreground/80">
-                          <Users className="w-3.5 h-3.5" /> {l.qtd_animais} animais
-                        </span>
+                          <Users className="w-3.5 h-3.5" /> {l.qtd_animais} <LocalizedText source={"animais"} /></span>
                       )}
                     </div>
                     {l.ultima_data && (
                       <div className="text-xs text-muted-foreground mt-1">
-                        Última pesagem: {new Date(l.ultima_data).toLocaleDateString("pt-BR")}
+                        <LocalizedText source={"Última pesagem:"} />{" "}{new Date(l.ultima_data).toLocaleDateString("pt-BR")}
                         {l.ultimo_gmd != null && ` • GMD ${l.ultimo_gmd.toFixed(3)} kg/dia`}
                       </div>
                     )}
@@ -531,10 +530,10 @@ export default function PecuaristaFazendaDetalhePage() {
           <DialogHeader><DialogTitle>{editingId ? "Editar Lote" : "Adicionar Lote"}</DialogTitle></DialogHeader>
 
           <div className="space-y-4">
-            <div><Label>Nome do lote *</Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
+            <div><Label><LocalizedText source={"Nome do lote *"} /></Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
 
             <div>
-              <Label className="mb-2 block">Categoria</Label>
+              <Label className="mb-2 block"><LocalizedText source={"Categoria"} /></Label>
               <div className="flex flex-wrap gap-2">
                 {CATEGORIAS_PADRAO.map(c => (
                   <button
@@ -556,7 +555,7 @@ export default function PecuaristaFazendaDetalhePage() {
                   type="button"
                   onClick={() => setForm(f => ({ ...f, criandoNova: true }))}
                   className={`px-3 py-1.5 rounded-full text-xs border ${form.criandoNova ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"}`}
-                >+ Criar nova categoria</button>
+                ><LocalizedText source={"+ Criar nova categoria"} /></button>
               </div>
               {form.criandoNova && (
                 <Input className="mt-2" placeholder="Nome da nova categoria" value={form.novaCategoria} onChange={e => setForm(f => ({ ...f, novaCategoria: e.target.value }))} />
@@ -564,13 +563,13 @@ export default function PecuaristaFazendaDetalhePage() {
             </div>
 
             <div>
-              <Label className="mb-2 block">Identificação</Label>
+              <Label className="mb-2 block"><LocalizedText source={"Identificação"} /></Label>
               <RadioGroup value={form.identificado} onValueChange={(v) => setForm(f => ({ ...f, identificado: v as "sim" | "nao" }))} disabled={!!editingId && editingHasPesagens}>
-                <div className="flex items-center gap-2"><RadioGroupItem value="sim" id="ident-sim" /><Label htmlFor="ident-sim" className="font-normal cursor-pointer">Lote identificado</Label></div>
-                <div className="flex items-center gap-2"><RadioGroupItem value="nao" id="ident-nao" /><Label htmlFor="ident-nao" className="font-normal cursor-pointer">Lote sem identificação</Label></div>
+                <div className="flex items-center gap-2"><RadioGroupItem value="sim" id="ident-sim" /><Label htmlFor="ident-sim" className="font-normal cursor-pointer"><LocalizedText source={"Lote identificado"} /></Label></div>
+                <div className="flex items-center gap-2"><RadioGroupItem value="nao" id="ident-nao" /><Label htmlFor="ident-nao" className="font-normal cursor-pointer"><LocalizedText source={"Lote sem identificação"} /></Label></div>
               </RadioGroup>
               {editingId && editingHasPesagens && (
-                <p className="text-xs text-muted-foreground mt-1">A identificação fica travada após a primeira pesagem para preservar o histórico.</p>
+                <p className="text-xs text-muted-foreground mt-1"><LocalizedText source={"A identificação fica travada após a primeira pesagem para preservar o histórico."} /></p>
               )}
             </div>
 
@@ -578,24 +577,23 @@ export default function PecuaristaFazendaDetalhePage() {
               <div className="rounded-md border p-3 space-y-3">
                 <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
                   <input type="checkbox" checked={pesInicial.ativo} onChange={(e) => setPesInicial((p) => ({ ...p, ativo: e.target.checked }))} />
-                  Informar pesagem inicial (opcional)
-                </label>
+                  <LocalizedText source={"Informar pesagem inicial (opcional)"} /></label>
                 {pesInicial.ativo && (
                   <>
                     <div>
-                      <Label>Data da pesagem</Label>
+                      <Label><LocalizedText source={"Data da pesagem"} /></Label>
                       <Input type="date" max={dataLocalSP(new Date())} value={pesInicial.data} onChange={(e) => setPesInicial((p) => ({ ...p, data: e.target.value }))} />
                     </div>
                     {form.identificado === "nao" ? (
                       <div className="grid grid-cols-2 gap-2">
-                        <div><Label>Quantidade de animais</Label><Input inputMode="numeric" value={pesInicial.qtd} onChange={(e) => setPesInicial((p) => ({ ...p, qtd: e.target.value.replace(/\D/g, "") }))} /></div>
-                        <div><Label>Peso médio (kg)</Label><Input inputMode="decimal" value={pesInicial.media} onChange={(e) => setPesInicial((p) => ({ ...p, media: e.target.value }))} /></div>
+                        <div><Label><LocalizedText source={"Quantidade de animais"} /></Label><Input inputMode="numeric" value={pesInicial.qtd} onChange={(e) => setPesInicial((p) => ({ ...p, qtd: e.target.value.replace(/\D/g, "") }))} /></div>
+                        <div><Label><LocalizedText source={"Peso médio (kg)"} /></Label><Input inputMode="decimal" value={pesInicial.media} onChange={(e) => setPesInicial((p) => ({ ...p, media: e.target.value }))} /></div>
                       </div>
                     ) : (
                       <div className="space-y-2">
                         <div className="flex gap-2 items-end">
-                          <div className="flex-1"><Label>Nº do animal</Label><Input value={pesInicial.numero} onChange={(e) => setPesInicial((p) => ({ ...p, numero: e.target.value }))} /></div>
-                          <div className="flex-1"><Label>Peso (kg)</Label><Input inputMode="decimal" value={pesInicial.peso} onChange={(e) => setPesInicial((p) => ({ ...p, peso: e.target.value }))} /></div>
+                          <div className="flex-1"><Label><LocalizedText source={"Nº do animal"} /></Label><Input value={pesInicial.numero} onChange={(e) => setPesInicial((p) => ({ ...p, numero: e.target.value }))} /></div>
+                          <div className="flex-1"><Label><LocalizedText source={"Peso (kg)"} /></Label><Input inputMode="decimal" value={pesInicial.peso} onChange={(e) => setPesInicial((p) => ({ ...p, peso: e.target.value }))} /></div>
                           <Button type="button" size="icon" onClick={() => {
                             const numero = pesInicial.numero.trim();
                             const peso = parseFloat(pesInicial.peso.replace(",", "."));
@@ -615,12 +613,12 @@ export default function PecuaristaFazendaDetalhePage() {
                                 </Button>
                               </div>
                             ))}
-                            <p className="text-xs text-muted-foreground">{pesInicial.animais.length} animal(is) na pesagem inicial</p>
+                            <p className="text-xs text-muted-foreground">{pesInicial.animais.length} <LocalizedText source={"animal(is) na pesagem inicial"} /></p>
                           </div>
                         )}
                       </div>
                     )}
-                    <p className="text-xs text-muted-foreground">Essa pesagem será a base do GMD das próximas pesagens.</p>
+                    <p className="text-xs text-muted-foreground"><LocalizedText source={"Essa pesagem será a base do GMD das próximas pesagens."} /></p>
                   </>
                 )}
               </div>
@@ -628,10 +626,9 @@ export default function PecuaristaFazendaDetalhePage() {
 
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-            </Button>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -639,20 +636,18 @@ export default function PecuaristaFazendaDetalhePage() {
       <AlertDialog open={!!loteParaApagar} onOpenChange={(v) => { if (!v && !apagando) setLoteParaApagar(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Apagar lote {loteParaApagar?.nome_lote}?</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Apagar lote"} />{" "}{loteParaApagar?.nome_lote}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Este lote tem pesagens registradas. Ao apagar, todo o histórico de peso e GMD desse lote será perdido permanentemente. Tem certeza que deseja continuar?
-            </AlertDialogDescription>
+              <LocalizedText source={"Este lote tem pesagens registradas. Ao apagar, todo o histórico de peso e GMD desse lote será perdido permanentemente. Tem certeza que deseja continuar?"} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={apagando}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={apagando}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <AlertDialogAction
               disabled={apagando}
               onClick={(e) => { e.preventDefault(); if (loteParaApagar) void executarApagar(loteParaApagar); }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {apagando && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Apagar mesmo assim
-            </AlertDialogAction>
+              {apagando && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Apagar mesmo assim"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

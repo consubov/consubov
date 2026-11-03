@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -426,7 +427,7 @@ function JsonListEditor({
   return (
     <div className="space-y-3">
       {items.length === 0 && (
-        <p className="text-xs text-muted-foreground italic">Nenhum item ainda. Clique em "Adicionar item" para começar.</p>
+        <p className="text-xs text-muted-foreground italic"><LocalizedText source={"Nenhum item ainda. Clique em \"Adicionar item\" para começar."} /></p>
       )}
       {items.map((item, idx) => (
         <div key={idx} className="rounded-lg border border-border p-3 bg-muted/30 space-y-2">
@@ -471,8 +472,7 @@ function JsonListEditor({
         </div>
       ))}
       <Button type="button" variant="outline" size="sm" onClick={add} className="gap-2">
-        <Plus className="w-4 h-4" /> Adicionar item
-      </Button>
+        <Plus className="w-4 h-4" /> <LocalizedText source={"Adicionar item"} /></Button>
     </div>
   );
 }
@@ -665,7 +665,7 @@ export default function LandingPageConfigPage() {
         <Globe className="w-6 h-6 text-primary" />
         <div>
           <h1 className="text-2xl font-bold text-foreground">Landing Page</h1>
-          <p className="text-xs text-muted-foreground">Edite cada seção e salve individualmente.</p>
+          <p className="text-xs text-muted-foreground"><LocalizedText source={"Edite cada seção e salve individualmente."} /></p>
         </div>
       </div>
 

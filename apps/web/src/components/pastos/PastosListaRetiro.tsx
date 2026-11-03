@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TreePine } from "lucide-react";
@@ -14,7 +15,7 @@ export default function PastosListaRetiro({ pastos, loading = false }: { pastos:
   return (
     <>
       <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-        <TreePine className="w-4 h-4" /> Pastos ({pastos.length})
+        <TreePine className="w-4 h-4" /> <LocalizedText source={"Pastos ("} />{pastos.length})
       </h2>
       {pastos.length === 0 && (
         <p className="text-sm text-muted-foreground py-2">
@@ -32,10 +33,10 @@ export default function PastosListaRetiro({ pastos, loading = false }: { pastos:
                   <Badge variant="outline" className="text-[10px]">{p.num_animais} cab</Badge>
                 </div>
                 <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                  <div><p className="text-muted-foreground">Sacos</p><p className="font-bold">{p.num_sacos}</p></div>
-                  <div><p className="text-muted-foreground">Consumo</p><p className="font-bold text-secondary">{consumo > 0 ? fmtNum(consumo, 1) : "—"}</p></div>
-                  <div><p className="text-muted-foreground">Peso</p><p className="font-bold">{p.peso_medio_kg ? `${p.peso_medio_kg}kg` : "—"}</p></div>
-                  <div><p className="text-muted-foreground">GMD</p><p className="font-bold text-primary">{p.gmd_kg_dia != null && p.gmd_kg_dia > 0 ? fmtNum(p.gmd_kg_dia, 3) : "—"}</p></div>
+                  <div><p className="text-muted-foreground"><LocalizedText source={"Sacos"} /></p><p className="font-bold">{p.num_sacos}</p></div>
+                  <div><p className="text-muted-foreground"><LocalizedText source={"Consumo"} /></p><p className="font-bold text-secondary">{consumo > 0 ? fmtNum(consumo, 1) : "—"}</p></div>
+                  <div><p className="text-muted-foreground"><LocalizedText source={"Peso"} /></p><p className="font-bold">{p.peso_medio_kg ? `${p.peso_medio_kg}kg` : "—"}</p></div>
+                  <div><p className="text-muted-foreground"><LocalizedText source={"GMD"} /></p><p className="font-bold text-primary">{p.gmd_kg_dia != null && p.gmd_kg_dia > 0 ? fmtNum(p.gmd_kg_dia, 3) : "—"}</p></div>
                 </div>
               </CardContent>
             </Card>

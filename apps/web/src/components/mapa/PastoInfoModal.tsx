@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Beef, Droplets, TrendingUp, Calendar, Package } from "lucide-react";
@@ -61,7 +62,7 @@ export default function PastoInfoModal({ open, onOpenChange, pasto }: Props) {
           <CarenciaBadge dataFimCarencia={(pasto as any).data_fim_carencia} />
 
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Status consumo</span>
+            <span className="text-sm text-muted-foreground"><LocalizedText source={"Status consumo"} /></span>
             {statusBadge(pasto.status_consumo) || <span className="text-sm">—</span>}
           </div>
 
@@ -84,12 +85,12 @@ export default function PastoInfoModal({ open, onOpenChange, pasto }: Props) {
           <div className="border-t pt-3 space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-muted-foreground">Última movimentação:</span>
+              <span className="text-muted-foreground"><LocalizedText source={"Última movimentação:"} /></span>
               <span className="font-medium">{formatDate(pasto.ultima_movimentacao)}</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-muted-foreground">Última salga:</span>
+              <span className="text-muted-foreground"><LocalizedText source={"Última salga:"} /></span>
               <span className="font-medium">
                 {pasto.ultima_visita_tipo === "cocho_cheio"
                   ? `${formatShortDate(pasto.ultimo_cocho_cheio)} — Cocho Cheio`

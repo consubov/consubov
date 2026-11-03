@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageIcon } from "lucide-react";
@@ -85,7 +86,7 @@ export default function MentionTextarea({
               className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
               style={{ background: "#14432B", color: "#C9A84C" }}
             >
-              <ImageIcon className="w-3 h-3" /> Imagem {n}
+              <ImageIcon className="w-3 h-3" /> <LocalizedText source={"Imagem"} />{" "}{n}
             </button>
           ))}
         </div>

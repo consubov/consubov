@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -568,15 +569,14 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   }
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
-  if (!visita) return <div className="text-center py-12">Visita não encontrada</div>;
+  if (!visita) return <div className="text-center py-12"><LocalizedText source={"Visita não encontrada"} /></div>;
 
   const readOnly = false;
 
   return (
     <div className="space-y-4 pb-32" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1 -ml-2">
-        <ArrowLeft className="w-4 h-4" /> Voltar
-      </Button>
+        <ArrowLeft className="w-4 h-4" /> <LocalizedText source={"Voltar"} /></Button>
 
       {/* Header */}
       <div
@@ -586,7 +586,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         <div className="flex items-center gap-2 mb-2">
           <div className="w-9 h-9 rounded-lg flex items-center justify-center font-extrabold text-lg" style={{ background: "#C9A84C", color: "#14432B" }}>C</div>
           <div>
-            <div className="text-[10px] uppercase tracking-widest opacity-80">Revisão · Confinamento</div>
+            <div className="text-[10px] uppercase tracking-widest opacity-80"><LocalizedText source={"Revisão · Confinamento"} /></div>
           </div>
         </div>
         <div className="text-lg font-extrabold leading-tight">{fazenda?.nome_fazenda || "—"}</div>
@@ -595,11 +595,11 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         </div>
         <div className="grid grid-cols-2 gap-2 mt-3 text-[11px]">
           <div>
-            <div className="opacity-60">Consultor</div>
+            <div className="opacity-60"><LocalizedText source={"Consultor"} /></div>
             <div className="font-semibold">{consultor?.nome || "—"}</div>
           </div>
           <div>
-            <div className="opacity-60">Início</div>
+            <div className="opacity-60"><LocalizedText source={"Início"} /></div>
             <div className="font-semibold">{format(new Date(visita.hora_inicio), "dd/MM HH:mm", { locale: ptBR })}</div>
           </div>
         </div>
@@ -608,8 +608,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       {/* Avaliação da Fábrica (única por visita) */}
       <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
         <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
-          Avaliação da Fábrica (única na visita)
-        </div>
+          <LocalizedText source={"Avaliação da Fábrica (única na visita)"} /></div>
         <div className="grid grid-cols-2 gap-2">
           <ScoreBlock label="Org. Fábrica" value={fabricaNota ?? undefined} onChange={n => upsertFabrica({ organizacao_fabrica_nota: n })} disabled={readOnly} />
           <ScoreBlock label="Org. Insumos" value={insumosNota ?? undefined} onChange={n => upsertFabrica({ organizacao_insumos_nota: n })} disabled={readOnly} />
@@ -692,7 +691,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
 
       {/* Título da seção final do PDF (opcional) */}
       <div className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: "#E7E3D6" }}>
-        <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>Título da seção final (no PDF)</div>
+        <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}><LocalizedText source={"Título da seção final (no PDF)"} /></div>
         <Input
           value={tituloEncerramento}
           onChange={e => setTituloEncerramento(e.target.value)}
@@ -703,8 +702,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       {/* Tipo de gráfico das Médias por Classificação (no PDF) */}
       <div className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: "#E7E3D6" }}>
         <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>
-          Gráfico "Médias por Classificação" (no PDF)
-        </div>
+          <LocalizedText source={"Gráfico \"Médias por Classificação\" (no PDF)"} /></div>
         <div className="grid grid-cols-4 gap-1.5">
           {([
             { k: "bars", label: "Colunas" },
@@ -731,8 +729,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       {/* Tipo de gráfico dos 3 gráficos de amostras individuais (no PDF) */}
       <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
         <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>
-          Gráficos de amostras individuais (no PDF)
-        </div>
+          <LocalizedText source={"Gráficos de amostras individuais (no PDF)"} /></div>
         {([
           { label: "Fezes", value: sampleChartFezes, set: setSampleChartFezes },
           { label: "Escore Corporal", value: sampleChartCorporal, set: setSampleChartCorporal },
@@ -799,8 +796,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
               style={{ background: "#1F7A4D", color: "white" }}
             >
               {confirmando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              Confirmar Revisão
-            </Button>
+              <LocalizedText source={"Confirmar Revisão"} /></Button>
           )}
           {(visita.status === "revisao" || visita.status === "finalizada") && !online && (
             <Button
@@ -817,8 +813,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
               style={{ background: "#1F7A4D", color: "white" }}
             >
               {salvandoOffline ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              Salvar off-line
-            </Button>
+              <LocalizedText source={"Salvar off-line"} /></Button>
           )}
           {(visita.status === "revisao" || visita.status === "finalizada") && online && (
             <Button
@@ -835,12 +830,10 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
             <>
               <Button asChild variant="outline" className="flex-1 gap-1.5">
                 <a href={visita.pdf_url} download>
-                  <Download className="w-4 h-4" /> Baixar
-                </a>
+                  <Download className="w-4 h-4" /> <LocalizedText source={"Baixar"} /></a>
               </Button>
               <Button onClick={compartilhar} className="flex-1 gap-1.5" style={{ background: "#1F7A4D", color: "white" }}>
-                <Share2 className="w-4 h-4" /> Enviar
-              </Button>
+                <Share2 className="w-4 h-4" /> <LocalizedText source={"Enviar"} /></Button>
             </>
           )}
           </div>
@@ -902,7 +895,7 @@ function PhotoManager({ curral, readOnly, numeroMap, onAdd, onDelete, onMove }: 
   return (
     <div>
       <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: "#767066" }}>
-        Fotos ({curral.fotos.length}/{MAX_FOTOS})
+        <LocalizedText source={"Fotos ("} />{curral.fotos.length}/{MAX_FOTOS})
       </div>
       <div className="grid grid-cols-5 gap-1.5">
         {curral.fotos.map((f, i) => (

@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid, Customized, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -185,7 +186,7 @@ export default function CurvaConsumoCard({ fazendaId, retiroId, produtoId, mes, 
   return (
     <Card>
       <CardHeader className="pb-1 pt-3 px-4 flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-xs font-medium text-muted-foreground uppercase">Curva de Consumo</CardTitle>
+        <CardTitle className="text-xs font-medium text-muted-foreground uppercase"><LocalizedText source={"Curva de Consumo"} /></CardTitle>
         <div className="flex items-center gap-2">
           {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
           <Select value={String(anoSel)} onValueChange={(v) => setAnoSel(Number(v))}>
@@ -201,7 +202,7 @@ export default function CurvaConsumoCard({ fazendaId, retiroId, produtoId, mes, 
       <CardContent className="px-2 pb-3">
         {erro ? (
           <div className="h-[220px] w-full flex items-center justify-center">
-            <p className="text-xs text-muted-foreground">Não foi possível carregar a curva</p>
+            <p className="text-xs text-muted-foreground"><LocalizedText source={"Não foi possível carregar a curva"} /></p>
           </div>
         ) : (
         <div className="h-[220px] w-full">
@@ -217,8 +218,7 @@ export default function CurvaConsumoCard({ fazendaId, retiroId, produtoId, mes, 
                   if (!active || !d || d.valor == null) return null;
                   return (
                     <div className="rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground shadow">
-                      {d.mes}/{anoSel} · {fmt1(d.valor)} g/cab/dia
-                    </div>
+                      {d.mes}/{anoSel} · {fmt1(d.valor)} <LocalizedText source={"g/cab/dia"} /></div>
                   );
                 }}
               />
@@ -231,7 +231,7 @@ export default function CurvaConsumoCard({ fazendaId, retiroId, produtoId, mes, 
         </div>
         )}
         {prod && !erro && (
-          <p className="text-[10px] text-muted-foreground text-center mt-1">Curva de todos os produtos</p>
+          <p className="text-[10px] text-muted-foreground text-center mt-1"><LocalizedText source={"Curva de todos os produtos"} /></p>
         )}
       </CardContent>
     </Card>

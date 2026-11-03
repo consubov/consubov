@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,7 +43,7 @@ export default function FazendasMultiSelect({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <Label>{label}</Label>
-        <span className="text-xs text-muted-foreground">{selected.length} selecionada(s)</span>
+        <span className="text-xs text-muted-foreground">{selected.length} <LocalizedText source={"selecionada(s)"} /></span>
       </div>
       <div className="relative">
         <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />

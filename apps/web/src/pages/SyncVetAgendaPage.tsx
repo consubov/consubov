@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -499,7 +500,7 @@ export default function SyncVetAgendaPage() {
         </h1>
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" size="sm">
-            <Link to="/syncvet/trajetos"><RouteIcon className="w-3.5 h-3.5 mr-1" /> Trajetos</Link>
+            <Link to="/syncvet/trajetos"><RouteIcon className="w-3.5 h-3.5 mr-1" /> <LocalizedText source={"Trajetos"} /></Link>
           </Button>
           <Badge variant="secondary" className="text-xs">{filtrados.length}</Badge>
         </div>
@@ -509,7 +510,7 @@ export default function SyncVetAgendaPage() {
         <Select value={fFazenda} onValueChange={setFFazenda}>
           <SelectTrigger><SelectValue placeholder="Fazenda" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todas as fazendas</SelectItem>
+            <SelectItem value="all"><LocalizedText source={"Todas as fazendas"} /></SelectItem>
             {fazendas.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -517,8 +518,8 @@ export default function SyncVetAgendaPage() {
           <Select value={fResp} onValueChange={setFResp}>
             <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os responsáveis</SelectItem>
-              <SelectItem value="none">Sem responsável</SelectItem>
+              <SelectItem value="all"><LocalizedText source={"Todos os responsáveis"} /></SelectItem>
+              <SelectItem value="none"><LocalizedText source={"Sem responsável"} /></SelectItem>
               {equipe.map(e => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -526,10 +527,10 @@ export default function SyncVetAgendaPage() {
         <Select value={fStatus} onValueChange={setFStatus}>
           <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos os status</SelectItem>
-            <SelectItem value="pendente">Pendente</SelectItem>
-            <SelectItem value="atrasado">Atrasado</SelectItem>
-            <SelectItem value="concluido">Concluído</SelectItem>
+            <SelectItem value="all"><LocalizedText source={"Todos os status"} /></SelectItem>
+            <SelectItem value="pendente"><LocalizedText source={"Pendente"} /></SelectItem>
+            <SelectItem value="atrasado"><LocalizedText source={"Atrasado"} /></SelectItem>
+            <SelectItem value="concluido"><LocalizedText source={"Concluído"} /></SelectItem>
           </SelectContent>
         </Select>
       </Card>
@@ -539,7 +540,7 @@ export default function SyncVetAgendaPage() {
           <Loader2 className="w-6 h-6 animate-spin" />
         </div>
       ) : grupos.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">Nenhum manejo encontrado</Card>
+        <Card className="p-8 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum manejo encontrado"} /></Card>
       ) : (
         <div className="space-y-4">
           {grupos.map(([data, itens]) => (
@@ -574,20 +575,18 @@ export default function SyncVetAgendaPage() {
                           </div>
                           <div className="text-xs mt-1 flex items-center gap-1 text-muted-foreground">
                             <UserRound className="w-3 h-3" />
-                            {resp ? resp.nome : <span className="italic">Sem responsável</span>}
+                            {resp ? resp.nome : <span className="italic"><LocalizedText source={"Sem responsável"} /></span>}
                           </div>
                         </div>
                         <div className="shrink-0">
                           {concluido ? (
                             <Badge className="bg-primary text-primary-foreground text-[10px] gap-1">
-                              <CheckCircle2 className="w-3 h-3" /> Concluído
-                            </Badge>
+                              <CheckCircle2 className="w-3 h-3" /> <LocalizedText source={"Concluído"} /></Badge>
                           ) : atrasado ? (
                             <Badge variant="destructive" className="text-[10px] gap-1">
-                              <AlertTriangle className="w-3 h-3" /> Atrasado
-                            </Badge>
+                              <AlertTriangle className="w-3 h-3" /> <LocalizedText source={"Atrasado"} /></Badge>
                           ) : (
-                            <Badge variant="secondary" className="text-[10px]">Pendente</Badge>
+                            <Badge variant="secondary" className="text-[10px]"><LocalizedText source={"Pendente"} /></Badge>
                           )}
                         </div>
                       </div>
@@ -603,7 +602,7 @@ export default function SyncVetAgendaPage() {
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Manejo</DialogTitle>
+            <DialogTitle><LocalizedText source={"Manejo"} /></DialogTitle>
           </DialogHeader>
           {selected && (() => {
             const ctx = getCtx(selected);
@@ -618,17 +617,17 @@ export default function SyncVetAgendaPage() {
                     {ctx?.protocolo?.nome ? ` • ${ctx.protocolo.nome}` : ""}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    Data prevista: <span className="font-medium text-foreground">{fmtDate(selected.data_prevista)}</span>
+                    <LocalizedText source={"Data prevista:"} />{" "}<span className="font-medium text-foreground">{fmtDate(selected.data_prevista)}</span>
                   </div>
                 </div>
 
                 {fullAccess && (
                   <div>
-                    <div className="text-xs font-medium mb-1">Responsável</div>
+                    <div className="text-xs font-medium mb-1"><LocalizedText source={"Responsável"} /></div>
                     <Select value={assignId || "__none__"} onValueChange={(v) => setAssignId(v === "__none__" ? "" : v)}>
                       <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none__">Sem responsável</SelectItem>
+                        <SelectItem value="__none__"><LocalizedText source={"Sem responsável"} /></SelectItem>
                         {equipe.map(e => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -636,7 +635,7 @@ export default function SyncVetAgendaPage() {
                 )}
 
                 <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
-                  <Button variant="outline" onClick={() => setSelected(null)} disabled={saving}>Fechar</Button>
+                  <Button variant="outline" onClick={() => setSelected(null)} disabled={saving}><LocalizedText source={"Fechar"} /></Button>
                   {fullAccess && (
                     <Button variant="secondary" onClick={handleSaveResponsavel} disabled={saving}>
                       {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar responsável"}
@@ -645,12 +644,10 @@ export default function SyncVetAgendaPage() {
                   {selected.status !== "concluido" && (
                     semCoords ? (
                       <Button onClick={handleConcluirSemTrajeto} disabled={saving}>
-                        <CheckCircle2 className="w-4 h-4 mr-1" /> Marcar como concluído
-                      </Button>
+                        <CheckCircle2 className="w-4 h-4 mr-1" /> <LocalizedText source={"Marcar como concluído"} /></Button>
                     ) : (
                       <Button onClick={openTrajetoDialog} disabled={saving}>
-                        <RouteIcon className="w-4 h-4 mr-1" /> Registrar trajeto e concluir
-                      </Button>
+                        <RouteIcon className="w-4 h-4 mr-1" /> <LocalizedText source={"Registrar trajeto e concluir"} /></Button>
                     )
                   )}
                 </DialogFooter>
@@ -663,10 +660,9 @@ export default function SyncVetAgendaPage() {
       <Dialog open={trajetoOpen} onOpenChange={(o) => { if (!o) { setTrajetoOpen(false); setCalcResult(null); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Registrar Trajeto</DialogTitle>
+            <DialogTitle><LocalizedText source={"Registrar Trajeto"} /></DialogTitle>
             <DialogDescription>
-              Informe sua origem. O destino é a fazenda deste manejo.
-            </DialogDescription>
+              <LocalizedText source={"Informe sua origem. O destino é a fazenda deste manejo."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm">
             <Button
@@ -679,10 +675,9 @@ export default function SyncVetAgendaPage() {
               {gpsLoading
                 ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 : <Navigation className="w-4 h-4 mr-2" />}
-              Usar minha localização agora
-            </Button>
+              <LocalizedText source={"Usar minha localização agora"} /></Button>
 
-            <div className="text-[11px] text-center text-muted-foreground">ou informe manualmente</div>
+            <div className="text-[11px] text-center text-muted-foreground"><LocalizedText source={"ou informe manualmente"} /></div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -706,8 +701,7 @@ export default function SyncVetAgendaPage() {
             </div>
             <div className="text-[11px] text-muted-foreground flex items-start gap-1">
               <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
-              Dica: no Google Maps, toque e segure um ponto no mapa para ver as coordenadas.
-            </div>
+              <LocalizedText source={"Dica: no Google Maps, toque e segure um ponto no mapa para ver as coordenadas."} /></div>
 
             {!calcResult ? (
               <Button
@@ -717,20 +711,19 @@ export default function SyncVetAgendaPage() {
                 disabled={!origemLat || !origemLng || calcLoading || finalizing}
               >
                 {calcLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                Calcular distância
-              </Button>
+                <LocalizedText source={"Calcular distância"} /></Button>
             ) : (
               <Card className="p-3 bg-primary/5 border-primary/30">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-xs text-muted-foreground">Distância calculada</div>
+                    <div className="text-xs text-muted-foreground"><LocalizedText source={"Distância calculada"} /></div>
                     <div className="text-2xl font-bold text-primary">{calcResult.distancia_km.toFixed(2)} km</div>
-                    <div className="text-xs text-muted-foreground">Duração aprox.: {calcResult.duracao_min} min</div>
+                    <div className="text-xs text-muted-foreground"><LocalizedText source={"Duração aprox.:"} />{" "}{calcResult.duracao_min} min</div>
                   </div>
                 </div>
                 {calcResult.origem_endereco && (
                   <div className="text-[11px] text-muted-foreground mt-2 truncate">
-                    Origem: {calcResult.origem_endereco}
+                    <LocalizedText source={"Origem:"} />{" "}{calcResult.origem_endereco}
                   </div>
                 )}
               </Card>
@@ -738,12 +731,11 @@ export default function SyncVetAgendaPage() {
           </div>
 
           <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setTrajetoOpen(false)} disabled={finalizing}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setTrajetoOpen(false)} disabled={finalizing}><LocalizedText source={"Cancelar"} /></Button>
             {calcResult && (
               <Button onClick={handleConfirmarESalvar} disabled={finalizing}>
                 {finalizing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
-                Confirmar e concluir manejo
-              </Button>
+                <LocalizedText source={"Confirmar e concluir manejo"} /></Button>
             )}
           </DialogFooter>
         </DialogContent>
@@ -757,12 +749,11 @@ export default function SyncVetAgendaPage() {
               {resultadoIsDG ? "Diagnóstico por animal" : "Resultado por animal"}
             </DialogTitle>
             <DialogDescription>
-              Marque o resultado de cada animal. Ao confirmar, o manejo será concluído.
-            </DialogDescription>
+              <LocalizedText source={"Marque o resultado de cada animal. Ao confirmar, o manejo será concluído."} /></DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 pb-2 border-b">
-            <Button size="sm" variant="outline" className="flex-1" onClick={() => setAllResultado("prenha")}>Todas prenhas</Button>
-            <Button size="sm" variant="outline" className="flex-1" onClick={() => setAllResultado("vazia")}>Todas vazias</Button>
+            <Button size="sm" variant="outline" className="flex-1" onClick={() => setAllResultado("prenha")}><LocalizedText source={"Todas prenhas"} /></Button>
+            <Button size="sm" variant="outline" className="flex-1" onClick={() => setAllResultado("vazia")}><LocalizedText source={"Todas vazias"} /></Button>
           </div>
           <div className="flex-1 overflow-y-auto space-y-1 py-2">
             {resultadoAnimais.map(a => {
@@ -779,13 +770,13 @@ export default function SyncVetAgendaPage() {
                       variant={v === "prenha" ? "default" : "outline"}
                       className="h-7 px-2 text-[11px]"
                       onClick={() => setResultadoValues(prev => ({ ...prev, [a.id]: "prenha" }))}
-                    >Prenha</Button>
+                    ><LocalizedText source={"Prenha"} /></Button>
                     <Button
                       size="sm"
                       variant={v === "vazia" ? "destructive" : "outline"}
                       className="h-7 px-2 text-[11px]"
                       onClick={() => setResultadoValues(prev => ({ ...prev, [a.id]: "vazia" }))}
-                    >Vazia</Button>
+                    ><LocalizedText source={"Vazia"} /></Button>
                   </div>
                 </div>
               );
@@ -793,12 +784,10 @@ export default function SyncVetAgendaPage() {
           </div>
           <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
             <Button variant="outline" onClick={() => { setResultadoOpen(false); setResultadoManejo(null); }} disabled={savingResultado}>
-              Cancelar
-            </Button>
+              <LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSalvarResultado} disabled={savingResultado}>
               {savingResultado ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
-              Salvar e concluir
-            </Button>
+              <LocalizedText source={"Salvar e concluir"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

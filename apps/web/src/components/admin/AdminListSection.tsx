@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -208,14 +209,13 @@ export default function AdminListSection({ refreshKey }: Props) {
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-primary" />
-            <CardTitle className="text-lg">Administradores</CardTitle>
+            <CardTitle className="text-lg"><LocalizedText source={"Administradores"} /></CardTitle>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {admins.length === 0 ? (
             <p className="text-sm text-muted-foreground p-4">
-              Nenhum administrador encontrado.
-            </p>
+              <LocalizedText source={"Nenhum administrador encontrado."} /></p>
           ) : (
             <div className="divide-y divide-border">
               {admins.map((a) => (
@@ -227,7 +227,7 @@ export default function AdminListSection({ refreshKey }: Props) {
                     <p className="font-medium text-foreground truncate">
                       {a.nome}
                       {isSelf(a) && (
-                        <span className="text-xs text-muted-foreground ml-1">(você)</span>
+                        <span className="text-xs text-muted-foreground ml-1"><LocalizedText source={"(você)"} /></span>
                       )}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">{a.email}</p>
@@ -236,7 +236,7 @@ export default function AdminListSection({ refreshKey }: Props) {
                     )}
                     {a.criado_em && (
                       <p className="text-xs text-muted-foreground">
-                        Criado em {format(new Date(a.criado_em), "dd/MM/yyyy")}
+                        <LocalizedText source={"Criado em"} />{" "}{format(new Date(a.criado_em), "dd/MM/yyyy")}
                       </p>
                     )}
                   </div>
@@ -297,14 +297,13 @@ export default function AdminListSection({ refreshKey }: Props) {
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Editar Administrador</DialogTitle>
+            <DialogTitle><LocalizedText source={"Editar Administrador"} /></DialogTitle>
             <DialogDescription>
-              Atualize os dados do administrador.
-            </DialogDescription>
+              <LocalizedText source={"Atualize os dados do administrador."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label>Nome *</Label>
+              <Label><LocalizedText source={"Nome *"} /></Label>
               <Input
                 value={editNome}
                 onChange={(e) => setEditNome(e.target.value)}
@@ -319,14 +318,14 @@ export default function AdminListSection({ refreshKey }: Props) {
               />
             </div>
             <div className="space-y-1">
-              <Label>Telefone</Label>
+              <Label><LocalizedText source={"Telefone"} /></Label>
               <Input
                 value={editTelefone}
                 onChange={(e) => setEditTelefone(e.target.value)}
               />
             </div>
             <div className="space-y-1">
-              <Label>Nova senha (opcional)</Label>
+              <Label><LocalizedText source={"Nova senha (opcional)"} /></Label>
               <PasswordInput
                 value={editSenha}
                 onChange={(e) => setEditSenha(e.target.value)}
@@ -355,15 +354,12 @@ export default function AdminListSection({ refreshKey }: Props) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Administrador</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Excluir Administrador"} /></AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir <strong>{deleteAdmin?.nome}</strong>?
-              Essa ação não pode ser desfeita. O acesso ao sistema será
-              removido permanentemente.
-            </AlertDialogDescription>
+              <LocalizedText source={"Tem certeza que deseja excluir"} />{" "}<strong>{deleteAdmin?.nome}</strong><LocalizedText source={"? Essa ação não pode ser desfeita. O acesso ao sistema será removido permanentemente."} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={deleting}

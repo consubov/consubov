@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -88,8 +89,8 @@ export default function VincularProdutoGerenteModal({ open, onClose, produto, fa
       <Dialog open={open} onOpenChange={(o) => !o && !saving && onClose()}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Vincular produto</DialogTitle>
-            <DialogDescription>{nomeProduto} — marque as fazendas onde ele fica disponível.</DialogDescription>
+            <DialogTitle><LocalizedText source={"Vincular produto"} /></DialogTitle>
+            <DialogDescription>{nomeProduto} <LocalizedText source={"— marque as fazendas onde ele fica disponível."} /></DialogDescription>
           </DialogHeader>
           {loading ? (
             <div className="flex justify-center p-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
@@ -106,13 +107,13 @@ export default function VincularProdutoGerenteModal({ open, onClose, produto, fa
                       <Label htmlFor={`f-${f.id}`} className="font-semibold cursor-pointer">{f.nome}</Label>
                       <span className="text-xs text-muted-foreground ml-auto">{marcada ? "disponível" : "indisponível"}</span>
                     </div>
-                    {travada && <p className="text-xs text-muted-foreground">Em uso — altere na aba Onde usar</p>}
+                    {travada && <p className="text-xs text-muted-foreground"><LocalizedText source={"Em uso — altere na aba Onde usar"} /></p>}
                   </div>
                 );
               })}
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={onClose} disabled={saving}>Cancelar</Button>
-                <Button className="flex-1" disabled={saving || !temMudanca} onClick={() => setConfirmOpen(true)}>Salvar</Button>
+                <Button variant="outline" className="flex-1" onClick={onClose} disabled={saving}><LocalizedText source={"Cancelar"} /></Button>
+                <Button className="flex-1" disabled={saving || !temMudanca} onClick={() => setConfirmOpen(true)}><LocalizedText source={"Salvar"} /></Button>
               </div>
             </div>
           )}
@@ -122,19 +123,18 @@ export default function VincularProdutoGerenteModal({ open, onClose, produto, fa
       <AlertDialog open={confirmOpen} onOpenChange={(o) => !saving && setConfirmOpen(o)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar alterações</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Confirmar alterações"} /></AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-1 text-sm">
-                {fazAdd.map((f) => <p key={f.id}>{f.nome}: disponível</p>)}
-                {fazRem.map((f) => <p key={f.id}>{f.nome}: deixa de estar disponível</p>)}
+                {fazAdd.map((f) => <p key={f.id}>{f.nome}<LocalizedText source={": disponível"} /></p>)}
+                {fazRem.map((f) => <p key={f.id}>{f.nome}<LocalizedText source={": deixa de estar disponível"} /></p>)}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={saving}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <AlertDialogAction disabled={saving} onClick={(e) => { e.preventDefault(); executar(); }}>
-              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Confirmar
-            </AlertDialogAction>
+              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}<LocalizedText source={"Confirmar"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

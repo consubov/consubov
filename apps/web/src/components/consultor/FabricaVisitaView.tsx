@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -217,8 +218,7 @@ export default function FabricaVisitaView({
   return (
     <div className="space-y-4">
       <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1 -ml-2">
-        <ArrowLeft className="w-4 h-4" /> Voltar
-      </Button>
+        <ArrowLeft className="w-4 h-4" /> <LocalizedText source={"Voltar"} /></Button>
 
       <Card className="p-3 bg-primary/5 border-primary/20">
         <div className="flex items-center justify-between gap-2">
@@ -226,11 +226,11 @@ export default function FabricaVisitaView({
             <Factory className="w-5 h-5 text-primary shrink-0" />
             <div className="min-w-0">
               <div className="font-bold text-foreground truncate">
-                Fábrica · {fazendaAtual?.nome_fazenda || "—"}
+                <LocalizedText source={"Fábrica ·"} />{" "}{fazendaAtual?.nome_fazenda || "—"}
               </div>
               <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                 <Clock className="w-3 h-3" />
-                Início: {format(new Date(visita.hora_inicio), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                <LocalizedText source={"Início:"} />{" "}{format(new Date(visita.hora_inicio), "dd/MM 'às' HH:mm", { locale: ptBR })}
               </div>
             </div>
           </div>
@@ -242,10 +242,10 @@ export default function FabricaVisitaView({
 
       <Card className="p-3 space-y-3">
         <div className="flex items-center justify-between">
-          <div className="text-sm font-bold text-foreground">Avaliação da Fábrica</div>
+          <div className="text-sm font-bold text-foreground"><LocalizedText source={"Avaliação da Fábrica"} /></div>
           {quantidadeAvaliadas > 0 && (
             <div className="text-xs text-muted-foreground">
-              Média: <span className="font-bold text-primary">{mediaGeral.toFixed(1)}/5</span>
+              <LocalizedText source={"Média:"} />{" "}<span className="font-bold text-primary">{mediaGeral.toFixed(1)}/5</span>
             </div>
           )}
         </div>
@@ -270,7 +270,7 @@ export default function FabricaVisitaView({
                       <span className="text-sm font-bold text-primary tabular-nums">{nota}/5</span>
                     </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">Sem nota</span>
+                    <span className="text-xs text-muted-foreground"><LocalizedText source={"Sem nota"} /></span>
                   )}
                   {!readOnly && (
                     <select
@@ -337,8 +337,7 @@ export default function FabricaVisitaView({
             className="w-full gap-2 bg-[#1F7A4D] hover:bg-[#166A42] text-white"
           >
             {salvandoOffline ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            Salvar off-line
-          </Button>
+            <LocalizedText source={"Salvar off-line"} /></Button>
         ) : (
           <Button
             onClick={gerarPdf}
@@ -346,7 +345,7 @@ export default function FabricaVisitaView({
             className="w-full gap-2 bg-primary hover:bg-primary/90"
           >
             {gerandoPdf
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Gerando...</>
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> <LocalizedText source={"Gerando..."} /></>
               : <><FileText className="w-4 h-4" /> {visita.status === "finalizada" ? "Gerar Novo PDF" : "Salvar e Gerar PDF"}</>}
           </Button>
         )}
@@ -355,15 +354,13 @@ export default function FabricaVisitaView({
       {visita.status === "finalizada" && visita.pdf_url && (
         <Card className="p-3 space-y-2">
           <div className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <FileText className="w-4 h-4 text-primary" /> Relatório em PDF
-          </div>
+            <FileText className="w-4 h-4 text-primary" /> <LocalizedText source={"Relatório em PDF"} /></div>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" className="flex-1 gap-1.5"
               onClick={() => import("@/lib/openPdfBlob").then(m => m.openPdfBlobUrl(visita.pdf_url!))}>
-              <FileText className="w-4 h-4" /> Ver
-            </Button>
+              <FileText className="w-4 h-4" /> <LocalizedText source={"Ver"} /></Button>
             <Button asChild size="sm" variant="outline" className="flex-1 gap-1.5">
-              <a href={visita.pdf_url} download><Download className="w-4 h-4" /> Baixar</a>
+              <a href={visita.pdf_url} download><Download className="w-4 h-4" /> <LocalizedText source={"Baixar"} /></a>
             </Button>
             <Button
               size="sm" className="flex-1 gap-1.5 bg-primary hover:bg-primary/90"
@@ -374,8 +371,7 @@ export default function FabricaVisitaView({
                 } catch { /* cancel */ }
               }}
             >
-              <Share2 className="w-4 h-4" /> Enviar
-            </Button>
+              <Share2 className="w-4 h-4" /> <LocalizedText source={"Enviar"} /></Button>
           </div>
         </Card>
       )}

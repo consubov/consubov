@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Camera, X, AlertCircle, RefreshCw, CloudOff, CheckCircle2 } from "lucide-react";
@@ -235,7 +236,7 @@ export default function PhotoGrid({
   return (
     <div className={cn("space-y-2", className)}>
       <div className="text-xs font-semibold text-muted-foreground">
-        Fotos ({fotos.length}/{max})
+        <LocalizedText source={"Fotos ("} />{fotos.length}/{max})
       </div>
       <div className={cn("grid gap-1.5", gridCols)}>
         {slots.map(({ ordem, foto, pending, queuedPreview }) => {
@@ -253,8 +254,7 @@ export default function PhotoGrid({
                       className="absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded bg-background/85 px-1 py-0.5 text-[8px] font-medium text-amber-600"
                       title="Foto ainda não sincronizada"
                     >
-                      <CloudOff className="w-2.5 h-2.5" /> pendente
-                    </div>
+                      <CloudOff className="w-2.5 h-2.5" /> <LocalizedText source={"pendente"} /></div>
                   ) : (
                     <div
                       className="absolute bottom-0.5 left-0.5 rounded-full bg-background/85 p-0.5"
@@ -278,8 +278,8 @@ export default function PhotoGrid({
                     title="Foto ainda não sincronizada"
                   >
                     {typeof navigator !== "undefined" && !navigator.onLine
-                      ? <><CloudOff className="w-2.5 h-2.5" /> off-line</>
-                      : <><Loader2 className="w-2.5 h-2.5 animate-spin" /> pendente</>}
+                      ? <><CloudOff className="w-2.5 h-2.5" /> <LocalizedText source={"off-line"} /></>
+                      : <><Loader2 className="w-2.5 h-2.5 animate-spin" /> <LocalizedText source={"pendente"} /></>}
                   </div>
                   {!disabled && (
                     <button

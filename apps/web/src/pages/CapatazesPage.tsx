@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -251,30 +252,28 @@ export default function CapatazesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Capatazes</h1>
+        <h1 className="text-2xl font-bold text-foreground"><LocalizedText source={"Capatazes"} /></h1>
         <Button onClick={openNew} className="bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4 mr-2" /> Novo Capataz
-        </Button>
+          <Plus className="w-4 h-4 mr-2" /> <LocalizedText source={"Novo Capataz"} /></Button>
       </div>
 
       <div className="rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nome</TableHead>
+              <TableHead><LocalizedText source={"Nome"} /></TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Telefone</TableHead>
-              <TableHead>Retiros</TableHead>
+              <TableHead><LocalizedText source={"Telefone"} /></TableHead>
+              <TableHead><LocalizedText source={"Retiros"} /></TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-24">Ações</TableHead>
+              <TableHead className="w-24"><LocalizedText source={"Ações"} /></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {capatazes.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                  Nenhum capataz cadastrado
-                </TableCell>
+                  <LocalizedText source={"Nenhum capataz cadastrado"} /></TableCell>
               </TableRow>
             ) : (
               capatazes.map(c => (
@@ -319,7 +318,7 @@ export default function CapatazesPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Nome *</Label>
+              <Label><LocalizedText source={"Nome *"} /></Label>
               <Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} />
             </div>
             <div>
@@ -327,7 +326,7 @@ export default function CapatazesPage() {
               <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} disabled={!!editingId} />
             </div>
             <div>
-              <Label>Telefone</Label>
+              <Label><LocalizedText source={"Telefone"} /></Label>
               <Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} />
             </div>
             <div>
@@ -342,15 +341,14 @@ export default function CapatazesPage() {
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} />
-              <Label>Ativo</Label>
+              <Label><LocalizedText source={"Ativo"} /></Label>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Salvar
-            </Button>
+              <LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

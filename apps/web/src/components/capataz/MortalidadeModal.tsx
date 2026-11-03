@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -164,21 +165,20 @@ export default function MortalidadeModal({ open, onClose, pastos, retiroId, faze
       <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <span>🐄</span> Mortalidade
-          </DialogTitle>
+            <span>🐄</span> <LocalizedText source={"Mortalidade"} /></DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Pasto select */}
           <div>
-            <label className="text-sm font-medium mb-1 block">Pasto *</label>
+            <label className="text-sm font-medium mb-1 block"><LocalizedText source={"Pasto *"} /></label>
             <Select value={pastoId} onValueChange={(v) => { setPastoId(v); setQuantidade(1); }}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o pasto" />
               </SelectTrigger>
               <SelectContent>
                 {pastos.filter(p => p.num_animais > 0).map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.nome} ({p.num_animais} animais)</SelectItem>
+                  <SelectItem key={p.id} value={p.id}>{p.nome} ({p.num_animais} <LocalizedText source={"animais)"} /></SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -187,14 +187,14 @@ export default function MortalidadeModal({ open, onClose, pastos, retiroId, faze
           {/* Show current animals */}
           {selectedPasto && (
             <div className="bg-muted rounded-md p-3">
-              <p className="text-sm font-medium">Animais atuais: <span className="text-primary font-bold">{animaisAtuais}</span></p>
+              <p className="text-sm font-medium"><LocalizedText source={"Animais atuais:"} />{" "}<span className="text-primary font-bold">{animaisAtuais}</span></p>
             </div>
           )}
 
           {/* Quantidade */}
           {selectedPasto && (
             <div>
-              <label className="text-sm font-medium mb-1 block">Quantidade *</label>
+              <label className="text-sm font-medium mb-1 block"><LocalizedText source={"Quantidade *"} /></label>
               <Input
                 type="number"
                 min={1}
@@ -213,7 +213,7 @@ export default function MortalidadeModal({ open, onClose, pastos, retiroId, faze
             <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
               <p className="text-sm">
-                Quantidade atual: <strong>{animaisAtuais}</strong> → ficará: <strong>{animaisRestantes}</strong>
+                <LocalizedText source={"Quantidade atual:"} />{" "}<strong>{animaisAtuais}</strong> <LocalizedText source={"→ ficará:"} />{" "}<strong>{animaisRestantes}</strong>
               </p>
             </div>
           )}
@@ -236,7 +236,7 @@ export default function MortalidadeModal({ open, onClose, pastos, retiroId, faze
 
           {/* Observação */}
           <div>
-            <label className="text-sm font-medium mb-1 block">Observação (opcional)</label>
+            <label className="text-sm font-medium mb-1 block"><LocalizedText source={"Observação (opcional)"} /></label>
             <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Detalhes adicionais..." rows={2} />
           </div>
 

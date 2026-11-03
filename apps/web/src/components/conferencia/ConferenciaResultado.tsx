@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,11 +47,11 @@ const fmtDateTime = (iso: string) =>
 
 function StatusBadge({ status }: { status: string | null }) {
   if (status === "Ideal" || status === "IDEAL") return <Badge style={{ backgroundColor: "#43A047" }} className="text-white">🟢 Ideal</Badge>;
-  if (status === "Atenção") return <Badge style={{ backgroundColor: "#FBC02D" }} className="text-black">🟡 Atenção</Badge>;
-  if (status === "Alto" || status === "ACIMA") return <Badge style={{ backgroundColor: "#1E88E5" }} className="text-white">🔵 Alto</Badge>;
-  if (status === "Baixo" || status === "ABAIXO") return <Badge style={{ backgroundColor: "#E53935" }} className="text-white">🔴 Baixo</Badge>;
-  if (status) return <Badge variant="destructive">🔴 Fora da meta</Badge>;
-  return <Badge variant="outline">Sem dados</Badge>;
+  if (status === "Atenção") return <Badge style={{ backgroundColor: "#FBC02D" }} className="text-black"><LocalizedText source={"🟡 Atenção"} /></Badge>;
+  if (status === "Alto" || status === "ACIMA") return <Badge style={{ backgroundColor: "#1E88E5" }} className="text-white"><LocalizedText source={"🔵 Alto"} /></Badge>;
+  if (status === "Baixo" || status === "ABAIXO") return <Badge style={{ backgroundColor: "#E53935" }} className="text-white"><LocalizedText source={"🔴 Baixo"} /></Badge>;
+  if (status) return <Badge variant="destructive"><LocalizedText source={"🔴 Fora da meta"} /></Badge>;
+  return <Badge variant="outline"><LocalizedText source={"Sem dados"} /></Badge>;
 }
 
 
@@ -89,7 +90,7 @@ export default function ConferenciaResultado({ dados, onVoltar, onRegistrarConfe
 
       <main className="flex-1 p-4 space-y-4 max-w-2xl mx-auto w-full">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-foreground">Situação atual</h2>
+          <h2 className="text-base font-bold text-foreground"><LocalizedText source={"Situação atual"} /></h2>
           <StatusBadge status={dados.status_consumo} />
         </div>
 
@@ -126,11 +127,11 @@ export default function ConferenciaResultado({ dados, onVoltar, onRegistrarConfe
         </Card>
 
         <div>
-          <h3 className="text-sm font-bold text-foreground mb-2">Histórico rápido</h3>
+          <h3 className="text-sm font-bold text-foreground mb-2"><LocalizedText source={"Histórico rápido"} /></h3>
           <Card>
             <CardContent className="p-2">
               {dados.historico.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum evento recente.</p>
+                <p className="text-sm text-muted-foreground text-center py-4"><LocalizedText source={"Nenhum evento recente."} /></p>
               )}
               {dados.historico.map((h, i) => (
                 <div key={i} className="flex items-start justify-between gap-3 px-2 py-2 border-b last:border-0">
@@ -147,8 +148,7 @@ export default function ConferenciaResultado({ dados, onVoltar, onRegistrarConfe
 
         <Button onClick={onRegistrarConferencia} size="lg" variant="secondary" className="w-full gap-2">
           <ClipboardCheck className="w-5 h-5" />
-          REGISTRAR CONFERÊNCIA
-        </Button>
+          <LocalizedText source={"REGISTRAR CONFERÊNCIA"} /></Button>
       </main>
     </div>
   );

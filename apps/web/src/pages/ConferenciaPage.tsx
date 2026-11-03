@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef, useState } from "react";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { useNavigate } from "react-router-dom";
@@ -722,7 +723,7 @@ export default function ConferenciaPage() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-3">
           <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">Consultando dados do pasto...</p>
+          <p className="text-sm text-muted-foreground"><LocalizedText source={"Consultando dados do pasto..."} /></p>
         </div>
       </div>
     );
@@ -796,7 +797,7 @@ export default function ConferenciaPage() {
           <Button variant="ghost" size="icon" onClick={() => setEtapa("inicio")} className="text-primary-foreground hover:bg-primary/80">
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-lg font-bold">Histórico de Conferências</h1>
+          <h1 className="text-lg font-bold"><LocalizedText source={"Histórico de Conferências"} /></h1>
         </header>
 
         <main className="flex-1 px-4 py-4 max-w-md mx-auto w-full space-y-3">
@@ -804,15 +805,14 @@ export default function ConferenciaPage() {
             <div className="flex justify-center p-10"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
           ) : historico.length === 0 ? (
             <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
-              Nenhuma conferência registrada ainda.
-            </div>
+              <LocalizedText source={"Nenhuma conferência registrada ainda."} /></div>
           ) : historico.map(h => (
             <div key={h.id} className="rounded-lg border bg-card p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{h.fazenda_nome || "Conferência"}</p>
                   <p className="text-xs text-muted-foreground">
-                    Conferência via QR Code • {new Date(h.hora_inicio).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    <LocalizedText source={"Conferência via QR Code •"} />{" "}{new Date(h.hora_inicio).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
                 <span className="text-[10px] uppercase font-bold rounded-full bg-primary/10 text-primary px-2 py-1 shrink-0">
@@ -822,18 +822,15 @@ export default function ConferenciaPage() {
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" className="gap-1.5"
                   onClick={() => void abrirConferenciaHistorico(h)}>
-                  <Pencil className="w-4 h-4" /> Editar
-                </Button>
+                  <Pencil className="w-4 h-4" /> <LocalizedText source={"Editar"} /></Button>
                 {h.pdf_url && (
                   <Button size="sm" variant="outline" className="flex-1 gap-1.5"
                     onClick={() => setPdfHistorico({ url: h.pdf_url!, nome: h.fazenda_nome || "conferencia" })}>
-                    <FileText className="w-4 h-4" /> Ver / Baixar PDF
-                  </Button>
+                    <FileText className="w-4 h-4" /> <LocalizedText source={"Ver / Baixar PDF"} /></Button>
                 )}
                 <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 gap-1.5"
                   onClick={() => setConfirmarExclusaoConf(h)}>
-                  <Trash2 className="w-4 h-4" /> Excluir
-                </Button>
+                  <Trash2 className="w-4 h-4" /> <LocalizedText source={"Excluir"} /></Button>
               </div>
             </div>
           ))}
@@ -841,16 +838,14 @@ export default function ConferenciaPage() {
           <AlertDialog open={!!confirmarExclusaoConf} onOpenChange={(o) => { if (!o) setConfirmarExclusaoConf(null); }}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Excluir conferência?</AlertDialogTitle>
+                <AlertDialogTitle><LocalizedText source={"Excluir conferência?"} /></AlertDialogTitle>
                 <AlertDialogDescription>
-                  Tem certeza? Essa ação não pode ser desfeita e o relatório sairá do histórico.
-                </AlertDialogDescription>
+                  <LocalizedText source={"Tem certeza? Essa ação não pode ser desfeita e o relatório sairá do histórico."} /></AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogCancel><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
                 <AlertDialogAction onClick={(e) => { e.preventDefault(); void handleExcluirConferencia(); }}>
-                  Excluir
-                </AlertDialogAction>
+                  <LocalizedText source={"Excluir"} /></AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -872,11 +867,10 @@ export default function ConferenciaPage() {
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-primary-foreground hover:bg-primary/80">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-lg font-bold flex-1">Conferência</h1>
+        <h1 className="text-lg font-bold flex-1"><LocalizedText source={"Conferência"} /></h1>
         {isAdmin && (
           <Button variant="ghost" size="sm" onClick={() => void abrirHistorico()} className="text-primary-foreground hover:bg-primary/80 gap-1.5">
-            <HistoryIcon className="w-4 h-4" /> Histórico
-          </Button>
+            <HistoryIcon className="w-4 h-4" /> <LocalizedText source={"Histórico"} /></Button>
         )}
       </header>
 
@@ -885,7 +879,7 @@ export default function ConferenciaPage() {
           <ScanLine className="w-12 h-12 text-primary" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold text-foreground">Conferência via QR Code</h2>
+          <h2 className="text-2xl font-bold text-foreground"><LocalizedText source={"Conferência via QR Code"} /></h2>
           <p className="text-sm text-muted-foreground">
             {registroFormalConfirmado
               ? "Conferência registrada: os pastos escaneados entram no relatório."
@@ -894,8 +888,7 @@ export default function ConferenciaPage() {
         </div>
         <Button size="lg" onClick={() => setEtapa("scan")} className="w-full gap-2">
           <ScanLine className="w-5 h-5" />
-          ESCANEAR QR CODE
-        </Button>
+          <LocalizedText source={"ESCANEAR QR CODE"} /></Button>
 
         {isAdmin && !registroFormalConfirmado && registros.length > 0 && (
           <Button
@@ -906,15 +899,14 @@ export default function ConferenciaPage() {
             onClick={() => void handleRegistrarConferencia()}
           >
             {criandoVisita ? <Loader2 className="w-5 h-5 animate-spin" /> : <ClipboardCheck className="w-5 h-5" />}
-            REGISTRAR CONFERÊNCIA
-          </Button>
+            <LocalizedText source={"REGISTRAR CONFERÊNCIA"} /></Button>
         )}
 
 
         {isAdmin && registros.length > 0 && (
           <div className="w-full space-y-2 border-t pt-4 text-left">
             <p className="text-xs uppercase tracking-wide font-bold text-primary">
-              Pastos registrados ({registros.length})
+              <LocalizedText source={"Pastos registrados ("} />{registros.length})
             </p>
             {registros.map(r => (
               <div key={r.id} className="flex items-center gap-3 rounded-lg border bg-card p-3">
@@ -927,8 +919,7 @@ export default function ConferenciaPage() {
                     {[r.retiro_nome, r.fazenda_nome].filter(Boolean).join(" • ") || "—"}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
-                    {r.qtd_animais ?? 0} animais · {r.fotos.length} foto(s)
-                  </p>
+                    {r.qtd_animais ?? 0} <LocalizedText source={"animais ·"} />{" "}{r.fotos.length} <LocalizedText source={"foto(s)"} /></p>
                 </div>
                 <button
                   type="button"
@@ -954,14 +945,13 @@ export default function ConferenciaPage() {
         {isAdmin && registroFormalConfirmado && registros.length > 0 && cabecalho && (
           <div className="w-full border-t pt-4 text-left space-y-3">
             <div>
-              <p className="text-xs uppercase tracking-wide font-bold text-primary">Cabeçalho do relatório</p>
+              <p className="text-xs uppercase tracking-wide font-bold text-primary"><LocalizedText source={"Cabeçalho do relatório"} /></p>
               <p className="text-[11px] text-muted-foreground">
-                Edições valem apenas para este PDF — não alteram o cadastro da fazenda.
-              </p>
+                <LocalizedText source={"Edições valem apenas para este PDF — não alteram o cadastro da fazenda."} /></p>
             </div>
             <div className="space-y-2">
               <div>
-                <Label className="text-xs">Fazenda</Label>
+                <Label className="text-xs"><LocalizedText source={"Fazenda"} /></Label>
                 <Input
                   value={cabecalho.fazenda}
                   onChange={(e) => setCabecalho({ ...cabecalho, fazenda: e.target.value })}
@@ -970,7 +960,7 @@ export default function ConferenciaPage() {
                 />
               </div>
               <div>
-                <Label className="text-xs">Proprietário</Label>
+                <Label className="text-xs"><LocalizedText source={"Proprietário"} /></Label>
                 <Input
                   value={cabecalho.proprietario}
                   onChange={(e) => setCabecalho({ ...cabecalho, proprietario: e.target.value })}
@@ -979,7 +969,7 @@ export default function ConferenciaPage() {
                 />
               </div>
               <div>
-                <Label className="text-xs">Gerente</Label>
+                <Label className="text-xs"><LocalizedText source={"Gerente"} /></Label>
                 <Input
                   value={cabecalho.gerente}
                   onChange={(e) => setCabecalho({ ...cabecalho, gerente: e.target.value })}
@@ -988,7 +978,7 @@ export default function ConferenciaPage() {
                 />
               </div>
               <div>
-                <Label className="text-xs">Responsável pela conferência</Label>
+                <Label className="text-xs"><LocalizedText source={"Responsável pela conferência"} /></Label>
                 <Input
                   value={cabecalho.consultor}
                   onChange={(e) => setCabecalho({ ...cabecalho, consultor: e.target.value })}
@@ -997,7 +987,7 @@ export default function ConferenciaPage() {
                 />
               </div>
               <div>
-                <Label className="text-xs">Data</Label>
+                <Label className="text-xs"><LocalizedText source={"Data"} /></Label>
                 <Input
                   type="date"
                   value={cabecalho.data}
@@ -1013,7 +1003,7 @@ export default function ConferenciaPage() {
 
         {isAdmin && registroFormalConfirmado && visita && registros.length > 0 && (
           <div className="w-full border-t pt-4 text-left">
-            <p className="text-xs uppercase tracking-wide font-bold text-primary mb-2">Tópicos do relatório</p>
+            <p className="text-xs uppercase tracking-wide font-bold text-primary mb-2"><LocalizedText source={"Tópicos do relatório"} /></p>
             <VisitaTopicosSection
               visitaId={visita.id}
               onChange={(t) => {
@@ -1043,8 +1033,7 @@ export default function ConferenciaPage() {
         {isAdmin && registroFormalConfirmado && visita && registros.length > 0 && (
           <div className="w-full space-y-2 border-t pt-4">
             <p className="text-sm text-muted-foreground">
-              Conferência {visita.status === "finalizada" ? "finalizada" : "em andamento"}: {registros.length} pasto(s), {totalFotos} foto(s).
-            </p>
+              <LocalizedText source={"Conferência"} />{" "}{visita.status === "finalizada" ? "finalizada" : "em andamento"}: {registros.length} <LocalizedText source={"pasto(s),"} />{" "}{totalFotos} <LocalizedText source={"foto(s)."} /></p>
             <Button
               size="lg"
               variant="secondary"
@@ -1065,8 +1054,7 @@ export default function ConferenciaPage() {
                   setPdfGerado(null); setFazendaIdConf(null); setCabecalho(null);
                 }}
               >
-                <ClipboardCheck className="w-5 h-5" /> NOVA CONFERÊNCIA
-              </Button>
+                <ClipboardCheck className="w-5 h-5" /> <LocalizedText source={"NOVA CONFERÊNCIA"} /></Button>
             )}
           </div>
         )}
@@ -1074,14 +1062,12 @@ export default function ConferenciaPage() {
         <AlertDialog open={!!confirmarExclusao} onOpenChange={(o) => { if (!o) setConfirmarExclusao(null); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+              <AlertDialogTitle><LocalizedText source={"Tem certeza?"} /></AlertDialogTitle>
               <AlertDialogDescription>
-                Essa ação não pode ser desfeita. O pasto {confirmarExclusao?.num_pasto || ""} e suas fotos serão
-                removidos desta conferência.
-              </AlertDialogDescription>
+                <LocalizedText source={"Essa ação não pode ser desfeita. O pasto"} />{" "}{confirmarExclusao?.num_pasto || ""} <LocalizedText source={"e suas fotos serão removidos desta conferência."} /></AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={excluindo}>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel disabled={excluindo}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
               <AlertDialogAction
                 disabled={excluindo}
                 onClick={(e) => { e.preventDefault(); void handleExcluirRegistro(); }}
@@ -1096,12 +1082,11 @@ export default function ConferenciaPage() {
         {isAdmin && pdfGerado && (
           <div className="w-full space-y-2 border-t pt-4">
             <p className="text-sm text-muted-foreground">
-              PDF gerado: {pdfGerado.fileName}
+              <LocalizedText source={"PDF gerado:"} />{" "}{pdfGerado.fileName}
             </p>
             <Button size="lg" className="w-full gap-2" onClick={() => setPdfAberto(true)}>
               <FileText className="w-5 h-5" />
-              ABRIR PDF
-            </Button>
+              <LocalizedText source={"ABRIR PDF"} /></Button>
           </div>
         )}
 

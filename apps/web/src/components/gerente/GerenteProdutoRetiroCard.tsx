@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -173,16 +174,15 @@ export default function GerenteProdutoRetiroCard({ retiroId, retiroNome, fazenda
     <>
       <Card className="mt-4">
         <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Produto Ativo do Retiro</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="w-4 h-4" /> <LocalizedText source={"Produto Ativo do Retiro"} /></CardTitle>
           {!editing && (
             <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="gap-1.5">
-              <Pencil className="w-3.5 h-3.5" /> Editar
-            </Button>
+              <Pencil className="w-3.5 h-3.5" /> <LocalizedText source={"Editar"} /></Button>
           )}
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
-            <Label>Produto do retiro</Label>
+            <Label><LocalizedText source={"Produto do retiro"} /></Label>
             {editing ? (
               <Select value={produtoId} onValueChange={setProdutoId}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
@@ -198,8 +198,8 @@ export default function GerenteProdutoRetiroCard({ retiroId, retiroNome, fazenda
             {produtos.length === 0 && <p className="text-xs text-amber-700">{MSG_FAZENDA_SEM_PRODUTO}</p>}
             {prodSel && (
               <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
-                <p>Peso do saco: <strong>{prodSel.peso_saco_kg} kg</strong> · Custo: <strong>R$ {Number(prodSel.preco_por_kg ?? 0).toFixed(2)}/kg</strong></p>
-                {prodSel.consumo_recria1 != null && <p>Consumo R1: {prodSel.consumo_recria1} (±{prodSel.margem_recria1 ?? 0}) · R2: {prodSel.consumo_recria2 ?? "—"} (±{prodSel.margem_recria2 ?? 0}) · Eng: {prodSel.consumo_engorda ?? "—"} (±{prodSel.margem_engorda ?? 0})</p>}
+                <p><LocalizedText source={"Peso do saco:"} />{" "}<strong>{prodSel.peso_saco_kg} kg</strong> <LocalizedText source={"· Custo:"} />{" "}<strong>R$ {Number(prodSel.preco_por_kg ?? 0).toFixed(2)}/kg</strong></p>
+                {prodSel.consumo_recria1 != null && <p><LocalizedText source={"Consumo R1:"} />{" "}{prodSel.consumo_recria1} (±{prodSel.margem_recria1 ?? 0}) · R2: {prodSel.consumo_recria2 ?? "—"} (±{prodSel.margem_recria2 ?? 0}) · Eng: {prodSel.consumo_engorda ?? "—"} (±{prodSel.margem_engorda ?? 0})</p>}
               </div>
             )}
           </div>
@@ -207,13 +207,13 @@ export default function GerenteProdutoRetiroCard({ retiroId, retiroNome, fazenda
           {editing && (
             <div className="flex items-center gap-2">
               <Checkbox id="aplicar-todos-retiros" checked={aplicarTodos} onCheckedChange={(c) => setAplicarTodos(c === true)} />
-              <Label htmlFor="aplicar-todos-retiros" className="text-sm font-normal cursor-pointer">Aplicar a todos os retiros da fazenda</Label>
+              <Label htmlFor="aplicar-todos-retiros" className="text-sm font-normal cursor-pointer"><LocalizedText source={"Aplicar a todos os retiros da fazenda"} /></Label>
             </div>
           )}
 
           <div className="pt-2 border-t space-y-2">
-            <Label>Produto por pasto</Label>
-            {pastosRetiro.length === 0 && <p className="text-xs text-muted-foreground">Nenhum pasto neste retiro.</p>}
+            <Label><LocalizedText source={"Produto por pasto"} /></Label>
+            {pastosRetiro.length === 0 && <p className="text-xs text-muted-foreground"><LocalizedText source={"Nenhum pasto neste retiro."} /></p>}
             {pastosRetiro.map((p) => {
               const heranca = `Herdado do retiro: ${nomeProduto(editing ? produtoId : retiroAtual?.produto_id)}`;
               return (
@@ -223,7 +223,7 @@ export default function GerenteProdutoRetiroCard({ retiroId, retiroNome, fazenda
                     <Select value={pastoSel[p.id] ?? SEGUIR} onValueChange={(v) => setPastoSel((s) => ({ ...s, [p.id]: v }))}>
                       <SelectTrigger className="h-8 max-w-[60%]"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={SEGUIR}>Seguir o retiro</SelectItem>
+                        <SelectItem value={SEGUIR}><LocalizedText source={"Seguir o retiro"} /></SelectItem>
                         {produtos.map((pr) => <SelectItem key={pr.id} value={pr.id}>{nomeProduto(pr.id)}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -237,7 +237,7 @@ export default function GerenteProdutoRetiroCard({ retiroId, retiroNome, fazenda
 
           {editing && conflitos.length > 0 && (
             <div className="rounded-md border border-amber-300 bg-amber-50 p-3 space-y-2 text-sm">
-              <p className="flex items-center gap-1.5 font-medium text-amber-800"><AlertTriangle className="w-4 h-4" /> Pastos com produto próprio diferente do novo produto:</p>
+              <p className="flex items-center gap-1.5 font-medium text-amber-800"><AlertTriangle className="w-4 h-4" /> <LocalizedText source={"Pastos com produto próprio diferente do novo produto:"} /></p>
               <ul className="text-xs text-amber-900 list-disc pl-5">
                 {conflitos.map((c) => (
                   <li key={c.id}>{c.nome}{aplicarTodos ? ` (${retiros.find((r) => r.id === c.retiro_id)?.nome ?? ""})` : ""} — {nomeProduto(c.retiro_id === retiroId ? pastoSel[c.id] : c.produto_id)}</li>
@@ -245,15 +245,15 @@ export default function GerenteProdutoRetiroCard({ retiroId, retiroNome, fazenda
               </ul>
               <div className="flex items-center gap-2">
                 <Checkbox id="seguir-retiro" checked={seguirRetiro} onCheckedChange={(c) => setSeguirRetiro(c === true)} />
-                <Label htmlFor="seguir-retiro" className="text-sm font-normal cursor-pointer">Fazer esses pastos seguirem o produto do retiro</Label>
+                <Label htmlFor="seguir-retiro" className="text-sm font-normal cursor-pointer"><LocalizedText source={"Fazer esses pastos seguirem o produto do retiro"} /></Label>
               </div>
             </div>
           )}
 
           {editing && (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1" onClick={cancelarEdicao} disabled={saving}>Cancelar</Button>
-              <Button size="sm" className="flex-1" disabled={saving || !temMudanca} onClick={() => setConfirmOpen(true)}>Salvar</Button>
+              <Button variant="outline" size="sm" className="flex-1" onClick={cancelarEdicao} disabled={saving}><LocalizedText source={"Cancelar"} /></Button>
+              <Button size="sm" className="flex-1" disabled={saving || !temMudanca} onClick={() => setConfirmOpen(true)}><LocalizedText source={"Salvar"} /></Button>
             </div>
           )}
         </CardContent>
@@ -262,26 +262,25 @@ export default function GerenteProdutoRetiroCard({ retiroId, retiroNome, fazenda
       <AlertDialog open={confirmOpen} onOpenChange={(o) => !saving && setConfirmOpen(o)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar alterações</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Confirmar alterações"} /></AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-1 text-sm">
                 {retirosAlvo.map((r) => (
-                  <p key={r.id}>Retiro {r.nome}: {nomeProduto(r.produto_id)} → {nomeProduto(produtoId)}</p>
+                  <p key={r.id}><LocalizedText source={"Retiro"} />{" "}{r.nome}: {nomeProduto(r.produto_id)} → {nomeProduto(produtoId)}</p>
                 ))}
                 {pastosAlterados.map((p) => (
-                  <p key={p.id}>Pasto {p.nome}: {p.produto_id ? nomeProduto(p.produto_id) : "seguia o retiro"} → {pastoSel[p.id] === SEGUIR ? "seguir o retiro" : nomeProduto(pastoSel[p.id])}</p>
+                  <p key={p.id}><LocalizedText source={"Pasto"} />{" "}{p.nome}: {p.produto_id ? nomeProduto(p.produto_id) : "seguia o retiro"} → {pastoSel[p.id] === SEGUIR ? "seguir o retiro" : nomeProduto(pastoSel[p.id])}</p>
                 ))}
                 {conflitosALimpar.length > 0 && (
-                  <p>{conflitosALimpar.length} pasto(s) passam a seguir o retiro</p>
+                  <p>{conflitosALimpar.length} <LocalizedText source={"pasto(s) passam a seguir o retiro"} /></p>
                 )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={saving}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <AlertDialogAction disabled={saving} onClick={(e) => { e.preventDefault(); executar(); }}>
-              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Confirmar
-            </AlertDialogAction>
+              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}<LocalizedText source={"Confirmar"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -110,10 +111,9 @@ export default function FormulasSistemaPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Fórmulas do Sistema</h1>
+        <h1 className="text-2xl font-bold text-foreground"><LocalizedText source={"Fórmulas do Sistema"} /></h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Gerencie as fórmulas de cálculo utilizadas pelo sistema. As alterações não afetam cálculos existentes até que a integração seja habilitada.
-        </p>
+          <LocalizedText source={"Gerencie as fórmulas de cálculo utilizadas pelo sistema. As alterações não afetam cálculos existentes até que a integração seja habilitada."} /></p>
       </div>
 
       {loading ? (
@@ -127,8 +127,7 @@ export default function FormulasSistemaPage() {
       ) : formulas.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
-            Nenhuma fórmula cadastrada.
-          </CardContent>
+            <LocalizedText source={"Nenhuma fórmula cadastrada."} /></CardContent>
         </Card>
       ) : (
         Object.keys(grouped)
@@ -186,16 +185,14 @@ export default function FormulasSistemaPage() {
                                   disabled={saving}
                                   className="bg-primary hover:bg-primary/90"
                                 >
-                                  <Save className="w-4 h-4 mr-1" /> Salvar
-                                </Button>
+                                  <Save className="w-4 h-4 mr-1" /> <LocalizedText source={"Salvar"} /></Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   onClick={cancelEdit}
                                   disabled={saving}
                                 >
-                                  <X className="w-4 h-4 mr-1" /> Cancelar
-                                </Button>
+                                  <X className="w-4 h-4 mr-1" /> <LocalizedText source={"Cancelar"} /></Button>
                               </div>
                             )}
                           </div>
@@ -203,7 +200,7 @@ export default function FormulasSistemaPage() {
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <div>
-                          <Label className="text-xs font-medium">Fórmula</Label>
+                          <Label className="text-xs font-medium"><LocalizedText source={"Fórmula"} /></Label>
                           <Textarea
                             value={isEditing ? draft.formula : f.formula}
                             onChange={(e) =>
@@ -215,7 +212,7 @@ export default function FormulasSistemaPage() {
                           />
                           {f.variaveis && f.variaveis.length > 0 && (
                             <p className="text-xs text-muted-foreground mt-1">
-                              <span className="font-medium">Variáveis disponíveis:</span>{" "}
+                              <span className="font-medium"><LocalizedText source={"Variáveis disponíveis:"} /></span>{" "}
                               {f.variaveis.join(", ")}
                             </p>
                           )}
@@ -223,7 +220,7 @@ export default function FormulasSistemaPage() {
 
                         {paramKeys.length > 0 && (
                           <div>
-                            <Label className="text-xs font-medium">Parâmetros</Label>
+                            <Label className="text-xs font-medium"><LocalizedText source={"Parâmetros"} /></Label>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-1">
                               {paramKeys.map((k) => (
                                 <div key={k}>

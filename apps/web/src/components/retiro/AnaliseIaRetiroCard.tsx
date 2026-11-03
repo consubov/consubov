@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,8 +47,7 @@ export default function AnaliseIaRetiroCard({ retiroNome, contexto }: Props) {
     <Card>
       <CardHeader className="pb-2 pt-3 px-4">
         <CardTitle className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-secondary" /> Observações e Análise
-        </CardTitle>
+          <Sparkles className="w-4 h-4 text-secondary" /> <LocalizedText source={"Observações e Análise"} /></CardTitle>
       </CardHeader>
       <CardContent className="px-4 pb-4 space-y-3">
         <Textarea

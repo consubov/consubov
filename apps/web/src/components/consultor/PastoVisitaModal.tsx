@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { fmtPorCabeca } from "@/lib/consumoPasto";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -426,12 +427,12 @@ export default function PastoVisitaModal({
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{pasto ? `Pasto ${pasto.letra}` : "Adicionar Pasto"}</DialogTitle>
-          <DialogDescription>Registre os dados do pasto e as avaliações.</DialogDescription>
+          <DialogDescription><LocalizedText source={"Registre os dados do pasto e as avaliações."} /></DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <Label>Letra *</Label>
+              <Label><LocalizedText source={"Letra *"} /></Label>
               <div className="relative">
                 <Input
                   value={letra}
@@ -447,14 +448,14 @@ export default function PastoVisitaModal({
               </div>
             </div>
             <div className="col-span-2">
-              <Label>Nº Pasto</Label>
+              <Label><LocalizedText source={"Nº Pasto"} /></Label>
               <Input value={numPasto} onChange={e => setNumPasto(e.target.value)} disabled={readOnly} />
             </div>
           </div>
 
           {/* Categoria - chips */}
           <div>
-            <Label>Categoria</Label>
+            <Label><LocalizedText source={"Categoria"} /></Label>
             <div className="flex flex-wrap gap-1.5 mt-1">
               {CATEGORIAS.map(c => {
                 const active = categoria === c;
@@ -479,17 +480,17 @@ export default function PastoVisitaModal({
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label>Qtd. Animais</Label>
+              <Label><LocalizedText source={"Qtd. Animais"} /></Label>
               <Input type="number" inputMode="numeric" value={qtdAnimais} onChange={e => setQtdAnimais(e.target.value)} disabled={readOnly} />
             </div>
             <div>
-              <Label>Peso Médio (kg)</Label>
+              <Label><LocalizedText source={"Peso Médio (kg)"} /></Label>
               <Input type="number" inputMode="decimal" step="any" value={pesoMedio} onChange={e => setPesoMedio(e.target.value)} disabled={readOnly} />
             </div>
           </div>
 
           <div>
-            <Label>Tipo de Produto</Label>
+            <Label><LocalizedText source={"Tipo de Produto"} /></Label>
             <Select value={tipoProduto} onValueChange={handleTipoProdutoChange} disabled={readOnly}>
               <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
               <SelectContent>
@@ -502,33 +503,33 @@ export default function PastoVisitaModal({
             <>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <Label>Meta do produto (g/100kg PV)</Label>
+                  <Label><LocalizedText source={"Meta do produto (g/100kg PV)"} /></Label>
                   <Input type="number" inputMode="decimal" step="any" value={metaG100kg} onChange={e => setMetaG100kg(e.target.value)} placeholder="ex: 25" disabled={readOnly} />
                 </div>
                 <div>
-                  <Label>Qtd. consumida (kg)</Label>
+                  <Label><LocalizedText source={"Qtd. consumida (kg)"} /></Label>
                   <Input type="number" inputMode="decimal" step="any" value={kgConsumidos} onChange={e => setKgConsumidos(e.target.value)} disabled={readOnly} />
                 </div>
               </div>
               <div>
-                <Label>Dias desde a última salga</Label>
+                <Label><LocalizedText source={"Dias desde a última salga"} /></Label>
                 <Input type="number" inputMode="numeric" step="any" value={diasConsumo} onChange={e => setDiasConsumo(e.target.value)} disabled={readOnly} />
               </div>
               <div className="rounded-md border p-2.5 bg-muted/40 grid grid-cols-2 gap-2 text-xs">
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo esperado</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground"><LocalizedText source={"Consumo esperado"} /></div>
                   <div className="font-semibold text-foreground">{calc.espG > 0 ? `${fmt(calc.espG, 1)} g/cab/dia` : "—"}</div>
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo real</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground"><LocalizedText source={"Consumo real"} /></div>
                   <div className="font-semibold text-foreground">{calc.realG > 0 ? `${fmt(calc.realG, 1)} g/cab/dia` : "—"}</div>
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Índice da meta</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground"><LocalizedText source={"Índice da meta"} /></div>
                   <div className="font-semibold text-foreground">{calc.indice > 0 ? `${fmt(calc.indice, 1)}%` : "—"}</div>
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Situação</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground"><LocalizedText source={"Situação"} /></div>
                   <div className="font-semibold text-foreground">{statusMeta || "—"}</div>
                 </div>
               </div>
@@ -543,23 +544,23 @@ export default function PastoVisitaModal({
                   <Input type="number" inputMode="decimal" step="any" value={kgConsumidos} onChange={e => setKgConsumidos(e.target.value)} disabled={readOnly} />
                 </div>
                 <div>
-                  <Label>Dias de consumo</Label>
+                  <Label><LocalizedText source={"Dias de consumo"} /></Label>
                   <Input type="number" inputMode="numeric" step="any" value={diasConsumo} onChange={e => setDiasConsumo(e.target.value)} disabled={readOnly} />
                 </div>
               </div>
               <div className="rounded-md border p-2.5 bg-muted/40 grid grid-cols-2 gap-2 text-xs">
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground"><LocalizedText source={"Consumo"} /></div>
                   <div className="font-semibold text-foreground">{calc.kgCabDia > 0 ? `${fmt(calc.kgCabDia, 2)} kg/cab/dia` : "—"}</div>
                 </div>
                 {modo === "racao" ? (
                   <div>
-                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">% do peso vivo</div>
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground"><LocalizedText source={"% do peso vivo"} /></div>
                     <div className="font-semibold text-foreground">{calc.pctPv > 0 ? `${fmt(calc.pctPv, 2)}%` : "—"}</div>
                   </div>
                 ) : (
                   <div>
-                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo (g/cab/dia)</div>
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground"><LocalizedText source={"Consumo (g/cab/dia)"} /></div>
                     <div className="font-semibold text-foreground">{calc.gCabDia > 0 ? `${fmt(calc.gCabDia, 0)} g/cab/dia` : "—"}</div>
                   </div>
                 )}
@@ -571,35 +572,35 @@ export default function PastoVisitaModal({
             <>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <Label>% Peso Vivo</Label>
+                  <Label><LocalizedText source={"% Peso Vivo"} /></Label>
                   <Input value={percentualPv} onChange={e => setPercentualPv(e.target.value)} placeholder="ex: 0,3%" disabled={readOnly} />
                 </div>
                 <div>
-                  <Label>Consumo Esperado (kg/dia)</Label>
+                  <Label><LocalizedText source={"Consumo Esperado (kg/dia)"} /></Label>
                   <Input type="number" inputMode="decimal" step="any" value={consumoEsperado} onChange={e => { setEsperadoManual(true); setConsumoEsperado(e.target.value); }} disabled={readOnly} />
                 </div>
               </div>
 
               <div>
-                <Label>Consumo Real (kg/dia)</Label>
+                <Label><LocalizedText source={"Consumo Real (kg/dia)"} /></Label>
                 <Input type="number" inputMode="decimal" step="any" value={consumoReal} onChange={e => setConsumoReal(e.target.value)} disabled={readOnly} />
               </div>
 
               {/* Resumo calculado */}
               <div className="rounded-md border p-2.5 bg-muted/40 grid grid-cols-2 gap-2 text-xs">
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Peso vivo total</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground"><LocalizedText source={"Peso vivo total"} /></div>
                   <div className="font-semibold text-foreground">{pesoVivoTotal > 0 ? `${fmt(pesoVivoTotal, 0)} kg` : "—"}</div>
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo esperado (lote)</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground"><LocalizedText source={"Consumo esperado (lote)"} /></div>
                   <div className="font-semibold text-foreground">{Number(consumoEsperado) > 0 ? `${fmt(Number(consumoEsperado), 1)} kg/dia` : "—"}</div>
                   {Number(consumoEsperado) > 0 && Number(qtdAnimais) > 0 && (
                     <div className="text-[10px] text-muted-foreground">{fmtPorCabeca(Number(consumoEsperado) / Number(qtdAnimais))}</div>
                   )}
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Consumo real (lote)</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground"><LocalizedText source={"Consumo real (lote)"} /></div>
                   <div className="font-semibold text-foreground">{Number(consumoReal) > 0 ? `${fmt(Number(consumoReal), 1)} kg/dia` : "—"}</div>
                   {Number(consumoReal) > 0 && Number(qtdAnimais) > 0 && (
                     <div className="text-[10px] text-muted-foreground">{fmtPorCabeca(Number(consumoReal) / Number(qtdAnimais))}</div>
@@ -607,7 +608,7 @@ export default function PastoVisitaModal({
                 </div>
 
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Índice / Meta</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground"><LocalizedText source={"Índice / Meta"} /></div>
                   <div className="font-semibold text-foreground">{indiceMeta > 0 ? `${fmt(indiceMeta, 1)}%` : "—"}</div>
                 </div>
               </div>
@@ -616,12 +617,12 @@ export default function PastoVisitaModal({
 
 
           <div>
-            <Label>Observação</Label>
+            <Label><LocalizedText source={"Observação"} /></Label>
             <Textarea value={obs} onChange={e => setObs(e.target.value)} rows={2} disabled={readOnly} />
           </div>
 
           <div className="pt-2 border-t space-y-4">
-            <div className="text-sm font-semibold text-foreground">Avaliações (1–5) — múltiplas amostras</div>
+            <div className="text-sm font-semibold text-foreground"><LocalizedText source={"Avaliações (1–5) — múltiplas amostras"} /></div>
             <ScoreSamplesInput
               label="Fezes" samples={samples.fezes}
               onAdd={n => addSample("fezes", n)} onRemove={i => removeSample("fezes", i)} disabled={readOnly}
@@ -639,7 +640,7 @@ export default function PastoVisitaModal({
           <div className="pt-2 border-t">
             <PhotoGrid visitaId={visitaId} visitaPastoId={pastoIdLocal} disabled={readOnly} />
             {!pastoIdLocal && (
-              <p className="text-[11px] text-muted-foreground mt-1">Informe a letra do pasto para habilitar o envio de fotos.</p>
+              <p className="text-[11px] text-muted-foreground mt-1"><LocalizedText source={"Informe a letra do pasto para habilitar o envio de fotos."} /></p>
             )}
           </div>
         </div>
@@ -647,8 +648,7 @@ export default function PastoVisitaModal({
           <Button variant="outline" onClick={() => onOpenChange(false)}>{readOnly ? "Fechar" : "Fechar"}</Button>
           {!readOnly && (
             <Button onClick={handleSave} disabled={saving || !letra.trim()} className="bg-primary hover:bg-primary/90">
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-            </Button>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
           )}
         </DialogFooter>
       </DialogContent>

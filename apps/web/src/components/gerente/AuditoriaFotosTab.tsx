@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -242,33 +243,33 @@ export default function AuditoriaFotosTab({ fazendaId, retiros, mes, ano }: Prop
         <Select value={tipo} onValueChange={(v) => setTipo(v as any)}>
           <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="todas">Todas</SelectItem>
-            <SelectItem value="auditoria">Auditoria</SelectItem>
-            <SelectItem value="cocho">Cocho Cheio</SelectItem>
-            <SelectItem value="observacao">Observação</SelectItem>
-            <SelectItem value="mortalidade">Mortalidade</SelectItem>
+            <SelectItem value="todas"><LocalizedText source={"Todas"} /></SelectItem>
+            <SelectItem value="auditoria"><LocalizedText source={"Auditoria"} /></SelectItem>
+            <SelectItem value="cocho"><LocalizedText source={"Cocho Cheio"} /></SelectItem>
+            <SelectItem value="observacao"><LocalizedText source={"Observação"} /></SelectItem>
+            <SelectItem value="mortalidade"><LocalizedText source={"Mortalidade"} /></SelectItem>
           </SelectContent>
         </Select>
         <Select value={retiroId} onValueChange={setRetiroId}>
           <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">Todos retiros</SelectItem>
+            <SelectItem value="todos"><LocalizedText source={"Todos retiros"} /></SelectItem>
             {retiros.map((r) => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
           <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="hoje">Hoje</SelectItem>
-            <SelectItem value="7d">7 dias</SelectItem>
-            <SelectItem value="30d">30 dias</SelectItem>
-            <SelectItem value="mes">Mês do painel</SelectItem>
+            <SelectItem value="hoje"><LocalizedText source={"Hoje"} /></SelectItem>
+            <SelectItem value="7d"><LocalizedText source={"7 dias"} /></SelectItem>
+            <SelectItem value="30d"><LocalizedText source={"30 dias"} /></SelectItem>
+            <SelectItem value="mes"><LocalizedText source={"Mês do painel"} /></SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {!loading && itens.length === 0 && (
-        <p className="text-center text-muted-foreground text-sm py-10">Nenhuma foto neste período.</p>
+        <p className="text-center text-muted-foreground text-sm py-10"><LocalizedText source={"Nenhuma foto neste período."} /></p>
       )}
 
       {grupos.map((g) => (
@@ -359,18 +360,18 @@ function FotoViewer({ item, pasto, retiro, onClose, onPrev, onNext }: {
           <p className="text-sm font-semibold">{info.label} · {pasto}</p>
           <p className="text-muted-foreground">{retiro} · {item.capataz} · {hora(item.data)}</p>
           {(item.tipo === "auditoria" || item.tipo === "cocho") && (
-            <p>Sacos: {item.sacos ?? "—"} · Consumo: {item.consumo != null ? `${Math.round(item.consumo)} g/cab/dia` : "—"}</p>
+            <p><LocalizedText source={"Sacos:"} />{" "}{item.sacos ?? "—"} <LocalizedText source={"· Consumo:"} />{" "}{item.consumo != null ? `${Math.round(item.consumo)} g/cab/dia` : "—"}</p>
           )}
-          {(item.tipo === "auditoria" || item.tipo === "cocho") && item.texto && <p>Motivo (manual): {item.texto}</p>}
+          {(item.tipo === "auditoria" || item.tipo === "cocho") && item.texto && <p><LocalizedText source={"Motivo (manual):"} />{" "}{item.texto}</p>}
           {item.tipo === "observacao" && item.texto && <p>{item.texto}</p>}
-          {item.tipo === "mortalidade" && item.texto && <p>Causa: {item.texto}</p>}
+          {item.tipo === "mortalidade" && item.texto && <p><LocalizedText source={"Causa:"} />{" "}{item.texto}</p>}
         </div>
         <Button size="icon" variant="ghost" onClick={onClose} aria-label="Fechar"><X className="w-5 h-5" /></Button>
       </div>
       <div className="flex-1 relative overflow-hidden">
         {!urls && !erro && <div className="absolute inset-0 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-background" /></div>}
         {erro && <p className="absolute inset-0 flex items-center justify-center text-background text-sm p-6 text-center">{erro}</p>}
-        {urls && urls.length === 0 && <p className="absolute inset-0 flex items-center justify-center text-background text-sm">Foto indisponível.</p>}
+        {urls && urls.length === 0 && <p className="absolute inset-0 flex items-center justify-center text-background text-sm"><LocalizedText source={"Foto indisponível."} /></p>}
         {urls && urls[idx] && <ZoomImage key={`${item.key}-${idx}`} src={urls[idx]} />}
         {onPrev && <button onClick={onPrev} aria-label="Anterior" className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-card/80 flex items-center justify-center"><ChevronLeft className="w-6 h-6" /></button>}
         {onNext && <button onClick={onNext} aria-label="Próxima" className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-card/80 flex items-center justify-center"><ChevronRight className="w-6 h-6" /></button>}

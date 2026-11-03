@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import {
   CartesianGrid,
   Customized,
@@ -122,8 +123,7 @@ export default function ConsumoPastoChart({ pontos }: { pontos: ConsumoPastoPont
         className="text-[11px] uppercase tracking-wide font-bold"
         style={{ color: VERDE, fontFamily: "'Manrope', sans-serif" }}
       >
-        Consumo por Pasto — Real x Esperado
-      </div>
+        <LocalizedText source={"Consumo por Pasto — Real x Esperado"} /></div>
       <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={dados} margin={{ top: 22, right: 32, left: -8, bottom: 32 }}>
@@ -164,8 +164,7 @@ export default function ConsumoPastoChart({ pontos }: { pontos: ConsumoPastoPont
       </div>
 
       <p className="text-[10px]" style={{ color: "#767066" }}>
-        Valores em g/cab/dia, por pasto avaliado na ordem de lançamento.
-      </p>
+        <LocalizedText source={"Valores em g/cab/dia, por pasto avaliado na ordem de lançamento."} /></p>
     </div>
   );
 }

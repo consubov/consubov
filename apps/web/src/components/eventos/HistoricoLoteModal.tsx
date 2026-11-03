@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -115,7 +116,7 @@ export default function HistoricoLoteModal({ open, onClose, pastoId, pastoNome }
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
         <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Histórico do Lote</DialogTitle>
+            <DialogTitle><LocalizedText source={"Histórico do Lote"} /></DialogTitle>
             <DialogDescription>{pastoNome}</DialogDescription>
           </DialogHeader>
 
@@ -124,7 +125,7 @@ export default function HistoricoLoteModal({ open, onClose, pastoId, pastoNome }
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : eventos.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">Nenhum evento registrado</p>
+            <p className="text-sm text-muted-foreground text-center py-8"><LocalizedText source={"Nenhum evento registrado"} /></p>
           ) : (
             <div className="space-y-2 py-2">
               {eventos.map((ev) => {
@@ -151,8 +152,7 @@ export default function HistoricoLoteModal({ open, onClose, pastoId, pastoNome }
                         className="flex items-center gap-1 text-green-600 text-xs shrink-0 hover:underline"
                       >
                         <Camera className="w-4 h-4" />
-                        Compartilhar
-                      </button>
+                        <LocalizedText source={"Compartilhar"} /></button>
                     )}
                   </div>
                 );

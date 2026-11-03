@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -155,16 +156,15 @@ export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props
             <div className="flex items-start gap-3 p-3 rounded-md bg-accent/50 border border-accent">
               <AlertTriangle className="w-5 h-5 text-secondary mt-0.5 shrink-0" />
               <p className="text-sm text-foreground">
-                Tem certeza que deseja criar um novo administrador com <strong>acesso total</strong> ao sistema?
-              </p>
+                <LocalizedText source={"Tem certeza que deseja criar um novo administrador com"} />{" "}<strong><LocalizedText source={"acesso total"} /></strong> <LocalizedText source={"ao sistema?"} /></p>
             </div>
             <div className="text-sm space-y-1">
-              <p><strong>Nome:</strong> {nome}</p>
+              <p><strong><LocalizedText source={"Nome:"} /></strong> {nome}</p>
               <p><strong>E-mail:</strong> {email}</p>
-              {telefone && <p><strong>Telefone:</strong> {telefone}</p>}
+              {telefone && <p><strong><LocalizedText source={"Telefone:"} /></strong> {telefone}</p>}
             </div>
             <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setShowConfirm(false)} disabled={loading}>Voltar</Button>
+              <Button variant="outline" onClick={() => setShowConfirm(false)} disabled={loading}><LocalizedText source={"Voltar"} /></Button>
               <Button onClick={handleConfirm} disabled={loading} className="bg-primary text-primary-foreground">
                 {loading ? "Criando..." : "Confirmar"}
               </Button>
@@ -173,7 +173,7 @@ export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props
         ) : (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="admin-nome">Nome completo *</Label>
+              <Label htmlFor="admin-nome"><LocalizedText source={"Nome completo *"} /></Label>
               <Input id="admin-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do administrador" />
             </div>
             <div className="space-y-2">
@@ -181,19 +181,19 @@ export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props
               <Input id="admin-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@exemplo.com" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="admin-telefone">Telefone (WhatsApp)</Label>
+              <Label htmlFor="admin-telefone"><LocalizedText source={"Telefone (WhatsApp)"} /></Label>
               <Input id="admin-telefone" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(00) 00000-0000" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="admin-senha">Senha *</Label>
+              <Label htmlFor="admin-senha"><LocalizedText source={"Senha *"} /></Label>
               <PasswordInput id="admin-senha" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="admin-confirmar">Confirmar senha *</Label>
+              <Label htmlFor="admin-confirmar"><LocalizedText source={"Confirmar senha *"} /></Label>
               <PasswordInput id="admin-confirmar" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} placeholder="Repita a senha" />
             </div>
             <DialogFooter>
-              <Button onClick={handleSubmit} className="w-full bg-primary text-primary-foreground">Criar Administrador</Button>
+              <Button onClick={handleSubmit} className="w-full bg-primary text-primary-foreground"><LocalizedText source={"Criar Administrador"} /></Button>
             </DialogFooter>
           </div>
         )}

@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { withReportExportDeadline, downloadGeneratedPdf } from "@/lib/reportPdfExport";
 import { useEffect, useState } from "react";
 import { useMaOffline } from "@/components/maisarrobas/ModoOfflinePanel";
@@ -151,8 +152,7 @@ export default function PesadorPesagemResumoPage() {
   if (loading || !cfg) {
     return (
       <div className="flex items-center justify-center py-16 text-muted-foreground">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando...
-      </div>
+        <Loader2 className="w-5 h-5 animate-spin mr-2" /> <LocalizedText source={"Carregando..."} /></div>
     );
   }
 
@@ -323,7 +323,7 @@ export default function PesadorPesagemResumoPage() {
   return (
     <div className="space-y-4 pb-40">
       <div className="rounded-lg border bg-card p-4">
-        <div className="text-xs uppercase text-muted-foreground">Pesagem finalizada</div>
+        <div className="text-xs uppercase text-muted-foreground"><LocalizedText source={"Pesagem finalizada"} /></div>
         <div className="text-lg font-semibold">{clienteNome}</div>
         <div className="text-xs text-muted-foreground">
           {categoriaLabel} • {cabecalhoPreco}
@@ -339,68 +339,65 @@ export default function PesadorPesagemResumoPage() {
       {semValores ? (
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-lg border bg-card p-3 text-center">
-            <div className="text-xs text-muted-foreground">Animais</div>
+            <div className="text-xs text-muted-foreground"><LocalizedText source={"Animais"} /></div>
             <div className="text-xl font-bold">{tot.totalAnimais}</div>
           </div>
           <div className="rounded-lg border bg-card p-3 text-center">
-            <div className="text-xs text-muted-foreground">Peso médio</div>
+            <div className="text-xs text-muted-foreground"><LocalizedText source={"Peso médio"} /></div>
             <div className="text-xl font-bold">{tot.mediaPeso.toString().replace(".", ",")} kg</div>
           </div>
           <div className="rounded-lg border bg-card p-3 text-center col-span-2">
-            <div className="text-xs text-muted-foreground">Peso total</div>
+            <div className="text-xs text-muted-foreground"><LocalizedText source={"Peso total"} /></div>
             <div className="text-xl font-bold">{tot.totalPeso.toString().replace(".", ",")} kg</div>
           </div>
           {arrobasEstimadas != null && (
             <div className="rounded-lg border bg-muted/60 p-3 text-center col-span-2">
               <div className="text-xs text-muted-foreground">
-                @ estimadas ({rendimentoRotina}% de rendimento)
-              </div>
+                <LocalizedText source={"@ estimadas ("} />{rendimentoRotina}<LocalizedText source={"% de rendimento)"} /></div>
               <div className="text-xl font-bold">
                 {arrobasEstimadas.toString().replace(".", ",")}
               </div>
               <div className="text-[11px] text-muted-foreground mt-1 italic">
-                Valor informativo, sem finalidade comercial.
-              </div>
+                <LocalizedText source={"Valor informativo, sem finalidade comercial."} /></div>
             </div>
           )}
           {mediaArrobaEst != null && (
             <div className="rounded-lg border bg-card p-3 text-center col-span-2">
-              <div className="text-xs text-muted-foreground">Média de @ por animal (estimada)</div>
+              <div className="text-xs text-muted-foreground"><LocalizedText source={"Média de @ por animal (estimada)"} /></div>
               <div className="text-xl font-bold">{mediaArrobaEst.toString().replace(".", ",")}</div>
               <div className="text-[11px] text-muted-foreground mt-1 italic">
-                Valor informativo, sem finalidade comercial.
-              </div>
+                <LocalizedText source={"Valor informativo, sem finalidade comercial."} /></div>
             </div>
           )}
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-lg border bg-card p-3 text-center">
-            <div className="text-xs text-muted-foreground">Animais</div>
+            <div className="text-xs text-muted-foreground"><LocalizedText source={"Animais"} /></div>
             <div className="text-xl font-bold">{tot.totalAnimais}</div>
           </div>
           <div className="rounded-lg border bg-card p-3 text-center">
-            <div className="text-xs text-muted-foreground">Peso médio</div>
+            <div className="text-xs text-muted-foreground"><LocalizedText source={"Peso médio"} /></div>
             <div className="text-xl font-bold">{tot.mediaPeso.toString().replace(".", ",")} kg</div>
           </div>
           <div className="rounded-lg border bg-card p-3 text-center">
-            <div className="text-xs text-muted-foreground">Peso total</div>
+            <div className="text-xs text-muted-foreground"><LocalizedText source={"Peso total"} /></div>
             <div className="text-xl font-bold">{tot.totalPeso.toString().replace(".", ",")} kg</div>
           </div>
           {showArroba && (
             <div className="rounded-lg border bg-card p-3 text-center">
-              <div className="text-xs text-muted-foreground">@ pagáveis</div>
+              <div className="text-xs text-muted-foreground"><LocalizedText source={"@ pagáveis"} /></div>
               <div className="text-xl font-bold">{tot.totalArroba.toString().replace(".", ",")}</div>
             </div>
           )}
           <div className="rounded-lg border bg-card p-3 text-center">
-            <div className="text-xs text-muted-foreground">Média de @ por animal</div>
+            <div className="text-xs text-muted-foreground"><LocalizedText source={"Média de @ por animal"} /></div>
             <div className="text-xl font-bold">
               {tot.mediaArrobaPorAnimal.toString().replace(".", ",")}
             </div>
           </div>
           <div className="rounded-lg border bg-primary/10 border-primary/30 p-3 text-center col-span-2">
-            <div className="text-xs text-muted-foreground">Total a pagar</div>
+            <div className="text-xs text-muted-foreground"><LocalizedText source={"Total a pagar"} /></div>
             <div className="text-2xl font-bold text-primary">{brl(valorTotalPago ?? tot.totalValor)}</div>
           </div>
         </div>
@@ -408,12 +405,12 @@ export default function PesadorPesagemResumoPage() {
 
       {breakdownPorCategoria.length > 0 && (
         <div className="rounded-lg border bg-card p-3">
-          <div className="text-xs text-muted-foreground mb-2">Por categoria</div>
+          <div className="text-xs text-muted-foreground mb-2"><LocalizedText source={"Por categoria"} /></div>
           <div className="text-xs space-y-1">
             {breakdownPorCategoria.map((b) => (
               <div key={b.label} className="flex justify-between border-b border-border/40 py-1">
                 <span>{b.label}</span>
-                <span>{b.count} animais — {brl(b.valor)}</span>
+                <span>{b.count} <LocalizedText source={"animais —"} />{" "}{brl(b.valor)}</span>
               </div>
             ))}
           </div>
@@ -422,7 +419,7 @@ export default function PesadorPesagemResumoPage() {
 
 
       <div className="rounded-lg border bg-card p-3">
-        <div className="text-xs text-muted-foreground mb-2">Detalhamento</div>
+        <div className="text-xs text-muted-foreground mb-2"><LocalizedText source={"Detalhamento"} /></div>
         <div className="max-h-72 overflow-y-auto text-xs space-y-1">
           {animais.map((a) => (
             <div key={a.ordem} className="flex justify-between border-b border-border/40 py-1">
@@ -435,13 +432,13 @@ export default function PesadorPesagemResumoPage() {
 
       {leiturasBalancao.length > 0 && (
         <div className="rounded-lg border bg-card p-3">
-          <div className="text-xs text-muted-foreground mb-2">Leituras em Balanção</div>
+          <div className="text-xs text-muted-foreground mb-2"><LocalizedText source={"Leituras em Balanção"} /></div>
           <div className="max-h-56 overflow-y-auto text-xs">
             <div className="grid grid-cols-4 gap-2 font-semibold border-b py-1">
-              <span>Ordem</span>
-              <span className="text-right">Peso total</span>
-              <span className="text-right">Qtd</span>
-              <span className="text-right">Peso indiv.</span>
+              <span><LocalizedText source={"Ordem"} /></span>
+              <span className="text-right"><LocalizedText source={"Peso total"} /></span>
+              <span className="text-right"><LocalizedText source={"Qtd"} /></span>
+              <span className="text-right"><LocalizedText source={"Peso indiv."} /></span>
             </div>
             {leiturasBalancao.map((l) => (
               <div key={l.ordem} className="grid grid-cols-4 gap-2 border-b border-border/40 py-1">
@@ -463,13 +460,11 @@ export default function PesadorPesagemResumoPage() {
               className="h-11"
               onClick={() => void handleDownload()}
             >
-              <FileDown className="w-4 h-4 mr-2" /> Baixar PDF
-            </Button>
+              <FileDown className="w-4 h-4 mr-2" /> <LocalizedText source={"Baixar PDF"} /></Button>
             <Button variant="outline" className="h-11" onClick={handleShare}>
-              <Share2 className="w-4 h-4 mr-2" /> Compartilhar PDF
-            </Button>
+              <Share2 className="w-4 h-4 mr-2" /> <LocalizedText source={"Compartilhar PDF"} /></Button>
             <Button className="w-full h-11 col-span-2" onClick={() => navigate("/pesador/clientes")}>
-              Concluir <ArrowRight className="w-4 h-4 ml-2" />
+              <LocalizedText source={"Concluir"} />{" "}<ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
         ) : (
@@ -479,7 +474,7 @@ export default function PesadorPesagemResumoPage() {
             disabled={generating || isMaOffline()}
           >
             {generating ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Gerando PDF...</>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> <LocalizedText source={"Gerando PDF..."} /></>
             ) : (
               <>{isMaOffline() ? "PDF disponível após sincronizar" : "Concluir e gerar PDF"} <ArrowRight className="w-4 h-4 ml-2" /></>
             )}

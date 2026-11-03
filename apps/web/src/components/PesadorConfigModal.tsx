@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -93,25 +94,23 @@ export default function PesadorConfigModal({ open, onOpenChange }: Props) {
         onOpenAutoFocus={() => { dialogOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
         onCloseAutoFocus={(event) => { event.preventDefault(); dialogOpener.current?.focus(); }}>
         <DialogHeader>
-          <DialogTitle>Configurações</DialogTitle>
-          <DialogDescription className="sr-only">A logo aparecerá no canto direito dos relatórios em PDF.</DialogDescription>
+          <DialogTitle><LocalizedText source={"Configurações"} /></DialogTitle>
+          <DialogDescription className="sr-only"><LocalizedText source={"A logo aparecerá no canto direito dos relatórios em PDF."} /></DialogDescription>
         </DialogHeader>
         {loading ? (
           <div className="flex items-center justify-center py-8 text-muted-foreground">
-            <Loader2 className="w-4 h-4 animate-spin mr-2" /> Carregando...
-          </div>
+            <Loader2 className="w-4 h-4 animate-spin mr-2" /> <LocalizedText source={"Carregando..."} /></div>
         ) : (
           <div className="space-y-4">
             <div>
-              <div className="text-sm font-medium mb-2">Logo do Pesador</div>
+              <div className="text-sm font-medium mb-2"><LocalizedText source={"Logo do Pesador"} /></div>
               <div className="text-xs text-muted-foreground mb-3">
-                A logo aparecerá no canto direito dos relatórios em PDF.
-              </div>
+                <LocalizedText source={"A logo aparecerá no canto direito dos relatórios em PDF."} /></div>
               <div className="rounded-lg border bg-muted/30 p-4 flex items-center justify-center min-h-[100px]">
                 {logoUrl ? (
                   <img src={logoUrl} alt="Logo" className="max-h-24 max-w-full object-contain" />
                 ) : (
-                  <span className="text-xs text-muted-foreground">Nenhuma logo cadastrada</span>
+                  <span className="text-xs text-muted-foreground"><LocalizedText source={"Nenhuma logo cadastrada"} /></span>
                 )}
               </div>
               <div className="flex gap-2 mt-3">
@@ -146,7 +145,7 @@ export default function PesadorConfigModal({ open, onOpenChange }: Props) {
           </div>
         )}
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Fechar</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}><LocalizedText source={"Fechar"} /></Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

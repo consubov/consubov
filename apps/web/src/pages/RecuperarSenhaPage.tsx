@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Loader2, Mail } from "lucide-react";
@@ -38,26 +39,23 @@ export default function RecuperarSenhaPage() {
       <Card className="w-full max-w-md shadow-2xl border-0">
         <CardHeader className="space-y-2">
           <h1 className="flex items-center gap-2 text-xl font-semibold leading-none tracking-tight">
-            <Mail className="h-5 w-5" /> Recuperar senha
-          </h1>
+            <Mail className="h-5 w-5" /> <LocalizedText source={"Recuperar senha"} /></h1>
           <p className="text-sm text-muted-foreground">
-            Informe seu e-mail. Se existir uma conta válida, você receberá as instruções de redefinição.
-          </p>
+            <LocalizedText source={"Informe seu e-mail. Se existir uma conta válida, você receberá as instruções de redefinição."} /></p>
         </CardHeader>
         <CardContent className="space-y-5">
           {submitted ? (
             <div className="space-y-4" role="status">
               <p className="text-sm text-foreground">
-                Solicitação enviada. Verifique sua caixa de entrada e o spam.
-              </p>
+                <LocalizedText source={"Solicitação enviada. Verifique sua caixa de entrada e o spam."} /></p>
               <Button asChild className="w-full">
-                <Link to="/login">Voltar ao login</Link>
+                <Link to="/login"><LocalizedText source={"Voltar ao login"} /></Link>
               </Button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="recovery-email">E-mail</Label>
+                <Label htmlFor="recovery-email"><LocalizedText source={"E-mail"} /></Label>
                 <Input
                   id="recovery-email"
                   type="email"
@@ -79,8 +77,7 @@ export default function RecuperarSenhaPage() {
             to="/login"
             className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
           >
-            <ArrowLeft className="h-4 w-4" /> Voltar
-          </Link>
+            <ArrowLeft className="h-4 w-4" /> <LocalizedText source={"Voltar"} /></Link>
         </CardContent>
       </Card>
     </main>

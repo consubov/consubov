@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMaOffline } from "@/components/maisarrobas/ModoOfflinePanel";
 import { useCriticalOperation } from "@/lib/criticalOperations";
@@ -494,8 +495,7 @@ export default function PesadorPesagemExecPage() {
   if (loading || !pesagem) {
     return (
       <div className="flex items-center justify-center py-16 text-muted-foreground">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando...
-      </div>
+        <Loader2 className="w-5 h-5 animate-spin mr-2" /> <LocalizedText source={"Carregando..."} /></div>
     );
   }
 
@@ -535,47 +535,45 @@ export default function PesadorPesagemExecPage() {
       <div className="space-y-4 pb-28">
         <div className="rounded-lg border bg-card p-4 space-y-3 text-center">
           <Check className="w-8 h-8 mx-auto text-primary" />
-          <div className="font-semibold">Pesagem finalizada</div>
-          <div className="text-sm text-muted-foreground">{clienteNome} • {pesos.length} animais</div>
+          <div className="font-semibold"><LocalizedText source={"Pesagem finalizada"} /></div>
+          <div className="text-sm text-muted-foreground">{clienteNome} • {pesos.length} <LocalizedText source={"animais"} /></div>
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-lg bg-muted">
               <p className="text-xl font-bold text-foreground">{fmtBR(totLocal.mediaPeso)} kg</p>
-              <p className="text-xs text-muted-foreground">peso médio</p>
+              <p className="text-xs text-muted-foreground"><LocalizedText source={"peso médio"} /></p>
             </div>
             <div className="p-3 rounded-lg bg-muted">
               <p className="text-xl font-bold text-foreground">{fmtBR(mediaArrobaLocal)} @</p>
-              <p className="text-xs text-muted-foreground">média de @ por animal</p>
+              <p className="text-xs text-muted-foreground"><LocalizedText source={"média de @ por animal"} /></p>
             </div>
             {!semValores && (
               <div className="p-3 rounded-lg bg-muted col-span-2">
                 <p className="text-xl font-bold text-foreground">R$ {fmtBR(totLocal.totalValor)}</p>
-                <p className="text-xs text-muted-foreground">valor a pagar</p>
+                <p className="text-xs text-muted-foreground"><LocalizedText source={"valor a pagar"} /></p>
               </div>
             )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-lg bg-muted">
               <p className="text-2xl font-bold text-primary">{pesos.length - pesosPend}</p>
-              <p className="text-xs text-muted-foreground">confirmados no servidor</p>
+              <p className="text-xs text-muted-foreground"><LocalizedText source={"confirmados no servidor"} /></p>
             </div>
             <div className="p-3 rounded-lg bg-muted">
               <p className="text-2xl font-bold text-primary flex items-center justify-center gap-1">
                 {pesosPend > 0 && <CloudOff className="w-5 h-5" />}{pesosPend}
               </p>
-              <p className="text-xs text-muted-foreground">pendentes de envio</p>
+              <p className="text-xs text-muted-foreground"><LocalizedText source={"pendentes de envio"} /></p>
             </div>
           </div>
           {pend > 0 ? (
             <p className="text-xs text-muted-foreground">
-              Os dados estão salvos no aparelho e serão enviados automaticamente quando a internet voltar.
-              O PDF fica disponível depois que tudo for sincronizado.
-            </p>
+              <LocalizedText source={"Os dados estão salvos no aparelho e serão enviados automaticamente quando a internet voltar. O PDF fica disponível depois que tudo for sincronizado."} /></p>
           ) : (
-            <p className="text-xs text-muted-foreground">Tudo sincronizado. O PDF já pode ser gerado.</p>
+            <p className="text-xs text-muted-foreground"><LocalizedText source={"Tudo sincronizado. O PDF já pode ser gerado."} /></p>
           )}
         </div>
         <div className="fixed left-0 right-0 bottom-16 px-4 pb-3 pt-3 bg-background/95 backdrop-blur border-t flex gap-2">
-          <Button variant="outline" onClick={() => navigate("/pesador/clientes")}>Voltar</Button>
+          <Button variant="outline" onClick={() => navigate("/pesador/clientes")}><LocalizedText source={"Voltar"} /></Button>
           {!isMaOffline() && (<Button className="flex-1" onClick={() => void handleIrParaPdf()} disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
             {pend > 0 ? `Gerar PDF (${pend} pendente${pend > 1 ? "s" : ""})` : "Gerar PDF"}
@@ -588,7 +586,7 @@ export default function PesadorPesagemExecPage() {
   return (
     <div className="space-y-4 pb-28">
       <div className="rounded-lg border bg-card p-3">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">Produtor</div>
+        <div className="text-xs uppercase tracking-wide text-muted-foreground"><LocalizedText source={"Produtor"} /></div>
         <div className="font-semibold">{clienteNome}</div>
         <div className="text-xs text-muted-foreground mt-1">
           {pesagem.categoria} • {tipoLabel}
@@ -602,21 +600,20 @@ export default function PesadorPesagemExecPage() {
       <div className="grid grid-cols-2 gap-3 text-center">
         <div className="p-3 rounded-lg bg-muted">
           <p className="text-2xl font-bold text-primary">{pesos.length}</p>
-          <p className="text-xs text-muted-foreground">animais pesados</p>
+          <p className="text-xs text-muted-foreground"><LocalizedText source={"animais pesados"} /></p>
         </div>
         <div className="p-3 rounded-lg bg-muted">
           <p className="text-2xl font-bold text-primary">
             {media > 0 ? media.toFixed(1).replace(".", ",") : "—"}
           </p>
-          <p className="text-xs text-muted-foreground">média (kg)</p>
+          <p className="text-xs text-muted-foreground"><LocalizedText source={"média (kg)"} /></p>
         </div>
       </div>
 
       {isBalancao ? (
         <div className="space-y-2">
           <div className="text-sm font-medium">
-            Leitura em Balanção — Peso TOTAL (kg)
-          </div>
+            <LocalizedText source={"Leitura em Balanção — Peso TOTAL (kg)"} /></div>
           <Input
             ref={inputRef}
             type="number"
@@ -640,7 +637,7 @@ export default function PesadorPesagemExecPage() {
               className="h-12 rounded-md border border-input bg-background px-3 text-sm"
             >
               {[2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>{n} animais</option>
+                <option key={n} value={n}>{n} <LocalizedText source={"animais"} /></option>
               ))}
             </select>
             <Button
@@ -655,20 +652,18 @@ export default function PesadorPesagemExecPage() {
               }
             >
               {salvandoLeitura ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Scale className="w-4 h-4 mr-2" />}
-              Próximo ➜
-            </Button>
+              <LocalizedText source={"Próximo ➜"} /></Button>
           </div>
           {current && parseFloat(current.replace(",", ".")) > 0 && (
             <p className="text-xs text-muted-foreground">
-              Peso individual: {(parseFloat(current.replace(",", ".")) / qtdBalancaoAtual).toFixed(1).replace(".", ",")} kg
-              × {qtdBalancaoAtual} animais
-            </p>
+              <LocalizedText source={"Peso individual:"} />{" "}{(parseFloat(current.replace(",", ".")) / qtdBalancaoAtual).toFixed(1).replace(".", ",")} kg
+              × {qtdBalancaoAtual} <LocalizedText source={"animais"} /></p>
           )}
         </div>
       ) : subStep === "categoria" ? (
         <div className="space-y-3">
           <div className="text-sm font-medium">
-            Animal {animalNum} — Categoria ({pendingPeso} kg)
+            Animal {animalNum} <LocalizedText source={"— Categoria ("} />{pendingPeso} kg)
           </div>
           <div className="flex flex-wrap gap-2">
             {categoriasLote.map((c) => (
@@ -716,19 +711,17 @@ export default function PesadorPesagemExecPage() {
             disabled={!current || parseFloat(current.replace(",", ".")) <= 0}
           >
             <Scale className="w-4 h-4 mr-2" />
-            Próximo ➜
-          </Button>
+            <LocalizedText source={"Próximo ➜"} /></Button>
         </div>
       )}
 
       {pesos.length > 0 && (
         <div className="rounded-lg border bg-card p-3">
           <div className="text-xs text-muted-foreground mb-2 flex items-center justify-between">
-            <span>Histórico</span>
+            <span><LocalizedText source={"Histórico"} /></span>
             {syncSnap.pendingCount > 0 && (
               <span className="flex items-center gap-1">
-                <CloudOff className="w-3 h-3" /> {syncSnap.pendingCount} aguardando envio
-              </span>
+                <CloudOff className="w-3 h-3" /> {syncSnap.pendingCount} <LocalizedText source={"aguardando envio"} /></span>
             )}
           </div>
           <div className="max-h-40 overflow-y-auto text-xs space-y-1">
@@ -763,15 +756,14 @@ export default function PesadorPesagemExecPage() {
 
       <div className="fixed left-0 right-0 bottom-16 px-4 pb-3 pt-3 bg-background/95 backdrop-blur border-t flex gap-2">
         <Button variant="outline" onClick={() => void handleDesfazer()} disabled={pesos.length === 0 && subStep === "peso"}>
-          <Undo2 className="w-4 h-4 mr-1" /> Desfazer
-        </Button>
+          <Undo2 className="w-4 h-4 mr-1" /> <LocalizedText source={"Desfazer"} /></Button>
         <Button
           className="flex-1"
           onClick={() => void handleFinalizar()}
           disabled={pesos.length === 0 || saving}
         >
           {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-          Finalizar ({pesos.length})
+          <LocalizedText source={"Finalizar ("} />{pesos.length})
         </Button>
       </div>
     </div>

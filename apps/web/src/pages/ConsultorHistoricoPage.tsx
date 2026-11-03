@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -148,13 +149,11 @@ export default function ConsultorHistoricoPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
-        <History className="w-5 h-5" /> Histórico de Visitas
-      </h1>
+        <History className="w-5 h-5" /> <LocalizedText source={"Histórico de Visitas"} /></h1>
 
       {visitas.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">
-          Nenhuma visita registrada ainda.
-        </Card>
+          <LocalizedText source={"Nenhuma visita registrada ainda."} /></Card>
       ) : (
         <div className="space-y-2">
           {visitas.map(v => (
@@ -178,13 +177,11 @@ export default function ConsultorHistoricoPage() {
               <div className="flex gap-2">
                 {v.status === "finalizada" && v.pdf_url && (
                   <Button size="sm" variant="outline" className="flex-1 gap-1.5" onClick={() => setPdfVisualizar({ url: v.pdf_url!, nome: v.fazendas_consultor?.nome_fazenda || "visita" })}>
-                    <Download className="w-4 h-4" /> Ver / Baixar PDF
-                  </Button>
+                    <Download className="w-4 h-4" /> <LocalizedText source={"Ver / Baixar PDF"} /></Button>
                 )}
                 {v._pendingLocal && (
                   <Badge variant="outline" className="shrink-0">
-                    Sincronização pendente
-                  </Badge>
+                    <LocalizedText source={"Sincronização pendente"} /></Badge>
                 )}
                 <Button
                   size="sm"
@@ -192,8 +189,7 @@ export default function ConsultorHistoricoPage() {
                   onClick={() => setToDelete(v)}
                   className="text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5"
                 >
-                  <Trash2 className="w-4 h-4" /> Excluir
-                </Button>
+                  <Trash2 className="w-4 h-4" /> <LocalizedText source={"Excluir"} /></Button>
               </div>
             </Card>
           ))}
@@ -203,20 +199,18 @@ export default function ConsultorHistoricoPage() {
       <AlertDialog open={!!toDelete} onOpenChange={o => !o && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir visita?</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Excluir visita?"} /></AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza? A visita será ocultada do histórico e a exclusão será sincronizada entre este aparelho e o servidor.
-            </AlertDialogDescription>
+              <LocalizedText source={"Tem certeza? A visita será ocultada do histórico e a exclusão será sincronizada entre este aparelho e o servidor."} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <AlertDialogAction
               onClick={e => { e.preventDefault(); handleDelete(); }}
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Excluir
-            </AlertDialogAction>
+              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Excluir"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

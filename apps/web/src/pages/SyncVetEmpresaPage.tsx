@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -91,8 +92,8 @@ export default function SyncVetEmpresaPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-bold">Empresa</h1>
-        <p className="text-sm text-muted-foreground">Dados cadastrais da sua clínica/empresa veterinária</p>
+        <h1 className="text-xl font-bold"><LocalizedText source={"Empresa"} /></h1>
+        <p className="text-sm text-muted-foreground"><LocalizedText source={"Dados cadastrais da sua clínica/empresa veterinária"} /></p>
       </div>
 
       <Card className="p-4 space-y-4">
@@ -111,8 +112,7 @@ export default function SyncVetEmpresaPage() {
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={saving}>
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Salvar
-          </Button>
+            <LocalizedText source={"Salvar"} /></Button>
         </div>
       </Card>
     </div>

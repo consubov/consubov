@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -142,13 +143,13 @@ export default function SanitarioFormModal({ open, onClose, pastoId, pastoNome, 
     <Dialog open={open} onOpenChange={(o) => { if (!o) { onClose(); resetForm(); } }}>
       <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Controle Sanitário</DialogTitle>
-          <DialogDescription>{pastoNome} — {numAnimais} animais</DialogDescription>
+          <DialogTitle><LocalizedText source={"Controle Sanitário"} /></DialogTitle>
+          <DialogDescription>{pastoNome} — {numAnimais} <LocalizedText source={"animais"} /></DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div>
-            <Label>Categoria</Label>
+            <Label><LocalizedText source={"Categoria"} /></Label>
             <Select value={categoria} onValueChange={setCategoria}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -160,47 +161,47 @@ export default function SanitarioFormModal({ open, onClose, pastoId, pastoNome, 
           </div>
 
           <div>
-            <Label>Medicamento *</Label>
+            <Label><LocalizedText source={"Medicamento *"} /></Label>
             <Input value={medicamento} onChange={(e) => setMedicamento(e.target.value)} placeholder="Nome do medicamento" />
           </div>
 
           <div>
-            <Label>Dose *</Label>
+            <Label><LocalizedText source={"Dose *"} /></Label>
             <Input value={dose} onChange={(e) => setDose(e.target.value)} placeholder="Ex: 3ml por animal" />
           </div>
 
           <div className="flex items-center justify-between">
-            <Label>Lote completo?</Label>
+            <Label><LocalizedText source={"Lote completo?"} /></Label>
             <Switch checked={loteCompleto} onCheckedChange={setLoteCompleto} />
           </div>
 
           {!loteCompleto && (
             <div>
-              <Label>Quantidade tratada</Label>
+              <Label><LocalizedText source={"Quantidade tratada"} /></Label>
               <Input type="number" value={qtdTratada} onChange={(e) => setQtdTratada(e.target.value)} min={1} max={numAnimais} />
             </div>
           )}
 
           <div className="flex items-center justify-between">
-            <Label>Carência para abate?</Label>
+            <Label><LocalizedText source={"Carência para abate?"} /></Label>
             <Switch checked={temCarencia} onCheckedChange={setTemCarencia} />
           </div>
 
           {temCarencia && (
             <div>
-              <Label>Dias de carência</Label>
+              <Label><LocalizedText source={"Dias de carência"} /></Label>
               <Input type="number" value={diasCarencia} onChange={(e) => setDiasCarencia(e.target.value)} min={1} />
             </div>
           )}
 
           <div className="text-xs text-muted-foreground space-y-1">
-            <p><strong>Aplicador:</strong> {userName}</p>
-            <p><strong>Data/hora:</strong> {new Date().toLocaleString("pt-BR")}</p>
+            <p><strong><LocalizedText source={"Aplicador:"} /></strong> {userName}</p>
+            <p><strong><LocalizedText source={"Data/hora:"} /></strong> {new Date().toLocaleString("pt-BR")}</p>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => { onClose(); resetForm(); }}>Cancelar</Button>
+          <Button variant="outline" onClick={() => { onClose(); resetForm(); }}><LocalizedText source={"Cancelar"} /></Button>
           <Button onClick={handleSave} disabled={!canSave || saving}>
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {collectOnly ? "Continuar" : "Salvar"}

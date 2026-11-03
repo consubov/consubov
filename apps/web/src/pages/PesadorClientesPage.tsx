@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -190,14 +191,13 @@ export default function PesadorClientesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Clientes</h1>
+          <h1 className="text-2xl font-bold text-foreground"><LocalizedText source={"Clientes"} /></h1>
           <p className="text-sm text-muted-foreground">
-            {clientes.length} cliente{clientes.length === 1 ? "" : "s"} cadastrado{clientes.length === 1 ? "" : "s"}
+            {clientes.length} <LocalizedText source={"cliente"} />{clientes.length === 1 ? "" : "s"} <LocalizedText source={"cadastrado"} />{clientes.length === 1 ? "" : "s"}
           </p>
         </div>
         <Button onClick={openNew} className="gap-1">
-          <Plus className="w-4 h-4" /> Novo Cliente
-        </Button>
+          <Plus className="w-4 h-4" /> <LocalizedText source={"Novo Cliente"} /></Button>
       </div>
 
       <div className="relative">
@@ -212,8 +212,7 @@ export default function PesadorClientesPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando...
-        </div>
+          <Loader2 className="w-5 h-5 animate-spin mr-2" /> <LocalizedText source={"Carregando..."} /></div>
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
           <p className="text-sm text-muted-foreground">
@@ -260,7 +259,7 @@ export default function PesadorClientesPage() {
                   className="gap-1"
                 >
                   <Scale className="w-4 h-4" />
-                  <span className="hidden sm:inline">Iniciar Pesagem</span>
+                  <span className="hidden sm:inline"><LocalizedText source={"Iniciar Pesagem"} /></span>
                 </Button>
               </div>
             </div>
@@ -275,7 +274,7 @@ export default function PesadorClientesPage() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label htmlFor="nome">Nome do produtor *</Label>
+              <Label htmlFor="nome"><LocalizedText source={"Nome do produtor *"} /></Label>
               <Input
                 id="nome"
                 value={form.nome}
@@ -284,7 +283,7 @@ export default function PesadorClientesPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="nome_fazenda">Nome da fazenda</Label>
+              <Label htmlFor="nome_fazenda"><LocalizedText source={"Nome da fazenda"} /></Label>
               <Input
                 id="nome_fazenda"
                 value={form.nome_fazenda}
@@ -293,7 +292,7 @@ export default function PesadorClientesPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="cidade">Cidade</Label>
+              <Label htmlFor="cidade"><LocalizedText source={"Cidade"} /></Label>
               <Input
                 id="cidade"
                 value={form.cidade}
@@ -302,7 +301,7 @@ export default function PesadorClientesPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="telefone">Telefone</Label>
+              <Label htmlFor="telefone"><LocalizedText source={"Telefone"} /></Label>
               <Input
                 id="telefone"
                 value={form.telefone}
@@ -314,8 +313,7 @@ export default function PesadorClientesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setModalOpen(false)} disabled={saving}>
-              Cancelar
-            </Button>
+              <LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
             </Button>
@@ -326,11 +324,11 @@ export default function PesadorClientesPage() {
       <AlertDialog open={!!toDelete} onOpenChange={(o) => { if (!o && !deleting) setToDelete(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Apagar {toDelete?.nome}?</AlertDialogTitle>
-            <AlertDialogDescription>Essa ação não pode ser desfeita.</AlertDialogDescription>
+            <AlertDialogTitle><LocalizedText source={"Apagar"} />{" "}{toDelete?.nome}?</AlertDialogTitle>
+            <AlertDialogDescription><LocalizedText source={"Essa ação não pode ser desfeita."} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => { e.preventDefault(); void handleDelete(); }}
               disabled={deleting}

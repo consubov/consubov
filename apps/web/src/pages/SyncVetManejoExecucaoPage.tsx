@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { downloadGeneratedPdf, withReportExportDeadline } from "@/lib/reportPdfExport";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -255,14 +256,14 @@ export default function SyncVetManejoExecucaoPage() {
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="w-4 h-4" /></Button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-bold truncate">Execução — {tipo.toUpperCase().replace("_", "/")}</h1>
+          <h1 className="text-lg font-bold truncate"><LocalizedText source={"Execução —"} />{" "}{tipo.toUpperCase().replace("_", "/")}</h1>
           <p className="text-xs text-muted-foreground truncate">{fazendaNome} • {loteNome}</p>
         </div>
       </div>
 
       <Card className="p-4 space-y-3">
         <div>
-          <Label className="text-xs">Número do animal</Label>
+          <Label className="text-xs"><LocalizedText source={"Número do animal"} /></Label>
           <Input
             ref={inputRef}
             value={numero}
@@ -279,28 +280,25 @@ export default function SyncVetManejoExecucaoPage() {
         {isDG ? (
           <div className="grid grid-cols-2 gap-2">
             <Button size="lg" onClick={() => confirmar("prenha")} disabled={confirmando || !numero.trim()}>
-              Prenha
-            </Button>
+              <LocalizedText source={"Prenha"} /></Button>
             <Button size="lg" variant="destructive" onClick={() => confirmar("vazia")} disabled={confirmando || !numero.trim()}>
-              Vazia
-            </Button>
+              <LocalizedText source={"Vazia"} /></Button>
           </div>
         ) : (
           <Button size="lg" className="w-full" onClick={() => confirmar("realizado")} disabled={confirmando || !numero.trim()}>
-            <CheckCircle2 className="w-4 h-4 mr-1" /> Confirmar
-          </Button>
+            <CheckCircle2 className="w-4 h-4 mr-1" /> <LocalizedText source={"Confirmar"} /></Button>
         )}
         <div className="text-center text-sm text-muted-foreground pt-1">
           <span className="font-semibold text-foreground">{stats.total}</span> {stats.total === 1 ? "animal diagnosticado" : "animais diagnosticados"}
           {isDG && stats.total > 0 && (
-            <span className="ml-2">• Taxa de prenhez: <span className="font-semibold text-primary">{stats.taxa.toFixed(1)}%</span></span>
+            <span className="ml-2"><LocalizedText source={"• Taxa de prenhez:"} />{" "}<span className="font-semibold text-primary">{stats.taxa.toFixed(1)}%</span></span>
           )}
         </div>
       </Card>
 
       {registros.length > 0 && (
         <Card className="p-3">
-          <div className="text-xs font-semibold mb-2 text-muted-foreground">Últimos registros</div>
+          <div className="text-xs font-semibold mb-2 text-muted-foreground"><LocalizedText source={"Últimos registros"} /></div>
           <div className="max-h-64 overflow-y-auto divide-y">
             {registros.map(r => (
               <div key={r.animal_id} className="flex items-center justify-between py-2 text-sm">
@@ -320,19 +318,17 @@ export default function SyncVetManejoExecucaoPage() {
       )}
 
       <Card className="p-4">
-        <Label className="text-xs">Observações finais</Label>
+        <Label className="text-xs"><LocalizedText source={"Observações finais"} /></Label>
         <Textarea value={obsFinais} onChange={(e) => setObsFinais(e.target.value)} rows={3} />
       </Card>
 
       <div className="grid grid-cols-2 gap-2">
         <Button variant="outline" onClick={() => finalizar(false)} disabled={saving}>
           {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
-          Finalizar
-        </Button>
+          <LocalizedText source={"Finalizar"} /></Button>
         <Button onClick={() => finalizar(true)} disabled={saving}>
           {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <FileDown className="w-4 h-4 mr-1" />}
-          Finalizar e Gerar PDF
-        </Button>
+          <LocalizedText source={"Finalizar e Gerar PDF"} /></Button>
       </div>
     </div>
   );

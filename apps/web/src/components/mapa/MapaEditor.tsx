@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -454,12 +455,12 @@ export default function MapaEditor({
     <div className="space-y-4">
       {!currentImageUrl && (
         <Card>
-          <CardHeader><CardTitle className="text-sm">Upload do Mapa</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm"><LocalizedText source={"Upload do Mapa"} /></CardTitle></CardHeader>
           <CardContent>
             <Label htmlFor="mapa-upload" className="cursor-pointer">
               <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary transition-colors">
                 {uploading ? <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" /> : (
-                  <><Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" /><p className="text-sm text-muted-foreground">Clique para enviar PNG, JPG ou PDF</p></>
+                  <><Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" /><p className="text-sm text-muted-foreground"><LocalizedText source={"Clique para enviar PNG, JPG ou PDF"} /></p></>
                 )}
               </div>
             </Label>
@@ -609,7 +610,7 @@ export default function MapaEditor({
                 {mode === "placeElement" && placingElement && (
                   <text x={imgSize.width / 2} y={20} fontSize={12} textAnchor="middle" fill="hsl(0 0% 40%)"
                     style={{ pointerEvents: "none" }}>
-                    Clique para posicionar {placingElement.emoji}
+                    <LocalizedText source={"Clique para posicionar"} />{" "}{placingElement.emoji}
                   </text>
                 )}
               </svg>
@@ -639,7 +640,7 @@ export default function MapaEditor({
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-muted-foreground">Cor:</span>
+                  <span className="text-xs text-muted-foreground"><LocalizedText source={"Cor:"} /></span>
                   {LINE_COLORS.map((c) => (
                     <button key={c.value}
                       className={`w-7 h-7 rounded-full border-2 transition-all ${
@@ -652,7 +653,7 @@ export default function MapaEditor({
                 </div>
                 {editingTarget === "poly" && (
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="label-rotation" className="text-xs whitespace-nowrap">Rotação do rótulo</Label>
+                    <Label htmlFor="label-rotation" className="text-xs whitespace-nowrap"><LocalizedText source={"Rotação do rótulo"} /></Label>
                     <Input id="label-rotation" type="number" min={-180} max={180} step={1}
                       value={polygons[editingIdx]?.label_rotation || 0}
                       onChange={(event) => {
@@ -660,7 +661,7 @@ export default function MapaEditor({
                         setPolygons((prev) => prev.map((polygon, index) => index === editingIdx ? { ...polygon, label_rotation: Number.isFinite(rotation) ? rotation : 0 } : polygon));
                       }}
                       className="h-8 w-24" />
-                    <span className="text-xs text-muted-foreground">graus</span>
+                    <span className="text-xs text-muted-foreground"><LocalizedText source={"graus"} /></span>
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">
@@ -676,16 +677,13 @@ export default function MapaEditor({
               <>
                 <Button size="sm" variant="outline" onClick={() => { resetMode(); setMode("drawPolygon"); }}
                   disabled={availablePastos.length === 0} className="gap-1.5">
-                  <Plus className="w-4 h-4" /> Desenhar Pasto
-                </Button>
+                  <Plus className="w-4 h-4" /> <LocalizedText source={"Desenhar Pasto"} /></Button>
                 <Button size="sm" variant="outline" onClick={() => { resetMode(); setSelectedColor("#92400e"); setMode("drawLine"); }} className="gap-1.5">
-                  <Route className="w-4 h-4" /> Desenhar Linha
-                </Button>
+                  <Route className="w-4 h-4" /> <LocalizedText source={"Desenhar Linha"} /></Button>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button size="sm" variant="outline" className="gap-1.5">
-                      <MapPin className="w-4 h-4" /> Inserir Elemento
-                    </Button>
+                      <MapPin className="w-4 h-4" /> <LocalizedText source={"Inserir Elemento"} /></Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-52 p-2">
                     {ELEMENT_PRESETS.map((ep) => (
@@ -701,8 +699,7 @@ export default function MapaEditor({
                           className="w-12 h-7 text-center p-0" maxLength={4} />
                         <Button size="sm" variant="ghost" className="h-7 text-xs"
                           onClick={() => { resetMode(); setPlacingElement({ tipo: "outro", emoji: customEmoji }); setMode("placeElement"); }}>
-                          Outro
-                        </Button>
+                          <LocalizedText source={"Outro"} /></Button>
                       </div>
                     </div>
                   </PopoverContent>
@@ -720,8 +717,7 @@ export default function MapaEditor({
                 </div>
                 <ColorPickerButton color={selectedColor} onChange={setSelectedColor} />
                 <Button size="sm" onClick={finishPolygon} disabled={currentPoints.length < 3} className="gap-1.5">
-                  <Save className="w-4 h-4" /> Concluir
-                </Button>
+                  <Save className="w-4 h-4" /> <LocalizedText source={"Concluir"} /></Button>
                 <Button size="sm" variant="ghost" onClick={() => setCurrentPoints((p) => p.slice(0, -1))} disabled={currentPoints.length === 0}>
                   <Undo2 className="w-4 h-4" />
                 </Button>
@@ -733,18 +729,17 @@ export default function MapaEditor({
                   <Select value={lineType} onValueChange={setLineType}>
                     <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="estrada">🛣️ Estrada</SelectItem>
-                      <SelectItem value="agua">💧 Água</SelectItem>
-                      <SelectItem value="cerca">🪵 Cerca</SelectItem>
-                      <SelectItem value="outro">📏 Outro</SelectItem>
+                      <SelectItem value="estrada"><LocalizedText source={"🛣️ Estrada"} /></SelectItem>
+                      <SelectItem value="agua"><LocalizedText source={"💧 Água"} /></SelectItem>
+                      <SelectItem value="cerca"><LocalizedText source={"🪵 Cerca"} /></SelectItem>
+                      <SelectItem value="outro"><LocalizedText source={"📏 Outro"} /></SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <Input value={lineLabel} onChange={(e) => setLineLabel(e.target.value)} placeholder="Rótulo (opcional)" className="h-9 w-28" />
                 <ColorPickerButton color={selectedColor} onChange={setSelectedColor} />
                 <Button size="sm" onClick={finishLine} disabled={currentPoints.length < 2} className="gap-1.5">
-                  <Save className="w-4 h-4" /> Concluir
-                </Button>
+                  <Save className="w-4 h-4" /> <LocalizedText source={"Concluir"} /></Button>
                 <Button size="sm" variant="ghost" onClick={() => setCurrentPoints((p) => p.slice(0, -1))} disabled={currentPoints.length === 0}>
                   <Undo2 className="w-4 h-4" />
                 </Button>
@@ -753,10 +748,9 @@ export default function MapaEditor({
             ) : mode === "placeElement" ? (
               <>
                 <span className="text-sm flex items-center gap-1.5">
-                  {placingElement?.emoji} Clique no mapa para posicionar
-                </span>
+                  {placingElement?.emoji} <LocalizedText source={"Clique no mapa para posicionar"} /></span>
                 <Input value={elementLabel} onChange={(e) => setElementLabel(e.target.value)} placeholder="Rótulo (opcional)" className="h-9 w-28" />
-                <Button size="sm" variant="ghost" onClick={resetMode}><X className="w-4 h-4" /> Cancelar</Button>
+                <Button size="sm" variant="ghost" onClick={resetMode}><X className="w-4 h-4" /> <LocalizedText source={"Cancelar"} /></Button>
               </>
             ) : null}
           </div>
@@ -767,7 +761,7 @@ export default function MapaEditor({
               <CardContent className="px-4 py-3 space-y-2">
                 {polygons.length > 0 && (
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase mb-1">Pastos</p>
+                    <p className="text-xs text-muted-foreground uppercase mb-1"><LocalizedText source={"Pastos"} /></p>
                     {polygons.map((p, i) => {
                       const pasto = pastos.find((opt) => opt.id === p.pasto_id);
                       return (
@@ -784,7 +778,7 @@ export default function MapaEditor({
                 )}
                 {lines.length > 0 && (
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase mb-1">Linhas</p>
+                    <p className="text-xs text-muted-foreground uppercase mb-1"><LocalizedText source={"Linhas"} /></p>
                     {lines.map((l, i) => (
                       <div key={`l-${i}`} className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setEditingPolygonIndex(null); setEditingLineIndex(editingLineIndex === i ? null : i); }}>
@@ -798,7 +792,7 @@ export default function MapaEditor({
                 )}
                 {elements.length > 0 && (
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase mb-1">Elementos</p>
+                    <p className="text-xs text-muted-foreground uppercase mb-1"><LocalizedText source={"Elementos"} /></p>
                     {elements.map((el, i) => (
                       <div key={`e-${i}`} className="flex items-center justify-between text-sm">
                         <span>{el.emoji} {el.rotulo || el.tipo}</span>
@@ -813,8 +807,7 @@ export default function MapaEditor({
 
           <Button onClick={handleSave} disabled={saving} className="w-full gap-1.5">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Salvar Mapa
-          </Button>
+            <LocalizedText source={"Salvar Mapa"} /></Button>
         </>
       )}
     </div>

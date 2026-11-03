@@ -1,4 +1,6 @@
-import { Fragment } from "react";
+import { Fragment, createContext, useContext } from "react";
+import type { SiteLanguage } from "@/lib/siteLanguage";
+import { translatePdfLabel } from "@/lib/pdfUiLabels";
 import {
   Circle, Document, G, Line, Page, Rect, StyleSheet, Svg, Text, View,
 } from "@react-pdf/renderer";
@@ -151,27 +153,34 @@ function fmtBRL(n: number) {
   return `R$ ${n.toFixed(2).replace(".", ",")}`;
 }
 
+const PdfLanguageContext = createContext<SiteLanguage>("pt-BR");
+function PdfCopy({ text }: { text: string }) {
+  const language = useContext(PdfLanguageContext);
+  return translatePdfLabel(language, text);
+}
+
 // ---------- Components ----------
 function Header({ data }: { data: RelatorioPDFData }) {
   return (
     <View style={s.header}>
       <View style={s.headerLeft}>
         <Text style={s.headerTitle}>CONSUBOV — {data.fazendaNome}</Text>
-        <Text style={s.headerSub}>Período: {data.periodo}</Text>
+        <Text style={s.headerSub}><PdfCopy text="Período:" /> {data.periodo}</Text>
       </View>
       <View style={s.headerRight}>
-        <Text style={s.headerSub}>Gerado em: {data.dataGeracao}</Text>
-        <Text style={s.headerSub}>Por: {data.geradoPor}</Text>
+        <Text style={s.headerSub}><PdfCopy text="Gerado em:" /> {data.dataGeracao}</Text>
+        <Text style={s.headerSub}><PdfCopy text="Por:" /> {data.geradoPor}</Text>
       </View>
     </View>
   );
 }
 
 function Footer({ fazendaNome }: { fazendaNome: string }) {
+  const language = useContext(PdfLanguageContext);
   return (
     <View style={s.footer} fixed>
       <Text>{fazendaNome}</Text>
-      <Text render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
+      <Text render={({ pageNumber, totalPages }) => `${translatePdfLabel(language, "Página")} ${pageNumber} ${language === "en-US" ? "of" : "de"} ${totalPages}`} />
     </View>
   );
 }
@@ -188,10 +197,10 @@ function ResumoGeral({ retiros }: { retiros: RetiroReportData[] }) {
   ];
   return (
     <View>
-      <Text style={s.sectionTitle}>SEÇÃO 1 — RESUMO GERAL</Text>
+      <Text style={s.sectionTitle}><PdfCopy text="SEÇÃO 1 — RESUMO GERAL" /></Text>
       <View style={s.table}>
         <View style={s.tableHeader}>
-          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}>{c.label}</Text>)}
+          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}><PdfCopy text={c.label} /></Text>)}
         </View>
         {retiros.map((r, i) => (
           <View key={r.nome} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
@@ -213,7 +222,7 @@ function ScoreEficiencia({ retiros }: { retiros: RetiroReportData[] }) {
   const sorted = [...retiros].sort((a, b) => b.score - a.score);
   return (
     <View>
-      <Text style={s.sectionTitle}>SEÇÃO 2 — SCORE DE EFICIÊNCIA</Text>
+      <Text style={s.sectionTitle}><PdfCopy text="SEÇÃO 2 — SCORE DE EFICIÊNCIA" /></Text>
       <View>
         {sorted.map((r, i) => (
           <View
@@ -233,7 +242,7 @@ function ScoreEficiencia({ retiros }: { retiros: RetiroReportData[] }) {
                 {i + 1}. {r.nome}
               </Text>
               <Text style={{ fontSize: 7, color: "#666", marginTop: 1 }}>
-                Capataz: {r.capataz}
+                <PdfCopy text="Capataz:" /> {r.capataz}
               </Text>
               <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: green, marginTop: 4 }}>
                 {fmtNum(r.score, 1)}
@@ -243,21 +252,21 @@ function ScoreEficiencia({ retiros }: { retiros: RetiroReportData[] }) {
             <View style={{ width: "62%", paddingLeft: 6 }}>
               <View style={{ marginBottom: 3 }}>
                 <Text style={{ fontSize: 7, color: "#333" }}>
-                  <Text style={{ fontFamily: "Helvetica-Bold" }}>Meta: </Text>
+                  <Text style={{ fontFamily: "Helvetica-Bold" }}><PdfCopy text="Meta:" /> </Text>
                   {fmtNum(r.scoreMeta, 1)} / {fmtNum(r.pesoMeta, 0)}
                 </Text>
                 <Text style={{ fontSize: 6.5, color: "#888", marginTop: 0.5 }}>{r.detalheMeta}</Text>
               </View>
               <View style={{ marginBottom: 3 }}>
                 <Text style={{ fontSize: 7, color: "#333" }}>
-                  <Text style={{ fontFamily: "Helvetica-Bold" }}>Salga: </Text>
+                  <Text style={{ fontFamily: "Helvetica-Bold" }}><PdfCopy text="Salga:" /> </Text>
                   {fmtNum(r.scoreSalga, 1)} / {fmtNum(r.pesoSalga, 0)}
                 </Text>
                 <Text style={{ fontSize: 6.5, color: "#888", marginTop: 0.5 }}>{r.detalheSalga}</Text>
               </View>
               <View>
                 <Text style={{ fontSize: 7, color: "#333" }}>
-                  <Text style={{ fontFamily: "Helvetica-Bold" }}>Cocho: </Text>
+                  <Text style={{ fontFamily: "Helvetica-Bold" }}><PdfCopy text="Cocho:" /> </Text>
                   {r.scoreCocho != null ? `${fmtNum(r.scoreCocho, 1)} / ${fmtNum(r.pesoCocho, 0)}` : `— / ${fmtNum(r.pesoCocho, 0)}`}
                 </Text>
                 <Text style={{ fontSize: 6.5, color: "#888", marginTop: 0.5 }}>{r.detalheCocho}</Text>
@@ -281,10 +290,10 @@ function RankingGMD({ retiros }: { retiros: RetiroReportData[] }) {
   ];
   return (
     <View>
-      <Text style={s.sectionTitle}>SEÇÃO 3 — RANKING GMD</Text>
+      <Text style={s.sectionTitle}><PdfCopy text="SEÇÃO 3 — RANKING GMD" /></Text>
       <View style={s.table}>
         <View style={s.tableHeader}>
-          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}>{c.label}</Text>)}
+          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}><PdfCopy text={c.label} /></Text>)}
         </View>
         {sorted.map((r, i) => (
           <View key={r.nome} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
@@ -296,7 +305,7 @@ function RankingGMD({ retiros }: { retiros: RetiroReportData[] }) {
           </View>
         ))}
       </View>
-      <Text style={{ fontSize: 6, color: "#666", marginTop: 2 }}>GMD configurado (projeção), ponderado pelos animais.</Text>
+      <Text style={{ fontSize: 6, color: "#666", marginTop: 2 }}><PdfCopy text="GMD configurado (projeção), ponderado pelos animais." /></Text>
     </View>
   );
 }
@@ -324,7 +333,7 @@ function PrevisaoAbateTable({ rows, totals }: { rows: PrevisaoAbatePDFRow[]; tot
   return (
     <View style={s.table}>
       <View style={s.tableHeader}>
-        {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width, fontSize: 5.5 }]}>{c.label}</Text>)}
+        {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width, fontSize: 5.5 }]}><PdfCopy text={c.label} /></Text>)}
       </View>
       {rows.map((row, index) => (
         <View key={row.pastoId} style={index % 2 === 0 ? s.tableRow : s.tableRowAlt} wrap={false}>
@@ -343,7 +352,7 @@ function PrevisaoAbateTable({ rows, totals }: { rows: PrevisaoAbatePDFRow[]; tot
       ))}
       {totals && (
         <View style={[s.tableRow, { backgroundColor: lightGreen, borderTop: `1 solid ${green}` }]} wrap={false}>
-          <Text style={[s.tableCell, { width: "37%", fontFamily: "Helvetica-Bold", color: green }]}>TOTAL</Text>
+          <Text style={[s.tableCell, { width: "37%", fontFamily: "Helvetica-Bold", color: green }]}><PdfCopy text="TOTAL" /></Text>
           <Text style={[s.tableCell, { width: "16%", fontFamily: "Helvetica-Bold" }]}>{totals.pastos} pasto(s)</Text>
           <Text style={[s.tableCell, { width: "47%", fontFamily: "Helvetica-Bold" }]}>{fmtNum(totals.animais)} animais</Text>
         </View>
@@ -361,9 +370,9 @@ function PrevisaoAbatePages({ previsao, data }: { previsao: PrevisaoAbatePDFData
       {partes.map((rows, pageIndex) => (
         <Page key={`previsao-${pageIndex}`} size="A4" style={[s.page, { paddingBottom: 42 }]}>
           <Header data={data} />
-          <Text style={s.sectionTitle}>SEÇÃO 4 — PREVISÃO DE ABATE</Text>
+          <Text style={s.sectionTitle}><PdfCopy text="SEÇÃO 4 — PREVISÃO DE ABATE" /></Text>
           <Text style={{ fontSize: 7, color: "#666", marginBottom: 6 }}>
-            Calculada em {previsao.calculadaEm} · Peso-alvo e janela conforme configuração da fazenda/retiro
+            <PdfCopy text="Calculada em" /> {previsao.calculadaEm} · Peso-alvo e janela conforme configuração da fazenda/retiro
           </Text>
           {rows.length > 0 ? (
             <PrevisaoAbateTable
@@ -372,7 +381,7 @@ function PrevisaoAbatePages({ previsao, data }: { previsao: PrevisaoAbatePDFData
             />
           ) : (
             <Text style={{ fontSize: 8, color: "#666", marginTop: 4 }}>
-              Nenhum lote atinge o peso-alvo dentro da janela configurada.
+              <PdfCopy text="Nenhum lote atinge o peso-alvo dentro da janela configurada." />
             </Text>
           )}
           <Footer fazendaNome={data.fazendaNome} />
@@ -397,19 +406,19 @@ function MetricasCategoria({ metrics }: { metrics: CatMetricsPDF[] }) {
   ];
   return (
     <View>
-      <Text style={s.sectionTitle}>SEÇÃO 5 — MÉTRICAS POR CATEGORIA ANIMAL</Text>
+      <Text style={s.sectionTitle}><PdfCopy text="SEÇÃO 5 — MÉTRICAS POR CATEGORIA ANIMAL" /></Text>
 
       {/* Summary cards row — always same line */}
       <View style={{ flexDirection: "row", marginBottom: 6 }}>
         {metrics.map((m, i) => (
           <View key={m.categoria} style={{ backgroundColor: "#f5f5f5", padding: 5, borderRadius: 3, width: "32%", marginRight: i < metrics.length - 1 ? "2%" : 0 }}>
             <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: green, marginBottom: 2 }}>{m.categoria}</Text>
-            <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: "#333" }}>{fmtNum(m.consumoMedio, 1)} <Text style={{ fontSize: 6, color: "#888" }}>g/cab/dia</Text></Text>
+            <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: "#333" }}>{fmtNum(m.consumoMedio, 1)} <Text style={{ fontSize: 6, color: "#888" }}><PdfCopy text="g/cab/dia" /></Text></Text>
             <View style={{ marginTop: 2 }}>
-              <Text style={{ fontSize: 6, color: "#666" }}>Animais: {fmtNum(m.totalAnimais)} · Sacos: {fmtNum(m.totalSacos)}</Text>
-              <Text style={{ fontSize: 6, color: "#666" }}>R$/cab/mês: {fmtBRL(m.custoMedio)}</Text>
-              <Text style={{ fontSize: 6, color: "#666" }}>R$/kg ganho: {m.custoPorKgGanho > 0 ? fmtBRL(m.custoPorKgGanho) : "—"}</Text>
-              <Text style={{ fontSize: 6, color: "#666" }}>GMD: {m.gmd > 0 ? `${fmtNum(m.gmd, 3)} kg/dia` : "—"}</Text>
+              <Text style={{ fontSize: 6, color: "#666" }}><PdfCopy text="Animais:" /> {fmtNum(m.totalAnimais)} · Sacos: {fmtNum(m.totalSacos)}</Text>
+              <Text style={{ fontSize: 6, color: "#666" }}><PdfCopy text="R$/cab/mês:" /> {fmtBRL(m.custoMedio)}</Text>
+              <Text style={{ fontSize: 6, color: "#666" }}><PdfCopy text="R$/kg ganho:" /> {m.custoPorKgGanho > 0 ? fmtBRL(m.custoPorKgGanho) : "—"}</Text>
+              <Text style={{ fontSize: 6, color: "#666" }}><PdfCopy text="GMD:" /> {m.gmd > 0 ? `${fmtNum(m.gmd, 3)} kg/dia` : "—"}</Text>
             </View>
           </View>
         ))}
@@ -418,7 +427,7 @@ function MetricasCategoria({ metrics }: { metrics: CatMetricsPDF[] }) {
       {/* Table */}
       <View style={s.table}>
         <View style={s.tableHeader}>
-          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}>{c.label}</Text>)}
+          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}><PdfCopy text={c.label} /></Text>)}
         </View>
         {metrics.map((m, i) => (
           <View key={m.categoria} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
@@ -459,7 +468,7 @@ function ConsumoPorPastoChart({ r }: { r: RetiroReportData }) {
   return (
     <View style={{ marginTop: 6, marginBottom: 6 }} wrap={false}>
       <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: green, marginBottom: 4 }}>
-        Consumo por Pasto — {r.nome}
+        <PdfCopy text="Consumo por Pasto —" /> {r.nome}
       </Text>
       <View style={{ width: chartWidth, height: chartHeight, position: "relative" }}>
         {/* Y axis */}
@@ -508,7 +517,7 @@ function ConsumoPorPastoChart({ r }: { r: RetiroReportData }) {
                 borderBottom: "0.8 dashed #43A047",
               }} />
               <Text style={{ position: "absolute", right: 0, top: idealY - 7, fontSize: 5, color: "#43A047" }}>
-                Ideal ({fmtNum(r.consumoIdeal!, 0)})
+                <PdfCopy text="Ideal (" />{fmtNum(r.consumoIdeal!, 0)})
               </Text>
             </>
           )}
@@ -522,7 +531,7 @@ function ConsumoPorPastoChart({ r }: { r: RetiroReportData }) {
                 borderBottom: "0.8 dashed #E53935",
               }} />
               <Text style={{ position: "absolute", right: 0, top: maxY - 7, fontSize: 5, color: "#E53935" }}>
-                Máximo ({fmtNum(r.consumoMaximo!, 0)})
+                <PdfCopy text="Máximo (" />{fmtNum(r.consumoMaximo!, 0)})
               </Text>
             </>
           )}
@@ -621,27 +630,27 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
     <View>
       <View style={s.retiroHeader}>
         <Text style={s.retiroTitle}>{r.nome}</Text>
-        <Text style={s.retiroSub}>Capataz: {r.capataz} · Produto: {r.produtoNome} · R$ {fmtNum(r.precoKg, 2)}/kg</Text>
+        <Text style={s.retiroSub}><PdfCopy text="Capataz:" /> {r.capataz} · Produto: {r.produtoNome} · R$ {fmtNum(r.precoKg, 2)}/kg</Text>
       </View>
 
       <View style={s.cardsRow}>
-        <View style={s.card}><Text style={s.cardLabel}>Pastos</Text><Text style={s.cardValue}>{r.pastos.length}</Text></View>
-        <View style={s.card}><Text style={s.cardLabel}>Animais</Text><Text style={s.cardValue}>{r.totalAnimais}</Text></View>
-        <View style={s.card}><Text style={s.cardLabel}>Sacos</Text><Text style={s.cardValue}>{r.sacosUtilizados}</Text></View>
-        <View style={s.card}><Text style={s.cardLabel}>Consumo</Text><Text style={s.cardValue}>{fmtNum(r.consumoMedio, 1)}</Text></View>
-        <View style={s.card}><Text style={s.cardLabel}>Peso Médio</Text><Text style={s.cardValue}>{r.pesoMedioKg ? fmtNum(r.pesoMedioKg, 1) : "—"}</Text></View>
-        <View style={s.card}><Text style={s.cardLabel}>Eficiência</Text><Text style={s.cardValue}>{fmtNum(r.eficiencia, 0)}%</Text></View>
-        <View style={s.card}><Text style={s.cardLabel}>Custo R$/cab/dia</Text><Text style={s.cardValue}>{fmtNum(r.custoDiario, 2)}</Text></View>
+        <View style={s.card}><Text style={s.cardLabel}><PdfCopy text="Pastos" /></Text><Text style={s.cardValue}>{r.pastos.length}</Text></View>
+        <View style={s.card}><Text style={s.cardLabel}><PdfCopy text="Animais" /></Text><Text style={s.cardValue}>{r.totalAnimais}</Text></View>
+        <View style={s.card}><Text style={s.cardLabel}><PdfCopy text="Sacos" /></Text><Text style={s.cardValue}>{r.sacosUtilizados}</Text></View>
+        <View style={s.card}><Text style={s.cardLabel}><PdfCopy text="Consumo" /></Text><Text style={s.cardValue}>{fmtNum(r.consumoMedio, 1)}</Text></View>
+        <View style={s.card}><Text style={s.cardLabel}><PdfCopy text="Peso Médio" /></Text><Text style={s.cardValue}>{r.pesoMedioKg ? fmtNum(r.pesoMedioKg, 1) : "—"}</Text></View>
+        <View style={s.card}><Text style={s.cardLabel}><PdfCopy text="Eficiência" /></Text><Text style={s.cardValue}>{fmtNum(r.eficiencia, 0)}%</Text></View>
+        <View style={s.card}><Text style={s.cardLabel}><PdfCopy text="Custo R$/cab/dia" /></Text><Text style={s.cardValue}>{fmtNum(r.custoDiario, 2)}</Text></View>
       </View>
 
       {baixo.length > 0 && (
         <View style={s.alertBox}>
-          <Text style={[s.alertText, { color: "#C62828" }]}>[!] Consumo Real Baixo: {baixo.map(p => p.nome).join(", ")}</Text>
+          <Text style={[s.alertText, { color: "#C62828" }]}><PdfCopy text="[!] Consumo Real Baixo:" /> {baixo.map(p => p.nome).join(", ")}</Text>
         </View>
       )}
       {alto.length > 0 && (
         <View style={s.alertBox}>
-          <Text style={[s.alertText, { color: "#1565C0" }]}>[!] Consumo Real Alto: {alto.map(p => p.nome).join(", ")}</Text>
+          <Text style={[s.alertText, { color: "#1565C0" }]}><PdfCopy text="[!] Consumo Real Alto:" /> {alto.map(p => p.nome).join(", ")}</Text>
         </View>
       )}
 
@@ -650,7 +659,7 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
 
       <View style={[s.table, { marginTop: 2 }]}>
         <View style={s.tableHeader}>
-          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width, fontSize: 6 }]}>{c.label}</Text>)}
+          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width, fontSize: 6 }]}><PdfCopy text={c.label} /></Text>)}
         </View>
         {sortedPastos.map((p, i) => {
           const stReal = p.statusReal ?? p.status;
@@ -717,7 +726,7 @@ function ReferenceTable({ pontos, columns }: { pontos: DualChartPoint[]; columns
   return (
     <View>
       <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: green, marginBottom: 5 }}>
-        Referência dos Pastos
+        <PdfCopy text="Referência dos Pastos" />
       </Text>
       <View style={{ flexDirection: "row" }}>
         {Array.from({ length: columns }, (_, columnIndex) => (
@@ -819,7 +828,7 @@ function DualLineChart({ pontos }: { pontos: DualChartPoint[] }) {
           </G>
         );
       })}
-      <Text x={width / 2} y={height - 5} textAnchor="middle" style={{ fontSize: 8, fontFamily: "Helvetica-Bold", fill: "#1C1C1A" }}>Pasto</Text>
+      <Text x={width / 2} y={height - 5} textAnchor="middle" style={{ fontSize: 8, fontFamily: "Helvetica-Bold", fill: "#1C1C1A" }}><PdfCopy text="Pasto" /></Text>
     </Svg>
   );
 }
@@ -856,15 +865,15 @@ function RealEsperadoRetiroPages({ retiro, data }: { retiro: RetiroReportData; d
           <View style={{ flexDirection: "row", justifyContent: "center", marginTop: 2, marginBottom: 5 }}>
             <View style={{ flexDirection: "row", alignItems: "center", marginRight: 24 }}>
               <View style={{ width: 18, height: 3, backgroundColor: green, marginRight: 5 }} />
-              <Text style={{ fontSize: 8 }}>Consumo Real</Text>
+              <Text style={{ fontSize: 8 }}><PdfCopy text="Consumo Real" /></Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <View style={{ width: 18, height: 3, backgroundColor: gold, marginRight: 5 }} />
-              <Text style={{ fontSize: 8 }}>Consumo Esperado</Text>
+              <Text style={{ fontSize: 8 }}><PdfCopy text="Consumo Esperado" /></Text>
             </View>
           </View>
           <Text style={{ fontSize: 7, color: "#767066", textAlign: "center", marginBottom: 8 }}>
-            Valores em g/cab/dia por pasto avaliado.
+            <PdfCopy text="Valores em g/cab/dia por pasto avaliado." />
           </Text>
           <ReferenceTable pontos={pontos} columns={pontos.length > 16 ? 3 : 2} />
           <Footer fazendaNome={data.fazendaNome} />
@@ -875,8 +884,9 @@ function RealEsperadoRetiroPages({ retiro, data }: { retiro: RetiroReportData; d
 }
 
 // ---------- Main Document ----------
-export default function RelatorioPDF({ data }: { data: RelatorioPDFData }) {
+export default function RelatorioPDF({ data, language = "pt-BR" }: { data: RelatorioPDFData; language?: SiteLanguage }) {
   return (
+    <PdfLanguageContext.Provider value={language}>
     <Document>
       <Page size="A4" style={s.page} wrap>
         <Header data={data} />
@@ -898,7 +908,7 @@ export default function RelatorioPDF({ data }: { data: RelatorioPDFData }) {
           <Page key={`detalhe-${r.nome}`} size="A4" style={s.page} wrap>
             <Header data={data} />
             {retiroIndex === 0 && (
-              <Text style={s.sectionTitle}>SEÇÃO 6 — DETALHE POR RETIRO</Text>
+              <Text style={s.sectionTitle}><PdfCopy text="SEÇÃO 6 — DETALHE POR RETIRO" /></Text>
             )}
             <DetalheRetiro r={r} />
             <Footer fazendaNome={data.fazendaNome} />
@@ -907,5 +917,6 @@ export default function RelatorioPDF({ data }: { data: RelatorioPDFData }) {
         </Fragment>
       ))}
     </Document>
+    </PdfLanguageContext.Provider>
   );
 }

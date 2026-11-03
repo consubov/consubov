@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -184,17 +185,15 @@ export default function AdminSyncVetOnboardingPage() {
           <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center">
             <CheckCircle2 className="w-7 h-7" />
           </div>
-          <h1 className="text-lg font-bold text-primary">Empresa SyncVet criada!</h1>
+          <h1 className="text-lg font-bold text-primary"><LocalizedText source={"Empresa SyncVet criada!"} /></h1>
           <p className="text-sm text-muted-foreground">
-            A conta de acesso do veterinário responsável foi criada com o e-mail{" "}
+            <LocalizedText source={"A conta de acesso do veterinário responsável foi criada com o e-mail"} />{" "}
             <strong className="text-foreground">{emailVet}</strong>.
           </p>
           <p className="text-sm text-muted-foreground">
-            Caso a confirmação de e-mail esteja ativada no projeto, o veterinário deve
-            verificar a caixa de entrada antes de fazer login no módulo SyncVet.
-          </p>
+            <LocalizedText source={"Caso a confirmação de e-mail esteja ativada no projeto, o veterinário deve verificar a caixa de entrada antes de fazer login no módulo SyncVet."} /></p>
           <div className="flex justify-center gap-2 pt-2">
-            <Button variant="outline" onClick={() => navigate("/admin")}>Voltar ao Admin</Button>
+            <Button variant="outline" onClick={() => navigate("/admin")}><LocalizedText source={"Voltar ao Admin"} /></Button>
           </div>
         </Card>
       </div>
@@ -208,17 +207,16 @@ export default function AdminSyncVetOnboardingPage() {
           <Stethoscope className="w-5 h-5" />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-primary">SyncVet — Criar Empresa</h1>
+          <h1 className="text-lg font-bold text-primary"><LocalizedText source={"SyncVet — Criar Empresa"} /></h1>
           <p className="text-xs text-muted-foreground">
-            Cria a empresa e a conta de login do veterinário responsável (Administrador da empresa).
-          </p>
+            <LocalizedText source={"Cria a empresa e a conta de login do veterinário responsável (Administrador da empresa)."} /></p>
         </div>
       </div>
 
       <Card className="p-4 space-y-3">
-        <div className="text-sm font-semibold text-primary">Dados da empresa</div>
+        <div className="text-sm font-semibold text-primary"><LocalizedText source={"Dados da empresa"} /></div>
         <div>
-          <Label className="text-xs">Nome da empresa *</Label>
+          <Label className="text-xs"><LocalizedText source={"Nome da empresa *"} /></Label>
           <Input value={nomeEmpresa} onChange={(e) => setNomeEmpresa(e.target.value)} placeholder="Ex: Clínica Veterinária ABC" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -227,11 +225,11 @@ export default function AdminSyncVetOnboardingPage() {
             <Input value={cnpj} onChange={(e) => setCnpj(e.target.value)} />
           </div>
           <div>
-            <Label className="text-xs">Telefone</Label>
+            <Label className="text-xs"><LocalizedText source={"Telefone"} /></Label>
             <Input value={telefone} onChange={(e) => setTelefone(e.target.value)} />
           </div>
           <div>
-            <Label className="text-xs">Cidade</Label>
+            <Label className="text-xs"><LocalizedText source={"Cidade"} /></Label>
             <Input value={cidade} onChange={(e) => setCidade(e.target.value)} />
           </div>
           <div>
@@ -239,43 +237,41 @@ export default function AdminSyncVetOnboardingPage() {
             <Input value={uf} onChange={(e) => setUf(e.target.value.toUpperCase().slice(0, 2))} />
           </div>
           <div className="sm:col-span-2">
-            <Label className="text-xs">E-mail de contato da empresa</Label>
+            <Label className="text-xs"><LocalizedText source={"E-mail de contato da empresa"} /></Label>
             <Input type="email" value={emailContato} onChange={(e) => setEmailContato(e.target.value)} placeholder="contato@empresa.com" />
           </div>
         </div>
       </Card>
 
       <Card className="p-4 space-y-3">
-        <div className="text-sm font-semibold text-primary">Veterinário responsável (Administrador)</div>
+        <div className="text-sm font-semibold text-primary"><LocalizedText source={"Veterinário responsável (Administrador)"} /></div>
         <p className="text-xs text-muted-foreground">
-          Este é o login independente do veterinário no módulo SyncVet — separado do seu login de Admin do Consubov.
-        </p>
+          <LocalizedText source={"Este é o login independente do veterinário no módulo SyncVet — separado do seu login de Admin do Consubov."} /></p>
         <div>
-          <Label className="text-xs">Nome do veterinário responsável *</Label>
+          <Label className="text-xs"><LocalizedText source={"Nome do veterinário responsável *"} /></Label>
           <Input value={nomeVet} onChange={(e) => setNomeVet(e.target.value)} placeholder="Dr. João Silva" />
         </div>
         <div>
-          <Label className="text-xs">E-mail (usado para login) *</Label>
+          <Label className="text-xs"><LocalizedText source={"E-mail (usado para login) *"} /></Label>
           <Input type="email" value={emailVet} onChange={(e) => setEmailVet(e.target.value)} placeholder="veterinario@exemplo.com" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div>
-            <Label className="text-xs">Senha *</Label>
+            <Label className="text-xs"><LocalizedText source={"Senha *"} /></Label>
             <PasswordInput value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" />
           </div>
           <div>
-            <Label className="text-xs">Confirmar senha *</Label>
+            <Label className="text-xs"><LocalizedText source={"Confirmar senha *"} /></Label>
             <PasswordInput value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} placeholder="Repita a senha" />
           </div>
         </div>
       </Card>
 
       <div className="flex justify-end gap-2 pt-2">
-        <Button variant="outline" onClick={() => navigate("/admin")} disabled={saving}>Cancelar</Button>
+        <Button variant="outline" onClick={() => navigate("/admin")} disabled={saving}><LocalizedText source={"Cancelar"} /></Button>
         <Button onClick={handleSubmit} disabled={saving}>
           {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
-          Criar empresa e conta do veterinário
-        </Button>
+          <LocalizedText source={"Criar empresa e conta do veterinário"} /></Button>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -148,8 +149,7 @@ export default function MetricasPorCategoria({
   return (
     <div className="space-y-4">
       <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-        Métricas por Categoria Animal
-      </h2>
+        <LocalizedText source={"Métricas por Categoria Animal"} /></h2>
 
       {/* Category Cards */}
       <div className={`grid gap-4 ${categoriasExibidas.length === 1 ? "grid-cols-1" : "grid-cols-1 md:grid-cols-3"}`}>
@@ -164,32 +164,27 @@ export default function MetricasPorCategoria({
             <CardContent className="px-4 pb-4 space-y-2">
               <div className="flex items-baseline gap-1">
                 <span className="text-2xl font-bold text-foreground">{fmtNum(m.consumoMedio, 1)}</span>
-                <span className="text-xs text-muted-foreground">g/cab/dia</span>
+                <span className="text-xs text-muted-foreground"><LocalizedText source={"g/cab/dia"} /></span>
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                 <div className="flex items-center gap-1 text-muted-foreground">
-                  <Beef className="w-3 h-3" /> Animais
-                </div>
+                  <Beef className="w-3 h-3" /> <LocalizedText source={"Animais"} /></div>
                 <div className="font-medium text-foreground">{fmtNum(m.totalAnimais)}</div>
 
                 <div className="flex items-center gap-1 text-muted-foreground">
-                  <Package className="w-3 h-3" /> Sacos
-                </div>
+                  <Package className="w-3 h-3" /> <LocalizedText source={"Sacos"} /></div>
                 <div className="font-medium text-foreground">{fmtNum(m.totalSacos)}</div>
 
                 <div className="flex items-center gap-1 text-muted-foreground">
-                  <DollarSign className="w-3 h-3" /> R$/cab/mês
-                </div>
+                  <DollarSign className="w-3 h-3" /> <LocalizedText source={"R$/cab/mês"} /></div>
                 <div className="font-medium text-foreground">{fmtBRL(m.custoMedio)}</div>
 
                 <div className="flex items-center gap-1 text-muted-foreground">
-                  <DollarSign className="w-3 h-3" /> R$/kg ganho
-                </div>
+                  <DollarSign className="w-3 h-3" /> <LocalizedText source={"R$/kg ganho"} /></div>
                 <div className="font-medium text-foreground">{m.custoPorKgGanho > 0 ? fmtBRL(m.custoPorKgGanho) : "—"}</div>
 
                 <div className="flex items-center gap-1 text-muted-foreground">
-                  <TrendingUp className="w-3 h-3" /> GMD
-                </div>
+                  <TrendingUp className="w-3 h-3" /> <LocalizedText source={"GMD"} /></div>
                 <div className="font-medium text-foreground">{m.gmd > 0 ? `${fmtNum(m.gmd, 3)} kg/dia` : "—"}</div>
               </div>
             </CardContent>
@@ -202,8 +197,7 @@ export default function MetricasPorCategoria({
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <Droplets className="w-5 h-5 text-primary" />
-            Consumo por Categoria
-          </CardTitle>
+            <LocalizedText source={"Consumo por Categoria"} /></CardTitle>
         </CardHeader>
         <CardContent>
           {chartData.some(d => d.consumo > 0) ? (
@@ -221,7 +215,7 @@ export default function MetricasPorCategoria({
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-8">Sem dados para exibir</p>
+            <p className="text-sm text-muted-foreground text-center py-8"><LocalizedText source={"Sem dados para exibir"} /></p>
           )}
         </CardContent>
       </Card>
@@ -229,20 +223,20 @@ export default function MetricasPorCategoria({
       {/* Table */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Detalhamento por Categoria</CardTitle>
+          <CardTitle className="text-base"><LocalizedText source={"Detalhamento por Categoria"} /></CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Categoria</TableHead>
-                  <TableHead className="text-xs">Animais</TableHead>
-                  <TableHead className="text-xs">Consumo Médio</TableHead>
-                  <TableHead className="text-xs">Custo Total</TableHead>
-                  <TableHead className="text-xs">Custo/Animal</TableHead>
-                  <TableHead className="text-xs">Custo/kg Ganho</TableHead>
-                  <TableHead className="text-xs">GMD</TableHead>
+                  <TableHead className="text-xs"><LocalizedText source={"Categoria"} /></TableHead>
+                  <TableHead className="text-xs"><LocalizedText source={"Animais"} /></TableHead>
+                  <TableHead className="text-xs"><LocalizedText source={"Consumo Médio"} /></TableHead>
+                  <TableHead className="text-xs"><LocalizedText source={"Custo Total"} /></TableHead>
+                  <TableHead className="text-xs"><LocalizedText source={"Custo/Animal"} /></TableHead>
+                  <TableHead className="text-xs"><LocalizedText source={"Custo/kg Ganho"} /></TableHead>
+                  <TableHead className="text-xs"><LocalizedText source={"GMD"} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -250,7 +244,7 @@ export default function MetricasPorCategoria({
                   <TableRow key={m.categoria}>
                     <TableCell className="font-medium text-sm">{m.categoria}</TableCell>
                     <TableCell className="text-sm">{fmtNum(m.totalAnimais)}</TableCell>
-                    <TableCell className="text-sm">{fmtNum(m.consumoMedio, 1)} g/cab/dia</TableCell>
+                    <TableCell className="text-sm">{fmtNum(m.consumoMedio, 1)} <LocalizedText source={"g/cab/dia"} /></TableCell>
                     <TableCell className="text-sm">{fmtBRL(m.custoTotal)}</TableCell>
                     <TableCell className="text-sm">{fmtBRL(m.custoMedio)}</TableCell>
                     <TableCell className="text-sm">{m.custoPorKgGanho > 0 ? fmtBRL(m.custoPorKgGanho) : "—"}</TableCell>

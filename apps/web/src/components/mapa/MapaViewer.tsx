@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MapaData, PastoMapaData } from "@/hooks/useMapaData";
@@ -407,7 +408,7 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
   );
 
   if (allCoords.length === 0) {
-    return <div className="py-12 text-center text-sm text-muted-foreground">Nenhum pasto desenhado no mapa.</div>;
+    return <div className="py-12 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum pasto desenhado no mapa."} /></div>;
   }
 
 
@@ -444,8 +445,7 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
     <div ref={containerRef} className="relative w-full overflow-hidden rounded-lg border" style={{ background: MAP_COLORS.background }}>
       {selectingDestino && (
         <div className="bg-primary/10 border-b border-primary/30 px-3 py-2 text-sm text-primary font-medium text-center">
-          🎯 Clique no pasto de destino
-        </div>
+          <LocalizedText source={"🎯 Clique no pasto de destino"} /></div>
       )}
       <svg ref={svgRef} className="block h-auto w-full" viewBox={`${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`}
         preserveAspectRatio="xMidYMid meet"
@@ -523,8 +523,7 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
         <button type="button"
           onClick={() => setView({ z: 1, x: 0, y: 0 })}
           className="absolute bottom-2 right-2 rounded-md border bg-background/90 px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm">
-          Resetar zoom
-        </button>
+          <LocalizedText source={"Resetar zoom"} /></button>
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { evaluateArithmeticExpression } from "@/lib/safeArithmetic";
@@ -346,17 +347,15 @@ export default function ConfiguracoesGeraisPage() {
     <div className="space-y-6 p-4 md:p-6 max-w-4xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Configurações Gerais</h1>
-          <p className="text-xs text-muted-foreground mt-1">Versão do app: <span className="font-mono">v{APP_VERSION}</span></p>
+          <h1 className="text-2xl font-bold text-foreground"><LocalizedText source={"Configurações Gerais"} /></h1>
+          <p className="text-xs text-muted-foreground mt-1"><LocalizedText source={"Versão do app:"} />{" "}<span className="font-mono">v{APP_VERSION}</span></p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchHistorico}>
-            <History className="w-4 h-4 mr-1" /> Histórico
-          </Button>
+            <History className="w-4 h-4 mr-1" /> <LocalizedText source={"Histórico"} /></Button>
           <Button size="sm" onClick={handleSave} disabled={saving || Object.keys(edits).length === 0}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
-            Salvar Configurações
-          </Button>
+            <LocalizedText source={"Salvar Configurações"} /></Button>
         </div>
       </div>
 
@@ -365,11 +364,9 @@ export default function ConfiguracoesGeraisPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             {notifAtivas ? <Bell className="w-5 h-5 text-primary" /> : <BellOff className="w-5 h-5 text-muted-foreground" />}
-            Notificações Push (Global)
-          </CardTitle>
+            <LocalizedText source={"Notificações Push (Global)"} /></CardTitle>
           <CardDescription className="text-xs">
-            Quando desativado, nenhum usuário receberá notificações e o pedido de permissão não será exibido.
-          </CardDescription>
+            <LocalizedText source={"Quando desativado, nenhum usuário receberá notificações e o pedido de permissão não será exibido."} /></CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-between gap-3">
           <span className="text-sm font-medium">
@@ -391,8 +388,7 @@ export default function ConfiguracoesGeraisPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">{SECTIONS[0].title}</CardTitle>
           <CardDescription className="text-xs">
-            Parâmetros de alerta. Intervalo de salga é definido na fazenda. Limites de consumo são definidos por produto (margem por categoria).
-          </CardDescription>
+            <LocalizedText source={"Parâmetros de alerta. Intervalo de salga é definido na fazenda. Limites de consumo são definidos por produto (margem por categoria)."} /></CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -429,8 +425,8 @@ export default function ConfiguracoesGeraisPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">{section.title}</CardTitle>
             <CardDescription className="text-xs">
-              Variáveis disponíveis: {SYSTEM_VARS.join(", ")}
-              {si === 0 && <><br />Valores de <strong>peso_saco_kg</strong>, <strong>consumo_por_100kg_categoria</strong> e <strong>margem</strong> vêm do produto vinculado ao lançamento. Resultado sempre em <strong>g/cab/dia</strong>.</>}
+              <LocalizedText source={"Variáveis disponíveis:"} />{" "}{SYSTEM_VARS.join(", ")}
+              {si === 0 && <><br /><LocalizedText source={"Valores de"} />{" "}<strong><LocalizedText source={"peso_saco_kg"} /></strong>, <strong><LocalizedText source={"consumo_por_100kg_categoria"} /></strong> e <strong><LocalizedText source={"margem"} /></strong> <LocalizedText source={"vêm do produto vinculado ao lançamento. Resultado sempre em"} />{" "}<strong><LocalizedText source={"g/cab/dia"} /></strong>.</>}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -483,16 +479,15 @@ export default function ConfiguracoesGeraisPage() {
           <Dialog open={showNewFormula} onOpenChange={setShowNewFormula}>
             <DialogTrigger asChild>
               <Button variant="outline" className="w-full">
-                <Plus className="w-4 h-4 mr-2" /> Adicionar Nova Fórmula
-              </Button>
+                <Plus className="w-4 h-4 mr-2" /> <LocalizedText source={"Adicionar Nova Fórmula"} /></Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Nova Fórmula</DialogTitle>
+                <DialogTitle><LocalizedText source={"Nova Fórmula"} /></DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
                 <div>
-                  <Label>Chave (identificador único)</Label>
+                  <Label><LocalizedText source={"Chave (identificador único)"} /></Label>
                   <Input
                     value={newFormula.chave}
                     onChange={e => setNewFormula(p => ({ ...p, chave: e.target.value }))}
@@ -500,7 +495,7 @@ export default function ConfiguracoesGeraisPage() {
                   />
                 </div>
                 <div>
-                  <Label>Título</Label>
+                  <Label><LocalizedText source={"Título"} /></Label>
                   <Input
                     value={newFormula.titulo}
                     onChange={e => setNewFormula(p => ({ ...p, titulo: e.target.value }))}
@@ -508,7 +503,7 @@ export default function ConfiguracoesGeraisPage() {
                   />
                 </div>
                 <div>
-                  <Label>Descrição</Label>
+                  <Label><LocalizedText source={"Descrição"} /></Label>
                   <Textarea
                     value={newFormula.descricao}
                     onChange={e => setNewFormula(p => ({ ...p, descricao: e.target.value }))}
@@ -517,7 +512,7 @@ export default function ConfiguracoesGeraisPage() {
                   />
                 </div>
                 <div>
-                  <Label>Fórmula</Label>
+                  <Label><LocalizedText source={"Fórmula"} /></Label>
                   <Textarea
                     value={newFormula.formula}
                     onChange={e => setNewFormula(p => ({ ...p, formula: e.target.value }))}
@@ -525,15 +520,15 @@ export default function ConfiguracoesGeraisPage() {
                     className="font-mono text-sm min-h-[80px]"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Variáveis: {SYSTEM_VARS.join(", ")}
+                    <LocalizedText source={"Variáveis:"} />{" "}{SYSTEM_VARS.join(", ")}
                   </p>
                 </div>
               </div>
               <DialogFooter>
                 <DialogClose asChild>
-                  <Button variant="outline">Cancelar</Button>
+                  <Button variant="outline"><LocalizedText source={"Cancelar"} /></Button>
                 </DialogClose>
-                <Button onClick={handleAddFormula}>Salvar Fórmula</Button>
+                <Button onClick={handleAddFormula}><LocalizedText source={"Salvar Fórmula"} /></Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -544,18 +539,18 @@ export default function ConfiguracoesGeraisPage() {
       <Dialog open={showHistorico} onOpenChange={setShowHistorico}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-auto">
           <DialogHeader>
-            <DialogTitle>Histórico de Alterações</DialogTitle>
+            <DialogTitle><LocalizedText source={"Histórico de Alterações"} /></DialogTitle>
           </DialogHeader>
           {historico.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Nenhuma alteração registrada.</p>
+            <p className="text-sm text-muted-foreground text-center py-4"><LocalizedText source={"Nenhuma alteração registrada."} /></p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Anterior</TableHead>
-                  <TableHead>Novo</TableHead>
-                  <TableHead>Por</TableHead>
+                  <TableHead><LocalizedText source={"Data"} /></TableHead>
+                  <TableHead><LocalizedText source={"Anterior"} /></TableHead>
+                  <TableHead><LocalizedText source={"Novo"} /></TableHead>
+                  <TableHead><LocalizedText source={"Por"} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

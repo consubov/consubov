@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -67,19 +68,19 @@ export default function SolicitarSalModal({ open, onOpenChange, meuRetiroId, out
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>📦 Solicitar / Enviar Sal</DialogTitle>
+          <DialogTitle><LocalizedText source={"📦 Solicitar / Enviar Sal"} /></DialogTitle>
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="solicitar">Solicitar Sal</TabsTrigger>
-            <TabsTrigger value="enviar">Enviar Sal</TabsTrigger>
+            <TabsTrigger value="solicitar"><LocalizedText source={"Solicitar Sal"} /></TabsTrigger>
+            <TabsTrigger value="enviar"><LocalizedText source={"Enviar Sal"} /></TabsTrigger>
           </TabsList>
 
           <TabsContent value="solicitar" className="space-y-4 mt-4">
-            <p className="text-xs text-muted-foreground">Solicitar sal de outro retiro para o seu.</p>
+            <p className="text-xs text-muted-foreground"><LocalizedText source={"Solicitar sal de outro retiro para o seu."} /></p>
             <div>
-              <Label>Retiro de origem</Label>
+              <Label><LocalizedText source={"Retiro de origem"} /></Label>
               <Select value={retiroId} onValueChange={setRetiroId}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
@@ -90,15 +91,15 @@ export default function SolicitarSalModal({ open, onOpenChange, meuRetiroId, out
               </Select>
             </div>
             <div>
-              <Label>Quantidade (sacos)</Label>
+              <Label><LocalizedText source={"Quantidade (sacos)"} /></Label>
               <Input type="number" inputMode="numeric" min="1" value={quantidade} onChange={e => setQuantidade(e.target.value)} placeholder="0" />
             </div>
           </TabsContent>
 
           <TabsContent value="enviar" className="space-y-4 mt-4">
-            <p className="text-xs text-muted-foreground">Enviar sal do seu retiro para outro.</p>
+            <p className="text-xs text-muted-foreground"><LocalizedText source={"Enviar sal do seu retiro para outro."} /></p>
             <div>
-              <Label>Retiro de destino</Label>
+              <Label><LocalizedText source={"Retiro de destino"} /></Label>
               <Select value={retiroId} onValueChange={setRetiroId}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
@@ -109,14 +110,14 @@ export default function SolicitarSalModal({ open, onOpenChange, meuRetiroId, out
               </Select>
             </div>
             <div>
-              <Label>Quantidade (sacos)</Label>
+              <Label><LocalizedText source={"Quantidade (sacos)"} /></Label>
               <Input type="number" inputMode="numeric" min="1" value={quantidade} onChange={e => setQuantidade(e.target.value)} placeholder="0" />
             </div>
           </TabsContent>
         </Tabs>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}><LocalizedText source={"Cancelar"} /></Button>
           <Button onClick={handleConfirm} disabled={saving || !retiroId || !quantidade || parseInt(quantidade) <= 0}>
             {saving ? "Enviando..." : "Confirmar"}
           </Button>

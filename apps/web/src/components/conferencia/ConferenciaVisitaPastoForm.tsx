@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -121,15 +122,15 @@ export default function ConferenciaVisitaPastoForm({
           <Card>
             <CardContent className="p-4 grid grid-cols-3 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="qtd" className="text-xs">Animais</Label>
+                <Label htmlFor="qtd" className="text-xs"><LocalizedText source={"Animais"} /></Label>
                 <Input id="qtd" inputMode="numeric" value={qtdAnimais} onChange={(e) => setQtdAnimais(e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="peso" className="text-xs">Peso médio (kg)</Label>
+                <Label htmlFor="peso" className="text-xs"><LocalizedText source={"Peso médio (kg)"} /></Label>
                 <Input id="peso" inputMode="decimal" value={pesoMedio} onChange={(e) => setPesoMedio(e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="cons" className="text-xs">Consumo (g)</Label>
+                <Label htmlFor="cons" className="text-xs"><LocalizedText source={"Consumo (g)"} /></Label>
                 <Input id="cons" inputMode="decimal" value={consumoMedio} onChange={(e) => setConsumoMedio(e.target.value)} />
               </div>
             </CardContent>
@@ -138,7 +139,7 @@ export default function ConferenciaVisitaPastoForm({
 
         <Card>
           <CardContent className="p-4 space-y-2">
-            <Label htmlFor="obs">Observação</Label>
+            <Label htmlFor="obs"><LocalizedText source={"Observação"} /></Label>
             <Textarea
               id="obs"
               rows={5}
@@ -152,10 +153,9 @@ export default function ConferenciaVisitaPastoForm({
         <Card>
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <Label>Fotos ({total}/{MAX_FOTOS})</Label>
+              <Label><LocalizedText source={"Fotos ("} />{total}/{MAX_FOTOS})</Label>
               <span className="text-xs text-muted-foreground">
-                Numeração contínua do relatório
-              </span>
+                <LocalizedText source={"Numeração contínua do relatório"} /></span>
             </div>
 
             <div className="grid grid-cols-3 gap-2">
@@ -204,7 +204,7 @@ export default function ConferenciaVisitaPastoForm({
                   className="aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-1 text-muted-foreground"
                 >
                   {processando ? <Loader2 className="w-6 h-6 animate-spin" /> : <Camera className="w-6 h-6" />}
-                  <span className="text-xs">Adicionar</span>
+                  <span className="text-xs"><LocalizedText source={"Adicionar"} /></span>
                 </button>
               )}
             </div>

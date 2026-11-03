@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -81,11 +82,11 @@ export default function CriarEscritorioModal({ open, onClose }: Props) {
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Criar Escritório</DialogTitle>
+          <DialogTitle><LocalizedText source={"Criar Escritório"} /></DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label>Nome *</Label>
+            <Label><LocalizedText source={"Nome *"} /></Label>
             <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do escritório" />
           </div>
           <div>
@@ -93,11 +94,11 @@ export default function CriarEscritorioModal({ open, onClose }: Props) {
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@exemplo.com" />
           </div>
           <div>
-            <Label>Telefone</Label>
+            <Label><LocalizedText source={"Telefone"} /></Label>
             <Input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(00) 00000-0000" />
           </div>
           <div>
-            <Label>Fazenda *</Label>
+            <Label><LocalizedText source={"Fazenda *"} /></Label>
             <Select value={fazendaId} onValueChange={setFazendaId}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione a fazenda" />
@@ -110,8 +111,7 @@ export default function CriarEscritorioModal({ open, onClose }: Props) {
             </Select>
           </div>
           <p className="text-xs text-muted-foreground">
-            Senha padrão: Consubov@2025 (definida automaticamente)
-          </p>
+            <LocalizedText source={"Senha padrão: Consubov@2025 (definida automaticamente)"} /></p>
           <Button onClick={handleSave} disabled={saving} className="w-full">
             {saving ? "Criando..." : "Criar Escritório"}
           </Button>

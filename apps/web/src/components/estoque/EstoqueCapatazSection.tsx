@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,15 +91,14 @@ export default function EstoqueCapatazSection({ retiroId, fazendaId }: EstoqueCa
           <div className="flex items-center gap-2">
             <Package className="w-5 h-5 text-primary" />
             <div>
-              <p className="text-xs text-muted-foreground">Estoque de sal</p>
-              <p className="text-lg font-bold text-primary">{estoqueAtual} sacos</p>
+              <p className="text-xs text-muted-foreground"><LocalizedText source={"Estoque de sal"} /></p>
+              <p className="text-lg font-bold text-primary">{estoqueAtual} <LocalizedText source={"sacos"} /></p>
             </div>
           </div>
           {outrosRetiros.length > 0 && (
             <Button size="sm" variant="outline" className="gap-1" onClick={() => setModalOpen(true)}>
               <ArrowRightLeft className="w-3 h-3" />
-              Solicitar / Enviar
-            </Button>
+              <LocalizedText source={"Solicitar / Enviar"} /></Button>
           )}
         </CardContent>
       </Card>
@@ -106,13 +106,13 @@ export default function EstoqueCapatazSection({ retiroId, fazendaId }: EstoqueCa
       {/* Pendentes */}
       {pendentes.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Pendentes</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase mb-1"><LocalizedText source={"Pendentes"} /></p>
           <div className="space-y-1">
             {pendentes.map(t => (
               <div key={t.id} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded border bg-card">
-                <Badge variant="secondary" className="text-[10px] shrink-0">⏳ pendente</Badge>
+                <Badge variant="secondary" className="text-[10px] shrink-0"><LocalizedText source={"⏳ pendente"} /></Badge>
                 <span className="text-muted-foreground truncate flex-1">
-                  {t.quantidade} sacos · {t.tipo_acao === 'solicitacao' ? 'Solicitação' : 'Envio'}
+                  {t.quantidade} <LocalizedText source={"sacos ·"} />{" "}{t.tipo_acao === 'solicitacao' ? 'Solicitação' : 'Envio'}
                 </span>
               </div>
             ))}
@@ -123,7 +123,7 @@ export default function EstoqueCapatazSection({ retiroId, fazendaId }: EstoqueCa
       {/* Histórico (aprovadas + recusadas) */}
       {historico.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Histórico de Transferências</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase mb-1"><LocalizedText source={"Histórico de Transferências"} /></p>
           <div className="space-y-1">
             {historico.map(t => (
               <div key={t.id} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded border bg-card">
@@ -134,7 +134,7 @@ export default function EstoqueCapatazSection({ retiroId, fazendaId }: EstoqueCa
                   {t.status === 'aprovado' ? '✅ aprovado' : '❌ recusado'}
                 </Badge>
                 <span className="text-muted-foreground truncate flex-1">
-                  {t.quantidade} sacos · {t.tipo_acao === 'solicitacao' ? 'Solicitação' : 'Envio'} · {new Date(t.created_at).toLocaleDateString('pt-BR')}
+                  {t.quantidade} <LocalizedText source={"sacos ·"} />{" "}{t.tipo_acao === 'solicitacao' ? 'Solicitação' : 'Envio'} · {new Date(t.created_at).toLocaleDateString('pt-BR')}
                 </span>
                 {t.status === 'recusado' && (
                   <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(t.id)}>

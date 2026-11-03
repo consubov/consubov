@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -148,7 +149,7 @@ export default function MapaFazendaPage() {
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink asChild><Link to="/admin/fazendas">Fazendas</Link></BreadcrumbLink>
+              <BreadcrumbLink asChild><Link to="/admin/fazendas"><LocalizedText source={"Fazendas"} /></Link></BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
@@ -159,23 +160,21 @@ export default function MapaFazendaPage() {
               <BreadcrumbLink asChild><Link to={`/admin/fazendas/${fazendaId}/retiros/${retiroId}`}>{retiroNome}</Link></BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
-            <BreadcrumbItem><BreadcrumbPage>Mapa</BreadcrumbPage></BreadcrumbItem>
+            <BreadcrumbItem><BreadcrumbPage><LocalizedText source={"Mapa"} /></BreadcrumbPage></BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
       )}
 
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate(-1)}>
-          <ArrowLeft className="w-4 h-4" /> Voltar
-        </Button>
+          <ArrowLeft className="w-4 h-4" /> <LocalizedText source={"Voltar"} /></Button>
         <div className="flex gap-2">
           {currentAction === "selectDestino" && (
-            <Button size="sm" variant="outline" onClick={resetAction}>Cancelar seleção</Button>
+            <Button size="sm" variant="outline" onClick={resetAction}><LocalizedText source={"Cancelar seleção"} /></Button>
           )}
           {canEditMapa && mapa && !editing && (
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setEditing(true)}>
-              <Pencil className="w-4 h-4" /> Editar Mapa
-            </Button>
+              <Pencil className="w-4 h-4" /> <LocalizedText source={"Editar Mapa"} /></Button>
           )}
           <Button size="sm" variant="outline" className="gap-1.5" onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
@@ -184,7 +183,7 @@ export default function MapaFazendaPage() {
       </div>
 
       <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-        <Map className="w-5 h-5" /> Mapa — {retiroNome}
+        <Map className="w-5 h-5" /> <LocalizedText source={"Mapa —"} />{" "}{retiroNome}
       </h1>
 
       <Card className="p-2">
@@ -243,15 +242,14 @@ export default function MapaFazendaPage() {
       ) : canEditMapa ? (
         <div className="text-center py-12 space-y-3">
           <Map className="w-12 h-12 text-muted-foreground mx-auto" />
-          <p className="text-muted-foreground text-sm">Nenhum mapa cadastrado para este retiro.</p>
+          <p className="text-muted-foreground text-sm"><LocalizedText source={"Nenhum mapa cadastrado para este retiro."} /></p>
           <Button onClick={() => setEditing(true)} className="gap-1.5">
-            <Map className="w-4 h-4" /> Adicionar Mapa
-          </Button>
+            <Map className="w-4 h-4" /> <LocalizedText source={"Adicionar Mapa"} /></Button>
         </div>
       ) : (
         <div className="text-center py-12">
           <Map className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-          <p className="text-muted-foreground text-sm">Este retiro ainda não possui mapa cadastrado.</p>
+          <p className="text-muted-foreground text-sm"><LocalizedText source={"Este retiro ainda não possui mapa cadastrado."} /></p>
         </div>
       )}
 
@@ -262,7 +260,7 @@ export default function MapaFazendaPage() {
             <Beef className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Total de animais no retiro</p>
+            <p className="text-xs text-muted-foreground"><LocalizedText source={"Total de animais no retiro"} /></p>
             <p className="text-lg font-bold text-foreground">
               {totalAnimaisRetiro.toLocaleString("pt-BR")} <span className="text-sm font-medium text-muted-foreground">cab</span>
             </p>

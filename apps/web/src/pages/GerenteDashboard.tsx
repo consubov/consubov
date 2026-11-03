@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { resolveGerenteAccessScope, gerenteBlockingReadError } from "@/lib/gerenteAccessScope";
 import { useGerenteTemFabrica } from "@/hooks/useGerenteTemFabrica";
 import { Fragment, useEffect, useState, useMemo, useRef } from "react";
@@ -413,24 +414,24 @@ export default function GerenteDashboard() {
       {fazendasError && fazendasVerificadasParaRole === roleData.roleId && (
         <div role="alert" className="mx-4 mt-3 rounded-md border border-destructive/40 p-3 flex items-center gap-3">
           <p className="text-sm flex-1">{fazendasError}</p>
-          <Button size="sm" variant="outline" onClick={() => setFazendasRetry(n => n + 1)}>Atualizar</Button>
+          <Button size="sm" variant="outline" onClick={() => setFazendasRetry(n => n + 1)}><LocalizedText source={"Atualizar"} /></Button>
         </div>
       )}
       {consumoError && (
         <div role="alert" className="mx-4 mt-3 rounded-md border border-destructive/40 p-3 flex flex-wrap items-center gap-3">
-          <p className="text-sm flex-1">O cálculo de custos e consumo agregado está indisponível. Os demais dados confirmados continuam visíveis.</p>
-          <Button variant="outline" size="sm" onClick={() => void retryConsumo()}>Recalcular consumo</Button>
+          <p className="text-sm flex-1"><LocalizedText source={"O cálculo de custos e consumo agregado está indisponível. Os demais dados confirmados continuam visíveis."} /></p>
+          <Button variant="outline" size="sm" onClick={() => void retryConsumo()}><LocalizedText source={"Recalcular consumo"} /></Button>
         </div>
       )}
       {painelMaeError && (
         <div role="alert" className="mx-4 mt-3 rounded-md border border-destructive/40 p-3">
-          <p className="text-sm">Indicadores de consumo real, consumo global, meta, peso e eficiência temporariamente indisponíveis.</p>
+          <p className="text-sm"><LocalizedText source={"Indicadores de consumo real, consumo global, meta, peso e eficiência temporariamente indisponíveis."} /></p>
         </div>
       )}
       {gmdError && (
         <div role="alert" className="mx-4 mt-3 rounded-md border border-destructive/40 p-3 flex flex-wrap items-center gap-3">
-          <p className="text-sm flex-1">{gmdError} Os demais indicadores não foram zerados.</p>
-          <Button variant="outline" size="sm" onClick={retryGmd}>Tentar GMD novamente</Button>
+          <p className="text-sm flex-1">{gmdError} <LocalizedText source={"Os demais indicadores não foram zerados."} /></p>
+          <Button variant="outline" size="sm" onClick={retryGmd}><LocalizedText source={"Tentar GMD novamente"} /></Button>
         </div>
       )}
       {/* Header */}
@@ -630,7 +631,7 @@ export default function GerenteDashboard() {
                   <SelectValue placeholder="Retiro" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todos">Todos os retiros</SelectItem>
+                  <SelectItem value="todos"><LocalizedText source={"Todos os retiros"} /></SelectItem>
                   {retirosComDados.map(retiro => (
                     <SelectItem key={retiro.id} value={retiro.id}>{retiro.nome}</SelectItem>
                   ))}
@@ -643,7 +644,7 @@ export default function GerenteDashboard() {
                   <SelectValue placeholder="Produto" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todos">Todos os produtos</SelectItem>
+                  <SelectItem value="todos"><LocalizedText source={"Todos os produtos"} /></SelectItem>
                   {produtoFiltro.produtos.map(produto => (
                     <SelectItem key={produto.id} value={produto.id}>{produto.nome}</SelectItem>
                   ))}
@@ -692,12 +693,12 @@ export default function GerenteDashboard() {
                 </div>
                 {/* Labels */}
                 <div className="flex justify-between text-xs">
-                  <span className="font-medium" style={{ color: "#E53935" }}>Baixo {fmtNum(painelDataView.statusDistribution.baixoPct, 0)}%</span>
+                  <span className="font-medium" style={{ color: "#E53935" }}><LocalizedText source={"Baixo"} />{" "}{fmtNum(painelDataView.statusDistribution.baixoPct, 0)}%</span>
                   {atencaoPct > 0 && (
-                    <span className="font-medium" style={{ color: "#FBC02D" }}>Atenção {fmtNum(atencaoPct, 0)}%</span>
+                    <span className="font-medium" style={{ color: "#FBC02D" }}><LocalizedText source={"Atenção"} />{" "}{fmtNum(atencaoPct, 0)}%</span>
                   )}
                   <span className="font-medium" style={{ color: "#43A047" }}>Ideal {fmtNum(painelDataView.statusDistribution.idealPct, 0)}%</span>
-                  <span className="font-medium" style={{ color: "#1E88E5" }}>Alto {fmtNum(painelDataView.statusDistribution.altoPct, 0)}%</span>
+                  <span className="font-medium" style={{ color: "#1E88E5" }}><LocalizedText source={"Alto"} />{" "}{fmtNum(painelDataView.statusDistribution.altoPct, 0)}%</span>
                 </div>
 
               </CardContent>
@@ -746,17 +747,16 @@ export default function GerenteDashboard() {
                       <p className="text-sm font-bold text-secondary">{fmtNum(r.consumoMedio, 1)}</p>
                     </div>
                     <div>
-                      <p className={GERENTE_MUTED_SMALL}>GMD</p>
+                      <p className={GERENTE_MUTED_SMALL}><LocalizedText source={"GMD"} /></p>
                       <p className="text-sm font-bold text-primary">{r.gmd == null ? "—" : fmtNum(r.gmd, 3)}</p>
                     </div>
                   </div>
                   {/* Interval info */}
                   <div className="mt-2 pt-2 border-t flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Intervalo: {r.intervaloDefinido}d definido · {r.intervaloRealMedio != null ? `${r.intervaloRealMedio}d real` : '—'}</span>
+                    <span><LocalizedText source={"Intervalo:"} />{" "}{r.intervaloDefinido}<LocalizedText source={"d definido ·"} />{" "}{r.intervaloRealMedio != null ? `${r.intervaloRealMedio}d real` : '—'}</span>
                     {r.diasSemSalga != null && (
                       <span className={r.alertaAtraso ? 'text-destructive font-semibold' : ''}>
-                        {r.diasSemSalga}d sem salga
-                      </span>
+                        {r.diasSemSalga}<LocalizedText source={"d sem salga"} /></span>
                     )}
                   </div>
                   {/* Inline PDF download — auto-refreshes via realtime tick */}
@@ -776,8 +776,7 @@ export default function GerenteDashboard() {
                       ) : (
                         <Download className="w-3 h-3" />
                       )}
-                      Baixar PDF
-                    </Button>
+                      <LocalizedText source={"Baixar PDF"} /></Button>
                   </div>
                 </CardContent>
               </Card>
@@ -832,9 +831,9 @@ export default function GerenteDashboard() {
                           {aberto && (
                             <TableRow className="bg-muted/40 hover:bg-muted/40">
                               <TableCell colSpan={4} className="text-xs space-y-1 py-2">
-                                <p><span className="font-semibold">Meta {fmtNum(s.scoreMeta, 1)}/{s.pesoMeta}</span> — {s.detalheMeta}</p>
-                                <p><span className="font-semibold">Salga {fmtNum(s.scoreSalga, 1)}/{s.pesoSalga}</span> — {s.detalheSalga}</p>
-                                <p><span className="font-semibold">Cocho {s.scoreCocho != null ? fmtNum(s.scoreCocho, 1) : "—"}/{s.pesoCocho}</span> — {s.detalheCocho}</p>
+                                <p><span className="font-semibold"><LocalizedText source={"Meta"} />{" "}{fmtNum(s.scoreMeta, 1)}/{s.pesoMeta}</span> — {s.detalheMeta}</p>
+                                <p><span className="font-semibold"><LocalizedText source={"Salga"} />{" "}{fmtNum(s.scoreSalga, 1)}/{s.pesoSalga}</span> — {s.detalheSalga}</p>
+                                <p><span className="font-semibold"><LocalizedText source={"Cocho"} />{" "}{s.scoreCocho != null ? fmtNum(s.scoreCocho, 1) : "—"}/{s.pesoCocho}</span> — {s.detalheCocho}</p>
                               </TableCell>
                             </TableRow>
                           )}
@@ -867,7 +866,7 @@ export default function GerenteDashboard() {
                       <TableHead className="w-8 text-center">#</TableHead>
                       <TableHead>{t("manager.unit")}</TableHead>
                       <TableHead>{t("manager.ranchSupervisor")}</TableHead>
-                      <TableHead className="text-right">GMD</TableHead>
+                      <TableHead className="text-right"><LocalizedText source={"GMD"} /></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -881,7 +880,7 @@ export default function GerenteDashboard() {
                     ))}
                   </TableBody>
                 </Table>
-                <p className="text-[10px] text-muted-foreground px-3 pb-2">GMD configurado (projeção), ponderado pelos animais.</p>
+                <p className="text-[10px] text-muted-foreground px-3 pb-2"><LocalizedText source={"GMD configurado (projeção), ponderado pelos animais."} /></p>
               </Card>
             )}
           </div>
@@ -893,8 +892,7 @@ export default function GerenteDashboard() {
           {alertasAtraso.length > 0 && (
             <div>
               <h2 className="text-sm font-semibold text-destructive uppercase tracking-wide mb-3 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" /> Salga Atrasada
-                <Badge variant="destructive" className="text-[10px] h-5">{alertasAtraso.length}</Badge>
+                <AlertTriangle className="w-4 h-4" /> <LocalizedText source={"Salga Atrasada"} /><Badge variant="destructive" className="text-[10px] h-5">{alertasAtraso.length}</Badge>
               </h2>
               <div className="space-y-2">
                 {alertasAtraso.map(a => {
@@ -908,11 +906,11 @@ export default function GerenteDashboard() {
                     <Card key={a.retiroNome} className={`${cfg.border} ${cfg.bg}`}>
                       <CardContent className="p-3 space-y-1">
                         <p className="text-sm font-bold text-destructive">{t("manager.outdatedSalt")}</p>
-                        <p className="text-xs"><span className="text-muted-foreground">Retiro:</span> {a.retiroNome}</p>
-                        <p className="text-xs"><span className="text-muted-foreground">Última salga:</span> {a.ultimaSalga ? new Date(a.ultimaSalga).toLocaleDateString('pt-BR') : 'Nunca'}</p>
-                        <p className="text-xs"><span className="text-muted-foreground">Intervalo definido:</span> {a.intervaloDefinido} dias</p>
-                        <p className="text-xs font-semibold text-destructive">Dias sem salga: {a.diasSemSalga}</p>
-                        <p className={GERENTE_MUTED_SMALL}>👉 Verificar responsável pela salga</p>
+                        <p className="text-xs"><span className="text-muted-foreground"><LocalizedText source={"Retiro:"} /></span> {a.retiroNome}</p>
+                        <p className="text-xs"><span className="text-muted-foreground"><LocalizedText source={"Última salga:"} /></span> {a.ultimaSalga ? new Date(a.ultimaSalga).toLocaleDateString('pt-BR') : 'Nunca'}</p>
+                        <p className="text-xs"><span className="text-muted-foreground"><LocalizedText source={"Intervalo definido:"} /></span> {a.intervaloDefinido} <LocalizedText source={"dias"} /></p>
+                        <p className="text-xs font-semibold text-destructive"><LocalizedText source={"Dias sem salga:"} />{" "}{a.diasSemSalga}</p>
+                        <p className={GERENTE_MUTED_SMALL}><LocalizedText source={"👉 Verificar responsável pela salga"} /></p>
                         <Badge variant="destructive" className="text-[10px] mt-1">
                           {a.gravidade === 'critico' ? '🔴 Crítico' : a.gravidade === 'moderado' ? '🟠 Moderado' : '🟡 Leve'}
                         </Badge>
@@ -930,13 +928,12 @@ export default function GerenteDashboard() {
           {/* Pendentes */}
           <div>
             <h2 className={GERENTE_PANEL_HEADING}>
-              <Bell className="w-4 h-4" /> Observações Pendentes
-              {obsPendentes.length > 0 && (
+              <Bell className="w-4 h-4" /> <LocalizedText source={"Observações Pendentes"} />{obsPendentes.length > 0 && (
                 <Badge variant="destructive" className="text-[10px] h-5">{obsPendentes.length}</Badge>
               )}
             </h2>
             {obsPendentes.length === 0 ? (
-              <Card><CardContent className={GERENTE_EMPTY_PADDED}>Nenhuma observação pendente.</CardContent></Card>
+              <Card><CardContent className={GERENTE_EMPTY_PADDED}><LocalizedText source={"Nenhuma observação pendente."} /></CardContent></Card>
             ) : (
               <div className="space-y-2">
                 {obsPendentes.map(obs => (
@@ -954,10 +951,9 @@ export default function GerenteDashboard() {
           {/* Histórico */}
           <div>
             <h2 className={GERENTE_PANEL_HEADING}>
-              <Clock className="w-4 h-4" /> Histórico de Observações
-            </h2>
+              <Clock className="w-4 h-4" /> <LocalizedText source={"Histórico de Observações"} /></h2>
             {obsResolvidas.length === 0 ? (
-              <Card><CardContent className={GERENTE_EMPTY_PADDED}>Nenhuma observação resolvida.</CardContent></Card>
+              <Card><CardContent className={GERENTE_EMPTY_PADDED}><LocalizedText source={"Nenhuma observação resolvida."} /></CardContent></Card>
             ) : (
               <div className="space-y-2">
                 {obsResolvidas.map(obs => (
@@ -976,7 +972,7 @@ export default function GerenteDashboard() {
               <AuditoriaFotosTab fazendaId={activeFazendaId} retiros={retirosList} mes={mes} ano={ano} />
             </div>
           ) : (
-            <p className="text-center text-muted-foreground text-sm py-8">Carregando...</p>
+            <p className="text-center text-muted-foreground text-sm py-8"><LocalizedText source={"Carregando..."} /></p>
           )}
         </TabsContent>
       </Tabs>
@@ -1015,28 +1011,26 @@ function RetiroDetail({ retiro, fazendaId }: { retiro: RetiroComDados; fazendaId
     <>
       <SheetHeader className="mb-4">
         <SheetTitle className="text-foreground">{retiro.nome}</SheetTitle>
-        <p className={GERENTE_MUTED_LABEL}>Capataz: {retiro.capataz}</p>
+        <p className={GERENTE_MUTED_LABEL}><LocalizedText source={"Capataz:"} />{" "}{retiro.capataz}</p>
         <div className="grid grid-cols-4 gap-2 mt-3 text-center">
           <div><p className={GERENTE_MUTED_TINY}>{t("manager.animals")}</p><p className="text-lg font-bold">{retiro.totalAnimais}</p></div>
           <div><p className={GERENTE_MUTED_TINY}>{t("manager.bags")}</p><p className="text-lg font-bold">{retiro.sacosUtilizados}</p></div>
           <div><p className={GERENTE_MUTED_TINY}>{t("manager.consumption")}</p><p className="text-lg font-bold text-secondary">{fmtNum(retiro.consumoMedio, 1)}</p></div>
-          <div><p className={GERENTE_MUTED_TINY}>GMD</p><p className="text-lg font-bold text-primary">{retiro.gmd == null ? "—" : fmtNum(retiro.gmd, 3)}</p></div>
+          <div><p className={GERENTE_MUTED_TINY}><LocalizedText source={"GMD"} /></p><p className="text-lg font-bold text-primary">{retiro.gmd == null ? "—" : fmtNum(retiro.gmd, 3)}</p></div>
         </div>
         <div className="mt-2 pt-2 border-t text-xs text-muted-foreground flex items-center justify-between">
-          <span>Intervalo definido: <strong className="text-foreground">{retiro.intervaloDefinido}d</strong></span>
-          <span>Intervalo real médio: <strong className="text-foreground">{retiro.intervaloRealMedio != null ? `${retiro.intervaloRealMedio}d` : '—'}</strong></span>
+          <span><LocalizedText source={"Intervalo definido:"} />{" "}<strong className="text-foreground">{retiro.intervaloDefinido}d</strong></span>
+          <span><LocalizedText source={"Intervalo real médio:"} />{" "}<strong className="text-foreground">{retiro.intervaloRealMedio != null ? `${retiro.intervaloRealMedio}d` : '—'}</strong></span>
         </div>
         <Button onClick={() => navRetiro(`/mapa/retiro/${retiro.id}`)} variant="outline" size="sm" className="mt-3 w-full gap-1.5">
-          <Map className="w-4 h-4" /> Ver Mapa
-        </Button>
+          <Map className="w-4 h-4" /> <LocalizedText source={"Ver Mapa"} /></Button>
       </SheetHeader>
 
       <PastosListaRetiro pastos={pastosLista} loading={pastosListaLoading} />
 
       {retiro.id && fazendaId && (
         <Button onClick={() => navRetiro(`/gerente/produtos?aba=onde-usar&retiro=${retiro.id}`)} variant="outline" size="sm" className="mt-4 w-full">
-          Gerenciar em Produtos › Onde usar
-        </Button>
+          <LocalizedText source={"Gerenciar em Produtos › Onde usar"} /></Button>
       )}
     </>
   );
@@ -1090,8 +1084,7 @@ function ObservacaoCard({ obs, retiros, onResolve, resolved }: {
         {/* Action */}
         {!resolved && onResolve && (
           <Button size="sm" variant="outline" onClick={onResolve} className="flex-shrink-0 text-[10px] h-7 px-2 gap-1">
-            <CheckCircle2 className="w-3 h-3" /> Resolvido
-          </Button>
+            <CheckCircle2 className="w-3 h-3" /> <LocalizedText source={"Resolvido"} /></Button>
         )}
       </div>
 

@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -163,24 +164,23 @@ export default function SyncVetEquipePage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">Equipe</h1>
-          <p className="text-sm text-muted-foreground">Membros da empresa</p>
+          <h1 className="text-xl font-bold"><LocalizedText source={"Equipe"} /></h1>
+          <p className="text-sm text-muted-foreground"><LocalizedText source={"Membros da empresa"} /></p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" />Novo</Button>
+            <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" /><LocalizedText source={"Novo"} /></Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{editing ? "Editar membro" : "Novo membro"}</DialogTitle>
               <DialogDescription>
-                Preencha e-mail e senha para dar acesso ao app. Sem acesso, o membro será apenas listado.
-              </DialogDescription>
+                <LocalizedText source={"Preencha e-mail e senha para dar acesso ao app. Sem acesso, o membro será apenas listado."} /></DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
-              <div><Label className="text-xs">Nome*</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Nome*"} /></Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
               <div>
-                <Label className="text-xs">Perfil</Label>
+                <Label className="text-xs"><LocalizedText source={"Perfil"} /></Label>
                 <Select value={perfil} onValueChange={(v) => setPerfil(v as Perfil)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -190,31 +190,29 @@ export default function SyncVetEquipePage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label className="text-xs">Telefone</Label><Input value={telefone} onChange={(e) => setTelefone(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Telefone"} /></Label><Input value={telefone} onChange={(e) => setTelefone(e.target.value)} /></div>
               <div className="pt-2 border-t">
                 <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-muted-foreground">
-                  <KeyRound className="w-3.5 h-3.5" /> Acesso ao app
-                </div>
-                <div><Label className="text-xs">E-mail</Label>
+                  <KeyRound className="w-3.5 h-3.5" /> <LocalizedText source={"Acesso ao app"} /></div>
+                <div><Label className="text-xs"><LocalizedText source={"E-mail"} /></Label>
                   <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@empresa.com"
                     disabled={!!editing && !!editing.user_id} />
                   {editing?.user_id && (
-                    <p className="text-[10px] text-muted-foreground mt-1">O e-mail vinculado a um acesso ativo não pode ser alterado aqui.</p>
+                    <p className="text-[10px] text-muted-foreground mt-1"><LocalizedText source={"O e-mail vinculado a um acesso ativo não pode ser alterado aqui."} /></p>
                   )}
                 </div>
                 {!editing && (
                   <div className="mt-2">
-                    <Label className="text-xs">Senha {email ? "*" : "(opcional)"}</Label>
+                    <Label className="text-xs"><LocalizedText source={"Senha"} />{" "}{email ? "*" : "(opcional)"}</Label>
                     <Input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" />
                   </div>
                 )}
               </div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button variant="ghost" onClick={() => setOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
               <Button onClick={handleSave} disabled={saving}>
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
-              </Button>
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} /></Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -223,7 +221,7 @@ export default function SyncVetEquipePage() {
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : rows.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-muted-foreground">Nenhum membro cadastrado ainda.</Card>
+        <Card className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum membro cadastrado ainda."} /></Card>
       ) : (
         <div className="space-y-2">
           {rows.map((m) => (
@@ -231,8 +229,8 @@ export default function SyncVetEquipePage() {
               <div className="min-w-0">
                 <div className="font-semibold flex items-center gap-2">
                   {m.nome}
-                  {!m.ativo && <span className="inline-flex items-center text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Inativo</span>}
-                  {m.ativo && m.user_id && <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded"><KeyRound className="w-3 h-3" />acesso</span>}
+                  {!m.ativo && <span className="inline-flex items-center text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded"><LocalizedText source={"Inativo"} /></span>}
+                  {m.ativo && m.user_id && <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded"><KeyRound className="w-3 h-3" /><LocalizedText source={"acesso"} /></span>}
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
                   {PERFIL_LABEL[m.perfil]}
@@ -247,7 +245,7 @@ export default function SyncVetEquipePage() {
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(m)}><Trash2 className="w-4 h-4" /></Button>
                   </>
                 ) : (
-                  <Button variant="outline" size="sm" onClick={() => handleReactivate(m)}>Reativar</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleReactivate(m)}><LocalizedText source={"Reativar"} /></Button>
                 )}
               </div>
             </Card>

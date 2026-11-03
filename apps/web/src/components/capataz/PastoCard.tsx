@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { Card, CardContent } from "@/components/ui/card";
 import CarenciaBadge from "@/components/eventos/CarenciaBadge";
 
@@ -36,7 +37,7 @@ export default function PastoCard({ nome, numAnimais, pesoMedio, diasNoPasto, sa
         <div className="grid grid-cols-4 gap-1 text-xs text-muted-foreground">
           <div className="text-center">
             <p className="font-semibold text-foreground">{numAnimais}</p>
-            <p>animais</p>
+            <p><LocalizedText source={"animais"} /></p>
           </div>
           <div className="text-center">
             <p className="font-semibold text-foreground">{pesoMedio ?? '—'}</p>
@@ -44,11 +45,11 @@ export default function PastoCard({ nome, numAnimais, pesoMedio, diasNoPasto, sa
           </div>
           <div className="text-center">
             <p className="font-semibold text-foreground">{diasNoPasto ?? 0}</p>
-            <p>dias</p>
+            <p><LocalizedText source={"dias"} /></p>
           </div>
           <div className="text-center">
             <p className="font-semibold text-foreground">{sacosHoje}</p>
-            <p>sacos</p>
+            <p><LocalizedText source={"sacos"} /></p>
           </div>
         </div>
       </CardContent>

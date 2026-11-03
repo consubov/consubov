@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,14 +33,13 @@ export function AtualizarAppButton({ className }: { className?: string }) {
       <AlertDialog open={aviso} onOpenChange={setAviso}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Pesagem em andamento</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Pesagem em andamento"} /></AlertDialogTitle>
             <AlertDialogDescription>
-              Você tem uma pesagem em andamento. Finalizar antes de atualizar?
-            </AlertDialogDescription>
+              <LocalizedText source={"Você tem uma pesagem em andamento. Finalizar antes de atualizar?"} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Continuar pesagem</AlertDialogCancel>
-            <AlertDialogAction onClick={recarregar}>Atualizar mesmo assim</AlertDialogAction>
+            <AlertDialogCancel><LocalizedText source={"Continuar pesagem"} /></AlertDialogCancel>
+            <AlertDialogAction onClick={recarregar}><LocalizedText source={"Atualizar mesmo assim"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

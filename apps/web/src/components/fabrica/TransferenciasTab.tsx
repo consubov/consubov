@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,9 +53,9 @@ export default function TransferenciasTab({ fabricaId }: { fabricaId: string }) 
   return (
     <Tabs defaultValue="nova" className="w-full">
       <TabsList className="grid grid-cols-3 w-full">
-        <TabsTrigger value="nova"><Truck className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Nova</span></TabsTrigger>
-        <TabsTrigger value="transito"><Clock className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Em Trânsito</span><span className="sm:hidden">Trânsito</span></TabsTrigger>
-        <TabsTrigger value="historico"><History className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline">Histórico</span></TabsTrigger>
+        <TabsTrigger value="nova"><Truck className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline"><LocalizedText source={"Nova"} /></span></TabsTrigger>
+        <TabsTrigger value="transito"><Clock className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline"><LocalizedText source={"Em Trânsito"} /></span><span className="sm:hidden"><LocalizedText source={"Trânsito"} /></span></TabsTrigger>
+        <TabsTrigger value="historico"><History className="w-4 h-4 mr-1.5" /><span className="hidden sm:inline"><LocalizedText source={"Histórico"} /></span></TabsTrigger>
       </TabsList>
       <TabsContent value="nova" className="mt-4"><NovaSection fabricaId={fabricaId} /></TabsContent>
       <TabsContent value="transito" className="mt-4"><TransitoSection fabricaId={fabricaId} /></TabsContent>
@@ -219,20 +220,19 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="font-semibold">Registrar Transferência</h3>
+        <h3 className="font-semibold"><LocalizedText source={"Registrar Transferência"} /></h3>
         <Button size="sm" onClick={() => { reset(); setOpen(true); }}>
-          <Plus className="w-4 h-4 mr-1" /> Nova
-        </Button>
+          <Plus className="w-4 h-4 mr-1" /> <LocalizedText source={"Nova"} /></Button>
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-sm">Estoque de Produto Acabado</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-sm"><LocalizedText source={"Estoque de Produto Acabado"} /></CardTitle></CardHeader>
         <CardContent>
           {estoques.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum produto em estoque.</p>
+            <p className="text-sm text-muted-foreground"><LocalizedText source={"Nenhum produto em estoque."} /></p>
           ) : (
             <Table>
-              <TableHeader><TableRow><TableHead>Produto</TableHead><TableHead className="text-right">Sacos</TableHead><TableHead className="text-right">Kg</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead><LocalizedText source={"Produto"} /></TableHead><TableHead className="text-right"><LocalizedText source={"Sacos"} /></TableHead><TableHead className="text-right">Kg</TableHead></TableRow></TableHeader>
               <TableBody>
                 {estoques.map(e => (
                   <TableRow key={e.id}>
@@ -250,17 +250,17 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Nova Transferência</DialogTitle>
-            <DialogDescription>Baixa automática do estoque e envio de notificação ao destino.</DialogDescription>
+            <DialogTitle><LocalizedText source={"Nova Transferência"} /></DialogTitle>
+            <DialogDescription><LocalizedText source={"Baixa automática do estoque e envio de notificação ao destino."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Produto *</Label>
+              <Label><LocalizedText source={"Produto *"} /></Label>
               <Select value={produtoId} onValueChange={setFormulaId}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   {produtos.filter(f => Number(estoqueMap[f.id]?.quantidade_sacos || 0) > 0).length === 0 ? (
-                    <div className="p-2 text-sm text-muted-foreground">Nenhum produto disponível para transferência</div>
+                    <div className="p-2 text-sm text-muted-foreground"><LocalizedText source={"Nenhum produto disponível para transferência"} /></div>
                   ) : (
                     produtos
                       .filter(f => Number(estoqueMap[f.id]?.quantidade_sacos || 0) > 0)
@@ -275,16 +275,16 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
               </Select>
               {produtoId && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Disponível: {sacosDisp} sacos • {Number(estoqueDisp?.quantidade_kg || 0).toFixed(1)} kg
+                  <LocalizedText source={"Disponível:"} />{" "}{sacosDisp} <LocalizedText source={"sacos •"} />{" "}{Number(estoqueDisp?.quantidade_kg || 0).toFixed(1)} kg
                 </p>
               )}
             </div>
             <div>
-              <Label>Destino *</Label>
+              <Label><LocalizedText source={"Destino *"} /></Label>
               <Select value={destinoKey} onValueChange={setDestinoKey}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
-                  {destinos.length === 0 && <div className="p-2 text-xs text-muted-foreground">Nenhum destino vinculado</div>}
+                  {destinos.length === 0 && <div className="p-2 text-xs text-muted-foreground"><LocalizedText source={"Nenhum destino vinculado"} /></div>}
                   {destinos.map(d => {
                     const key = d.fazenda_id ? `faz:${d.fazenda_id}` : `ret:${d.retiro_id}`;
                     const label = destinoLabel(
@@ -297,7 +297,7 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
               </Select>
             </div>
             <div>
-              <Label>Quantidade de Sacos *</Label>
+              <Label><LocalizedText source={"Quantidade de Sacos *"} /></Label>
               <Input
                 type="number"
                 step="1"
@@ -316,16 +316,15 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
 
               {produtoId && qtd && parseFloat(qtd) > sacosDisp && (
                 <p className="text-xs text-destructive mt-1 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> Excede estoque disponível
-                </p>
+                  <AlertTriangle className="w-3 h-3" /> <LocalizedText source={"Excede estoque disponível"} /></p>
               )}
             </div>
             <div>
-              <Label>Observação</Label>
+              <Label><LocalizedText source={"Observação"} /></Label>
               <Textarea value={obs} onChange={e => setObs(e.target.value)} rows={2} />
             </div>
             <div>
-              <Label>Foto (opcional)</Label>
+              <Label><LocalizedText source={"Foto (opcional)"} /></Label>
               <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFile} className="hidden" />
               {foto ? (
                 <div className="relative">
@@ -336,16 +335,14 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
                 </div>
               ) : (
                 <Button type="button" variant="outline" onClick={() => fileRef.current?.click()} className="w-full">
-                  <Camera className="w-4 h-4 mr-1" /> Capturar / Enviar
-                </Button>
+                  <Camera className="w-4 h-4 mr-1" /> <LocalizedText source={"Capturar / Enviar"} /></Button>
               )}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={confirmar} disabled={saving}>
-              {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />} Confirmar Transferência
-            </Button>
+              {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />} <LocalizedText source={"Confirmar Transferência"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -528,7 +525,7 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
   return (
     <div className="space-y-3">
       {transferencias.length === 0 ? (
-        <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">Nenhuma transferência em trânsito.</CardContent></Card>
+        <Card><CardContent className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhuma transferência em trânsito."} /></CardContent></Card>
       ) : transferencias.map(t => (
         <Card key={t.id} className="cursor-pointer hover:border-primary" onClick={() => abrirDetalhe(t)}>
           <CardContent className="p-4 flex items-center justify-between gap-3">
@@ -556,7 +553,7 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
       <Dialog open={!!detalhe} onOpenChange={o => !o && fecharDetalhe()}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Receber Transferência</DialogTitle>
+            <DialogTitle><LocalizedText source={"Receber Transferência"} /></DialogTitle>
             <DialogDescription>
               {detalhe && `${produtos[detalhe.produto_id]?.nome || "—"} • ${destinoLabel(detalhe, fazendas, retiros)}`}
             </DialogDescription>
@@ -573,12 +570,12 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
           ) : detalhe && (
             <div className="space-y-3">
               <div className="rounded border p-3 text-sm bg-muted/30 space-y-1">
-                <div><span className="text-muted-foreground">Enviado:</span> <strong>{detalhe.quantidade_sacos} sacos</strong> ({Number(detalhe.quantidade_kg).toFixed(1)} kg)</div>
-                <div><span className="text-muted-foreground">Data envio:</span> {detalhe.criado_em ? new Date(detalhe.criado_em).toLocaleString("pt-BR") : "—"}</div>
-                {detalhe.observacao && <div><span className="text-muted-foreground">Obs. envio:</span> {detalhe.observacao}</div>}
+                <div><span className="text-muted-foreground"><LocalizedText source={"Enviado:"} /></span> <strong>{detalhe.quantidade_sacos} <LocalizedText source={"sacos"} /></strong> ({Number(detalhe.quantidade_kg).toFixed(1)} kg)</div>
+                <div><span className="text-muted-foreground"><LocalizedText source={"Data envio:"} /></span> {detalhe.criado_em ? new Date(detalhe.criado_em).toLocaleString("pt-BR") : "—"}</div>
+                {detalhe.observacao && <div><span className="text-muted-foreground"><LocalizedText source={"Obs. envio:"} /></span> {detalhe.observacao}</div>}
               </div>
               <div>
-                <Label>Quantidade Recebida (sacos) *</Label>
+                <Label><LocalizedText source={"Quantidade Recebida (sacos) *"} /></Label>
                 <Input type="number" step="1" value={qtdReceb} onChange={e => setQtdReceb(e.target.value)} />
                 {qtdReceb && parseFloat(qtdReceb) > 0 && (
                   (() => {
@@ -587,18 +584,18 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
                     const pct = detalhe.quantidade_sacos > 0 ? (d / detalhe.quantidade_sacos) * 100 : 0;
                     return (
                       <p className={`text-xs mt-1 ${Math.abs(pct) > 5 ? "text-destructive" : "text-muted-foreground"}`}>
-                        Divergência: {d >= 0 ? "-" : "+"}{Math.abs(d)} sc ({Math.abs(pct).toFixed(1)}%)
+                        <LocalizedText source={"Divergência:"} />{" "}{d >= 0 ? "-" : "+"}{Math.abs(d)} sc ({Math.abs(pct).toFixed(1)}%)
                       </p>
                     );
                   })()
                 )}
               </div>
               <div>
-                <Label>Observação</Label>
+                <Label><LocalizedText source={"Observação"} /></Label>
                 <Textarea value={obsReceb} onChange={e => setObsReceb(e.target.value)} rows={2} />
               </div>
               <div>
-                <Label>Foto (opcional)</Label>
+                <Label><LocalizedText source={"Foto (opcional)"} /></Label>
                 <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFile} className="hidden" />
                 {fotoReceb ? (
                   <div className="relative">
@@ -609,19 +606,17 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
                   </div>
                 ) : (
                   <Button type="button" variant="outline" onClick={() => fileRef.current?.click()} className="w-full">
-                    <Camera className="w-4 h-4 mr-1" /> Capturar / Enviar
-                  </Button>
+                    <Camera className="w-4 h-4 mr-1" /> <LocalizedText source={"Capturar / Enviar"} /></Button>
                 )}
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={fecharDetalhe} disabled={saving}>Fechar</Button>
+            <Button variant="outline" onClick={fecharDetalhe} disabled={saving}><LocalizedText source={"Fechar"} /></Button>
             {!bloqueado && (
               <Button onClick={confirmarRecebimento} disabled={saving}>
                 {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-                <PackageCheck className="w-4 h-4 mr-1" /> Confirmar Recebimento
-              </Button>
+                <PackageCheck className="w-4 h-4 mr-1" /> <LocalizedText source={"Confirmar Recebimento"} /></Button>
             )}
           </DialogFooter>
         </DialogContent>
@@ -663,9 +658,9 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
 
   function statusBadge(s: string | null) {
     switch (s) {
-      case "concluida": return <Badge className="bg-green-600">Concluída</Badge>;
-      case "em_recebimento": return <Badge>Em recebimento</Badge>;
-      case "em_transito": return <Badge variant="secondary">Em trânsito</Badge>;
+      case "concluida": return <Badge className="bg-green-600"><LocalizedText source={"Concluída"} /></Badge>;
+      case "em_recebimento": return <Badge><LocalizedText source={"Em recebimento"} /></Badge>;
+      case "em_transito": return <Badge variant="secondary"><LocalizedText source={"Em trânsito"} /></Badge>;
       default: return <Badge variant="outline">{s || "—"}</Badge>;
     }
   }
@@ -675,14 +670,14 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
   return (
     <div className="space-y-3">
       {transferencias.length === 0 ? (
-        <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">Nenhuma transferência registrada.</CardContent></Card>
+        <Card><CardContent className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhuma transferência registrada."} /></CardContent></Card>
       ) : (
         <Card>
           <CardContent className="p-0">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Data</TableHead><TableHead>Produto</TableHead>
-                <TableHead>Destino</TableHead><TableHead className="text-right">Sacos</TableHead>
+                <TableHead><LocalizedText source={"Data"} /></TableHead><TableHead><LocalizedText source={"Produto"} /></TableHead>
+                <TableHead><LocalizedText source={"Destino"} /></TableHead><TableHead className="text-right"><LocalizedText source={"Sacos"} /></TableHead>
                 <TableHead>Status</TableHead>
               </TableRow></TableHeader>
               <TableBody>
@@ -703,35 +698,35 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
 
       <Dialog open={!!detalhe} onOpenChange={o => !o && setDetalhe(null)}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Detalhes da Transferência</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle><LocalizedText source={"Detalhes da Transferência"} /></DialogTitle></DialogHeader>
           {detalhe && (
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-2">
-                <div><span className="text-muted-foreground">Produto:</span> {produtos[detalhe.produto_id]?.nome || "—"}</div>
+                <div><span className="text-muted-foreground"><LocalizedText source={"Produto:"} /></span> {produtos[detalhe.produto_id]?.nome || "—"}</div>
                 <div><span className="text-muted-foreground">Status:</span> {statusBadge(detalhe.status)}</div>
-                <div><span className="text-muted-foreground">Destino:</span> {destinoLabel(detalhe, fazendas, retiros)}</div>
-                <div><span className="text-muted-foreground">Enviado:</span> {detalhe.quantidade_sacos} sc / {Number(detalhe.quantidade_kg).toFixed(1)} kg</div>
-                <div><span className="text-muted-foreground">Enviado em:</span> {detalhe.criado_em ? new Date(detalhe.criado_em).toLocaleString("pt-BR") : "—"}</div>
-                {recebimento?.data_recebimento && <div><span className="text-muted-foreground">Recebido em:</span> {recebimento.data_recebimento} {recebimento.hora_recebimento || ""}</div>}
+                <div><span className="text-muted-foreground"><LocalizedText source={"Destino:"} /></span> {destinoLabel(detalhe, fazendas, retiros)}</div>
+                <div><span className="text-muted-foreground"><LocalizedText source={"Enviado:"} /></span> {detalhe.quantidade_sacos} sc / {Number(detalhe.quantidade_kg).toFixed(1)} kg</div>
+                <div><span className="text-muted-foreground"><LocalizedText source={"Enviado em:"} /></span> {detalhe.criado_em ? new Date(detalhe.criado_em).toLocaleString("pt-BR") : "—"}</div>
+                {recebimento?.data_recebimento && <div><span className="text-muted-foreground"><LocalizedText source={"Recebido em:"} /></span> {recebimento.data_recebimento} {recebimento.hora_recebimento || ""}</div>}
               </div>
-              {detalhe.observacao && <div className="p-2 rounded border bg-muted/30"><span className="text-muted-foreground">Obs. envio:</span> {detalhe.observacao}</div>}
-              {recebimento?.observacao && <div className="p-2 rounded border bg-muted/30"><span className="text-muted-foreground">Obs. recebimento:</span> {recebimento.observacao}</div>}
+              {detalhe.observacao && <div className="p-2 rounded border bg-muted/30"><span className="text-muted-foreground"><LocalizedText source={"Obs. envio:"} /></span> {detalhe.observacao}</div>}
+              {recebimento?.observacao && <div className="p-2 rounded border bg-muted/30"><span className="text-muted-foreground"><LocalizedText source={"Obs. recebimento:"} /></span> {recebimento.observacao}</div>}
               {recebimento && recebimento.status === "finalizado" && (
                 <div className={`p-2 rounded border ${Math.abs(Number(recebimento.divergencia_percentual || 0)) > 5 ? "border-destructive bg-destructive/10 text-destructive" : "bg-muted/30"}`}>
-                  Recebido: <strong>{recebimento.quantidade_recebida} sc</strong>
-                  {" • "}Divergência: {recebimento.divergencia_sacos} sc ({Number(recebimento.divergencia_percentual || 0).toFixed(1)}%)
+                  <LocalizedText source={"Recebido:"} />{" "}<strong>{recebimento.quantidade_recebida} sc</strong>
+                  {" • "}<LocalizedText source={"Divergência:"} />{" "}{recebimento.divergencia_sacos} sc ({Number(recebimento.divergencia_percentual || 0).toFixed(1)}%)
                 </div>
               )}
               <div className="grid grid-cols-2 gap-2">
                 {detalhe.foto_url && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Foto envio</p>
+                    <p className="text-xs text-muted-foreground mb-1"><LocalizedText source={"Foto envio"} /></p>
                     <img src={detalhe.foto_url} alt="envio" className="w-full rounded border" />
                   </div>
                 )}
                 {recebimento?.foto_url && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Foto recebimento</p>
+                    <p className="text-xs text-muted-foreground mb-1"><LocalizedText source={"Foto recebimento"} /></p>
                     <img src={recebimento.foto_url} alt="recebimento" className="w-full rounded border" />
                   </div>
                 )}

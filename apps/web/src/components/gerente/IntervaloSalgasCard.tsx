@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -148,7 +149,7 @@ export default function IntervaloSalgasCard({ fazendaId, onEditingChange }: { fa
 
   const modoAtual = editing ? dModo : modo;
   const fazBase = editing && valido(dFaz) ? Number(dFaz) : fazInt;
-  const usandoPadrao = <span className="text-xs text-muted-foreground">Usando padrão da fazenda ({txtDias(fazBase)})</span>;
+  const usandoPadrao = <span className="text-xs text-muted-foreground"><LocalizedText source={"Usando padrão da fazenda ("} />{txtDias(fazBase)})</span>;
 
   const campoNum = (value: string, onChange: (v: string) => void, placeholder = "") => (
     <Input type="number" inputMode="numeric" min={MIN} max={MAX} value={value} placeholder={placeholder}
@@ -157,7 +158,7 @@ export default function IntervaloSalgasCard({ fazendaId, onEditingChange }: { fa
 
   return (
     <Card>
-      <CardHeader className="pb-3"><CardTitle className="text-sm">Intervalo entre salgas</CardTitle></CardHeader>
+      <CardHeader className="pb-3"><CardTitle className="text-sm"><LocalizedText source={"Intervalo entre salgas"} /></CardTitle></CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
           <div className="flex justify-center p-4"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
@@ -190,7 +191,7 @@ export default function IntervaloSalgasCard({ fazendaId, onEditingChange }: { fa
                     </div>
                   );
                 })}
-                {retiros.length === 0 && <p className="text-sm text-muted-foreground">Nenhum retiro nesta fazenda.</p>}
+                {retiros.length === 0 && <p className="text-sm text-muted-foreground"><LocalizedText source={"Nenhum retiro nesta fazenda."} /></p>}
               </div>
             )}
 
@@ -205,7 +206,7 @@ export default function IntervaloSalgasCard({ fazendaId, onEditingChange }: { fa
                         className="w-full flex items-center gap-2 p-2 text-left">
                         {aberto ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                         <span className="text-sm font-medium flex-1">{r.nome}</span>
-                        <span className="text-xs text-muted-foreground">{ps.length} pastos</span>
+                        <span className="text-xs text-muted-foreground">{ps.length} <LocalizedText source={"pastos"} /></span>
                       </button>
                       {aberto && (
                         <div className="border-t p-2 space-y-2">
@@ -218,8 +219,7 @@ export default function IntervaloSalgasCard({ fazendaId, onEditingChange }: { fa
                                   if (v !== "" && !valido(v)) { toast.error(`Use de ${MIN} a ${MAX} dias.`); return; }
                                   setDPas((d) => ({ ...d, ...Object.fromEntries(ps.map((p) => [p.id, v])) }));
                                 }}>
-                                Aplicar a todos os pastos deste retiro
-                              </Button>
+                                <LocalizedText source={"Aplicar a todos os pastos deste retiro"} /></Button>
                             </div>
                           )}
                           {ps.map((p) => {
@@ -234,7 +234,7 @@ export default function IntervaloSalgasCard({ fazendaId, onEditingChange }: { fa
                               </div>
                             );
                           })}
-                          {ps.length === 0 && <p className="text-xs text-muted-foreground">Nenhum pasto ativo.</p>}
+                          {ps.length === 0 && <p className="text-xs text-muted-foreground"><LocalizedText source={"Nenhum pasto ativo."} /></p>}
                         </div>
                       )}
                     </div>
@@ -244,11 +244,11 @@ export default function IntervaloSalgasCard({ fazendaId, onEditingChange }: { fa
             )}
 
             {!editing ? (
-              <Button onClick={startEdit} className="w-full gap-2"><Pencil className="w-4 h-4" /> Editar</Button>
+              <Button onClick={startEdit} className="w-full gap-2"><Pencil className="w-4 h-4" /> <LocalizedText source={"Editar"} /></Button>
             ) : (
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setEditing(false)} disabled={saving}>Cancelar</Button>
-                <Button className="flex-1" onClick={save} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Salvar</Button>
+                <Button variant="outline" className="flex-1" onClick={() => setEditing(false)} disabled={saving}><LocalizedText source={"Cancelar"} /></Button>
+                <Button className="flex-1" onClick={save} disabled={saving}>{saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}<LocalizedText source={"Salvar"} /></Button>
               </div>
             )}
           </>
@@ -258,12 +258,12 @@ export default function IntervaloSalgasCard({ fazendaId, onEditingChange }: { fa
       <AlertDialog open={confirmModo !== null} onOpenChange={(o) => { if (!o) setConfirmModo(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Trocar o modo do intervalo?</AlertDialogTitle>
-            <AlertDialogDescription>Os intervalos do modo anterior serão apagados ao salvar. O valor da fazenda é mantido.</AlertDialogDescription>
+            <AlertDialogTitle><LocalizedText source={"Trocar o modo do intervalo?"} /></AlertDialogTitle>
+            <AlertDialogDescription><LocalizedText source={"Os intervalos do modo anterior serão apagados ao salvar. O valor da fazenda é mantido."} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmarTroca}>Confirmar</AlertDialogAction>
+            <AlertDialogCancel><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarTroca}><LocalizedText source={"Confirmar"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef, useState } from "react";
 import { Camera, CloudOff, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -115,7 +116,7 @@ export default function PennStateFotoGrid({
   return (
     <div className={cn("space-y-2", className)}>
       <div className="text-xs font-semibold text-muted-foreground">
-        Fotos ({fotos.length}/{MAX})
+        <LocalizedText source={"Fotos ("} />{fotos.length}/{MAX})
       </div>
       <div className="grid gap-1.5 grid-cols-5">
         {slots.map(({ ordem, foto, local }) => {
@@ -145,8 +146,8 @@ export default function PennStateFotoGrid({
                   <img loading="lazy" decoding="async" src={local.previewUrl} alt="" className="w-full h-full object-cover opacity-90" />
                   <div className="absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded bg-background/85 px-1 py-0.5 text-[8px] font-medium text-amber-600">
                     {local.uploading
-                      ? <><Loader2 className="w-2.5 h-2.5 animate-spin" /> enviando</>
-                      : <><CloudOff className="w-2.5 h-2.5" /> falhou</>}
+                      ? <><Loader2 className="w-2.5 h-2.5 animate-spin" /> <LocalizedText source={"enviando"} /></>
+                      : <><CloudOff className="w-2.5 h-2.5" /> <LocalizedText source={"falhou"} /></>}
                   </div>
                   {!disabled && (
                     <button type="button"
@@ -173,7 +174,7 @@ export default function PennStateFotoGrid({
         })}
       </div>
       {!analiseId && (
-        <p className="text-[10px] text-muted-foreground">Salve a análise para anexar fotos.</p>
+        <p className="text-[10px] text-muted-foreground"><LocalizedText source={"Salve a análise para anexar fotos."} /></p>
       )}
       <input
         ref={inputRef}
