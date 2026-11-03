@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Trophy, Medal } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -53,22 +54,21 @@ export default function PremiacaoSemestral({ fazendas, mostrarFazenda, seletorEx
   return (
     <div>
       <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
-        <Trophy className="w-4 h-4" /> Premiação Semestral
-        {parcial && <Badge variant="outline" className="ml-1 normal-case">Parcial</Badge>}
+        <Trophy className="w-4 h-4" /> <LocalizedText source={"Premiação Semestral"} />{parcial && <Badge variant="outline" className="ml-1 normal-case"><LocalizedText source={"Parcial"} /></Badge>}
       </h2>
       <div className="flex flex-wrap gap-2 mb-3">
         <Select value={sel} onValueChange={setSel}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {opcoes.map((o) => <SelectItem key={key(o)} value={key(o)}>{o.sem}º sem/{o.ano}</SelectItem>)}
+            {opcoes.map((o) => <SelectItem key={key(o)} value={key(o)}>{o.sem}<LocalizedText source={"º sem/"} />{o.ano}</SelectItem>)}
           </SelectContent>
         </Select>
         {seletorExtra}
       </div>
       {loading ? (
-        <p className="text-muted-foreground text-sm text-center py-4">Calculando…</p>
+        <p className="text-muted-foreground text-sm text-center py-4"><LocalizedText source={"Calculando…"} /></p>
       ) : list.length === 0 ? (
-        <p className="text-muted-foreground text-sm text-center py-4">Sem salgas no semestre.</p>
+        <p className="text-muted-foreground text-sm text-center py-4"><LocalizedText source={"Sem salgas no semestre."} /></p>
       ) : (
         <Card className="divide-y divide-border">
           {list.map((r, i) => {

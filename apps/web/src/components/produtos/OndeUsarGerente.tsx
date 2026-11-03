@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -181,7 +182,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
   const Chip = ({ id, heranca }: { id: string | null; heranca?: boolean }) => (
     <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-primary-foreground max-w-[10rem] truncate"
       style={{ backgroundColor: corDe(id) }}>
-      <span className="truncate">{nomeProd(id)}</span>{heranca && <span className="opacity-80">(retiro)</span>}
+      <span className="truncate">{nomeProd(id)}</span>{heranca && <span className="opacity-80"><LocalizedText source={"(retiro)"} /></span>}
     </span>
   );
 
@@ -199,14 +200,14 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
         <Select value={fRetiro} onValueChange={setFRetiro}>
           <SelectTrigger className="w-36 shrink-0"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value={TODOS}>Todos os retiros</SelectItem>
+            <SelectItem value={TODOS}><LocalizedText source={"Todos os retiros"} /></SelectItem>
             {retiros.map((r) => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={fProduto} onValueChange={setFProduto}>
           <SelectTrigger className="w-40 shrink-0"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value={TODOS}>Todos os produtos</SelectItem>
+            <SelectItem value={TODOS}><LocalizedText source={"Todos os produtos"} /></SelectItem>
             {produtosDisp.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -233,7 +234,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
         <div className="flex items-center gap-2 mb-2">
           <Checkbox id="sel-todos" checked={todosSel}
             onCheckedChange={() => setSel(todosSel ? new Set() : new Set(pastosFiltrados.map((p) => p.id)))} />
-          <Label htmlFor="sel-todos" className="text-sm cursor-pointer">Selecionar todos (filtrados)</Label>
+          <Label htmlFor="sel-todos" className="text-sm cursor-pointer"><LocalizedText source={"Selecionar todos (filtrados)"} /></Label>
         </div>
       )}
 
@@ -250,11 +251,11 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
                   onClick={() => setAbertos((prev) => { const n = new Set(prev); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; })}>
                   <ChevronDown className={`w-4 h-4 transition-transform ${aberto ? "" : "-rotate-90"}`} />
                   <span className="font-semibold text-sm">{r.nome}</span>
-                  {nProd > 1 && <Badge variant="outline" className="text-[10px]">Usa {nProd} produtos</Badge>}
-                  <span className="ml-auto text-xs text-muted-foreground">{pastos.filter((p) => p.retiro_id === r.id).length} pastos</span>
+                  {nProd > 1 && <Badge variant="outline" className="text-[10px]"><LocalizedText source={"Usa"} />{" "}{nProd} <LocalizedText source={"produtos"} /></Badge>}
+                  <span className="ml-auto text-xs text-muted-foreground">{pastos.filter((p) => p.retiro_id === r.id).length} <LocalizedText source={"pastos"} /></span>
                 </button>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground shrink-0">Produto do retiro:</span>
+                  <span className="text-xs text-muted-foreground shrink-0"><LocalizedText source={"Produto do retiro:"} /></span>
                   <Select value={rp ?? ""} onValueChange={(v) => setRetPend((prev) => ({ ...prev, [r.id]: v }))}>
                     <SelectTrigger className="h-8 text-xs flex-1 min-w-0">
                       <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0 mr-1.5" style={{ backgroundColor: corDe(rp) }} />
@@ -269,7 +270,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
               </div>
               {aberto && (
                 <div className="border-t divide-y">
-                  {ps.length === 0 && <p className="text-xs text-muted-foreground p-3">Nenhum pasto.</p>}
+                  {ps.length === 0 && <p className="text-xs text-muted-foreground p-3"><LocalizedText source={"Nenhum pasto."} /></p>}
                   {ps.map((p) => {
                     const own = proprio(p);
                     const pend = pastosMudados.includes(p);
@@ -286,7 +287,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
                             <Chip id={efetivo(p)} heranca={!own} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value={SEGUIR}>Seguir o retiro</SelectItem>
+                            <SelectItem value={SEGUIR}><LocalizedText source={"Seguir o retiro"} /></SelectItem>
                             {produtosDisp.map((x) => <SelectItem key={x.id} value={x.id}>{x.nome}</SelectItem>)}
                           </SelectContent>
                         </Select>
@@ -309,17 +310,17 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
               <Select value={loteProduto} onValueChange={setLoteProduto}>
                 <SelectTrigger className="h-8 text-xs flex-1 min-w-0"><SelectValue placeholder="Aplicar…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={SEGUIR}>Seguir o retiro</SelectItem>
+                  <SelectItem value={SEGUIR}><LocalizedText source={"Seguir o retiro"} /></SelectItem>
                   {produtosDisp.map((x) => <SelectItem key={x.id} value={x.id}>{x.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Button size="sm" disabled={!loteProduto} onClick={aplicarLote}>Aplicar</Button>
+              <Button size="sm" disabled={!loteProduto} onClick={aplicarLote}><LocalizedText source={"Aplicar"} /></Button>
             </div>
           )}
           {qtdPend > 0 && (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1" onClick={() => { setRetPend({}); setPastoPend({}); }}>Descartar</Button>
-              <Button size="sm" className="flex-1" onClick={() => { setSeguirRetiro(true); setConfirmOpen(true); }}>Salvar alterações ({qtdPend})</Button>
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => { setRetPend({}); setPastoPend({}); }}><LocalizedText source={"Descartar"} /></Button>
+              <Button size="sm" className="flex-1" onClick={() => { setSeguirRetiro(true); setConfirmOpen(true); }}><LocalizedText source={"Salvar alterações ("} />{qtdPend})</Button>
             </div>
           )}
         </div>
@@ -328,16 +329,16 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
       <AlertDialog open={confirmOpen} onOpenChange={(o) => !saving && setConfirmOpen(o)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar alterações</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Confirmar alterações"} /></AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm">
                 {linhasResumo.map((l, i) => <p key={i}>{l}</p>)}
                 {conflitos.length > 0 && (
                   <div className="rounded-md border p-2 space-y-1">
-                    <p className="text-xs">Pastos com produto próprio diferente do novo produto do retiro: {conflitos.map((c) => c.nome).join(", ")}</p>
+                    <p className="text-xs"><LocalizedText source={"Pastos com produto próprio diferente do novo produto do retiro:"} />{" "}{conflitos.map((c) => c.nome).join(", ")}</p>
                     <div className="flex items-center gap-2">
                       <Checkbox id="ou-seguir" checked={seguirRetiro} onCheckedChange={(c) => setSeguirRetiro(c === true)} />
-                      <Label htmlFor="ou-seguir" className="text-sm font-normal cursor-pointer">Fazer esses pastos seguirem o produto do retiro</Label>
+                      <Label htmlFor="ou-seguir" className="text-sm font-normal cursor-pointer"><LocalizedText source={"Fazer esses pastos seguirem o produto do retiro"} /></Label>
                     </div>
                   </div>
                 )}
@@ -345,10 +346,9 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={saving}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <AlertDialogAction disabled={saving} onClick={(e) => { e.preventDefault(); executar(); }}>
-              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Confirmar
-            </AlertDialogAction>
+              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}<LocalizedText source={"Confirmar"} /></AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

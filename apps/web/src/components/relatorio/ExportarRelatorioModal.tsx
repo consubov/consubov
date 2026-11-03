@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2, FileDown } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/useTranslation";
 import RelatorioPDF, { type RelatorioPDFData, type RetiroReportData, type PastoReportData, type CatMetricsPDF, type PrevisaoAbatePDFData } from "./RelatorioPDF";
 import { REPORT_EXPORT_DEADLINE_MS, forEachLimited, prepareReportPdfDownload, releaseReportPdfDownload, ReportExportTimeoutError, triggerReportPdfDownload, withReportExportDeadline, type ReportPdfDownload } from "@/lib/reportPdfExport";
 
@@ -83,7 +84,11 @@ export default function ExportarRelatorioModal({
   lockedRetiroId,
   produtoId,
 }: Props) {
+  const { t, language } = useTranslation();
   const now = new Date();
+  const monthName = (index: number) => language === "en-US"
+    ? new Intl.DateTimeFormat("en-US", { month: "long" }).format(new Date(2026, index, 1))
+    : MESES[index];
   const monthlyContextEnabled = initialMes != null && initialAno != null;
   const [periodoTipo, setPeriodoTipo] = useState<PeriodoTipo>("mensal");
   const [mes, setMes] = useState(initialMes ?? now.getMonth() + 1);
@@ -141,7 +146,7 @@ export default function ExportarRelatorioModal({
     };
     setArquivoPronto(null);
     setLoading(true);
-    setEtapa("Consultando dados da fazenda...");
+    setEtapa("report.reading");
     try {
       const formulas = await bounded(fetchFormulasConfig(), "Fórmulas do sistema");
       const periodoSelecionado: PeriodoTipo = monthlyContextEnabled ? "mensal" : periodoTipo;
@@ -157,7 +162,7 @@ export default function ExportarRelatorioModal({
       }
       const { data: retirosData } = await bounded(retQuery, "Retiros");
       if (!retirosData || retirosData.length === 0) {
-        toast.error("Nenhum retiro encontrado.");
+        toast.error(t("report.noUnits"));
         setLoading(false);
         return;
       }
@@ -285,7 +290,7 @@ export default function ExportarRelatorioModal({
         pastos = pastos.filter(p => produtoEfetivoDoPasto(p) === produtoSelecionado);
         pastoIds = pastos.map(p => p.id);
         if (pastoIds.length === 0) {
-          toast.error("Nenhum pasto usa o produto selecionado.");
+          toast.error(t("report.noPastures"));
           return;
         }
 
@@ -347,7 +352,7 @@ export default function ExportarRelatorioModal({
         const { data: lancData, error: lancError } = await bounded(lQuery, "Lançamentos");
         if (lancError) {
           console.error("Erro ao buscar lançamentos para PDF:", lancError);
-          toast.error("Erro ao buscar dados de lançamentos.");
+          toast.error(t("report.loadEntries"));
           setLoading(false);
           return;
         }
@@ -422,7 +427,7 @@ export default function ExportarRelatorioModal({
       const numDias = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000));
 
       // Nota do Capataz: fonte única compartilhada com a aba Ranking do Painel.
-      setEtapa("Calculando indicadores e notas do capataz...");
+      setEtapa("report.calculating");
       const scores = await bounded(fetchScoresCapataz({
         fazendaId,
         start,
@@ -716,15 +721,15 @@ export default function ExportarRelatorioModal({
       const reportData: RelatorioPDFData = {
         fazendaNome,
         periodo: label,
-        dataGeracao: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+        dataGeracao: new Date().toLocaleDateString(language, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }),
         geradoPor,
         retiros: retiroReportData,
         categoriaMetrics,
         previsaoAbate,
       };
 
-      setEtapa("Gerando o arquivo PDF...");
-      const blob = await bounded(pdf(<RelatorioPDF data={reportData} />).toBlob(), "Renderização do PDF", 45_000);
+      setEtapa("report.generatingFile");
+      const blob = await bounded(pdf(<RelatorioPDF data={reportData} language={language} />).toBlob(), "Renderização do PDF", 45_000);
       assertActive();
       const safeName = fazendaNome.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
       const safeLabel = label.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
@@ -736,13 +741,13 @@ export default function ExportarRelatorioModal({
       try { triggerReportPdfDownload(arquivo); } catch (e) {
         console.warn("Download automático indisponível. A opção manual permanece disponível.", e);
       }
-      toast.success("PDF gerado. Se não baixar automaticamente, use 'Baixar PDF gerado'.");
+      toast.success(t("report.success"));
     } catch (e) {
       if (exportRunId !== exportSequence.current) return;
       console.error("Erro ao gerar relatório PDF:", e);
       toast.error(e instanceof ReportExportTimeoutError
-        ? `Tempo limite ao consultar ${e.stage}. Verifique a conexão e tente novamente.`
-        : "Não foi possível gerar o relatório PDF. Tente novamente.");
+        ? `${t("report.timeout")} ${e.stage}. ${t("report.retry")}`
+        : t("report.error"));
     } finally {
       if (exportRunId === exportSequence.current) {
         setLoading(false);
@@ -756,19 +761,19 @@ export default function ExportarRelatorioModal({
       const end = new Date();
       const start = new Date();
       start.setDate(start.getDate() - 15);
-      return { start, end, label: "Últimos 15 dias" };
+      return { start, end, label: t("report.last15") };
     }
     if (periodo === "anual") {
       return {
         start: new Date(ano, 0, 1),
         end: new Date(ano, 11, 31, 23, 59, 59),
-        label: `Ano ${ano}`,
+        label: `${t("report.yearPrefix")} ${ano}`,
       };
     }
     return {
       start: new Date(ano, mes - 1, 1),
       end: new Date(ano, mes, 0, 23, 59, 59),
-      label: `${MESES[mes - 1]} ${ano}`,
+      label: `${monthName(mes - 1)} ${ano}`,
     };
   }
 
@@ -776,7 +781,7 @@ export default function ExportarRelatorioModal({
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
   const painelYears = Array.from({ length: currentYear - 2024 + 2 }, (_, i) => 2024 + i);
   const retiroBloqueadoNome = lockedRetiroId
-    ? retirosList.find((retiro) => retiro.id === lockedRetiroId)?.nome ?? "Retiro selecionado"
+    ? retirosList.find((retiro) => retiro.id === lockedRetiroId)?.nome ?? t("report.selectedUnit")
     : null;
 
   return (
@@ -784,20 +789,20 @@ export default function ExportarRelatorioModal({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileDown className="w-5 h-5" /> Exportar Relatório PDF
+            <FileDown className="w-5 h-5" /> {t("report.title")}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           {monthlyContextEnabled ? (
             <div className="space-y-2">
-              <Label>Período do painel</Label>
+              <Label>{t("report.periodPanel")}</Label>
               <div className="grid grid-cols-2 gap-3">
                 <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {MESES.map((mesNome, i) => (
-                      <SelectItem key={mesNome} value={String(i + 1)}>{mesNome}</SelectItem>
+                      <SelectItem key={mesNome} value={String(i + 1)}>{monthName(i)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -814,13 +819,13 @@ export default function ExportarRelatorioModal({
           ) : (
             <>
               <div className="space-y-2">
-                <Label>Período</Label>
+                <Label>{t("report.period")}</Label>
                 <Select value={periodoTipo} onValueChange={(v) => setPeriodoTipo(v as PeriodoTipo)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="mensal">Mensal</SelectItem>
-                    <SelectItem value="ultimos15">Últimos 15 dias</SelectItem>
-                    <SelectItem value="anual">Anual</SelectItem>
+                    <SelectItem value="mensal">{t("report.monthly")}</SelectItem>
+                    <SelectItem value="ultimos15">{t("report.last15")}</SelectItem>
+                    <SelectItem value="anual">{t("report.yearly")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -828,18 +833,18 @@ export default function ExportarRelatorioModal({
               {periodoTipo === "mensal" && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label>Mês</Label>
+                    <Label>{t("report.month")}</Label>
                     <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {MESES.map((mesNome, i) => (
-                          <SelectItem key={mesNome} value={String(i + 1)}>{mesNome}</SelectItem>
+                          <SelectItem key={mesNome} value={String(i + 1)}>{monthName(i)}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Ano</Label>
+                    <Label>{t("report.year")}</Label>
                     <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -854,7 +859,7 @@ export default function ExportarRelatorioModal({
 
               {periodoTipo === "anual" && (
                 <div className="space-y-2">
-                  <Label>Ano</Label>
+                  <Label>{t("report.year")}</Label>
                   <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -870,18 +875,18 @@ export default function ExportarRelatorioModal({
 
           {lockedRetiroId ? (
             <div className="space-y-2">
-              <Label>Escopo</Label>
+              <Label>{t("report.scope")}</Label>
               <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-foreground">
                 {retiroBloqueadoNome}
               </div>
             </div>
           ) : (
             <div className="space-y-2">
-              <Label>Escopo</Label>
+              <Label>{t("report.scope")}</Label>
               <Select value={retiroFiltro} onValueChange={setRetiroFiltro}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todos">Todos os retiros</SelectItem>
+                  <SelectItem value="todos">{t("report.allUnits")}</SelectItem>
                   {retirosList.map(r => (
                     <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
                   ))}
@@ -891,19 +896,19 @@ export default function ExportarRelatorioModal({
           )}
         </div>
 
-        {loading && <p role="status" aria-live="polite" className="text-xs text-muted-foreground">{etapa || "Preparando relatório..."}</p>}
+        {loading && <p role="status" aria-live="polite" className="text-xs text-muted-foreground">{etapa ? t(etapa) : t("report.preparing")}</p>}
         {arquivoPronto && !loading && (
           <a href={arquivoPronto.url} download={arquivoPronto.filename}
             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-            aria-label="Baixar PDF gerado">
-            <FileDown className="h-4 w-4" /> Baixar PDF gerado
+            aria-label={t("report.download")}>
+            <FileDown className="h-4 w-4" /> {t("report.download")}
           </a>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={() => closeModal(false)}>{loading ? "Cancelar exportação" : "Fechar"}</Button>
+          <Button variant="outline" onClick={() => closeModal(false)}>{loading ? t("report.exportCancel") : t("report.close")}</Button>
           <Button onClick={() => void handleExportar()} disabled={loading} className="gap-1.5">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
-            {loading ? "Gerando..." : "Exportar PDF"}
+            {loading ? t("report.generating") : t("report.export")}
           </Button>
         </DialogFooter>
       </DialogContent>
