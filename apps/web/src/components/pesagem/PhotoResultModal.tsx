@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import html2canvas from "html2canvas";
@@ -86,8 +87,7 @@ function InsightBadge({ fontSize, exporting, position }: InsightBadgeProps) {
           setVisible(true);
         }}
       >
-        toque para adicionar frase
-      </div>
+        <LocalizedText source={"toque para adicionar frase"} /></div>
     );
   }
 
@@ -360,12 +360,11 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
                       marginLeft: 6,
                     }}
                   >
-                    kg/dia
-                  </span>
+                    <LocalizedText source={"kg/dia"} /></span>
                 </>
               ) : (
                 <span style={{ fontSize: sizes.gmd * 0.45, fontWeight: 700, color: "white" }}>
-                  Primeira pesagem • {pesoAtual.toFixed(1)} kg
+                  <LocalizedText source={"Primeira pesagem •"} />{" "}{pesoAtual.toFixed(1)} kg
                 </span>
               )}
             </div>
@@ -490,11 +489,9 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
               className="h-12 w-full bg-green-600 hover:bg-green-700 text-white font-semibold"
             >
               <Check className="mr-2 h-5 w-5" />
-              Ficou bom!
-            </Button>
+              <LocalizedText source={"Ficou bom!"} /></Button>
             <Button onClick={onClose} variant="outline" className="h-12 w-full">
-              Cancelar
-            </Button>
+              <LocalizedText source={"Cancelar"} /></Button>
           </div>
         </div>
       )}
@@ -595,11 +592,9 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
                 ) : (
                   <Share2 className="mr-2 h-4 w-4" />
                 )}
-                Compartilhar
-              </Button>
+                <LocalizedText source={"Compartilhar"} /></Button>
               <Button onClick={onClose} variant="outline" className="h-12 w-full">
-                Cancelar
-              </Button>
+                <LocalizedText source={"Cancelar"} /></Button>
             </div>
           </div>
         </>

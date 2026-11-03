@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { withReportExportDeadline, downloadGeneratedPdf } from "@/lib/reportPdfExport";
 import { useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -172,26 +173,24 @@ export default function ExportarPesagemModal({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
-              Exportar Pesagem
-            </DialogTitle>
+              <LocalizedText source={"Exportar Pesagem"} /></DialogTitle>
             <DialogDescription>
-              Gere o relatório em PDF da pesagem realizada.
-            </DialogDescription>
+              <LocalizedText source={"Gere o relatório em PDF da pesagem realizada."} /></DialogDescription>
           </DialogHeader>
 
           {/* Summary */}
           <div className="grid grid-cols-3 gap-3 text-center py-2">
             <div className="p-3 rounded-lg bg-muted">
               <p className="text-lg font-bold text-primary">{totalAnimais}</p>
-              <p className="text-xs text-muted-foreground">animais</p>
+              <p className="text-xs text-muted-foreground"><LocalizedText source={"animais"} /></p>
             </div>
             <div className="p-3 rounded-lg bg-muted">
               <p className="text-lg font-bold text-primary">{pesoMedioKg.toFixed(1)}</p>
-              <p className="text-xs text-muted-foreground">kg médio</p>
+              <p className="text-xs text-muted-foreground"><LocalizedText source={"kg médio"} /></p>
             </div>
             <div className="p-3 rounded-lg bg-muted">
               <p className="text-lg font-bold text-primary">{pesoTotalKg.toFixed(1)}</p>
-              <p className="text-xs text-muted-foreground">kg total</p>
+              <p className="text-xs text-muted-foreground"><LocalizedText source={"kg total"} /></p>
             </div>
           </div>
 
@@ -208,8 +207,7 @@ export default function ExportarPesagemModal({
               ) : (
                 <ExternalLink className="w-4 h-4 mr-2" />
               )}
-              Abrir PDF
-            </Button>
+              <LocalizedText source={"Abrir PDF"} /></Button>
             <Button
               variant="outline"
               size="icon"
@@ -228,8 +226,7 @@ export default function ExportarPesagemModal({
               ) : (
                 <Share2 className="w-4 h-4 mr-2" />
               )}
-              Compartilhar
-            </Button>
+              <LocalizedText source={"Compartilhar"} /></Button>
           </div>
 
           {/* Banner inferior - clicável */}
@@ -243,11 +240,9 @@ export default function ExportarPesagemModal({
             </div>
             <div className="flex-1">
               <p className="text-sm font-semibold leading-tight">
-                Quer compartilhar com ainda mais impacto?
-              </p>
+                <LocalizedText source={"Quer compartilhar com ainda mais impacto?"} /></p>
               <p className="text-xs text-muted-foreground leading-tight mt-0.5">
-                Tire uma foto, adicione o filtro de desempenho automaticamente e compartilhe seu resultado!
-              </p>
+                <LocalizedText source={"Tire uma foto, adicione o filtro de desempenho automaticamente e compartilhe seu resultado!"} /></p>
             </div>
             <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
           </button>
