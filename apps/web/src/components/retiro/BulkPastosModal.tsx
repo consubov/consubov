@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -51,14 +52,12 @@ export default function BulkPastosModal({ open, onOpenChange, retiroId, onCreate
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ListPlus className="w-5 h-5" /> Adicionar Vários Pastos
-          </DialogTitle>
+            <ListPlus className="w-5 h-5" /> <LocalizedText source={"Adicionar Vários Pastos"} /></DialogTitle>
           <DialogDescription>
-            Cole os nomes dos pastos, um por linha. Todos serão criados vinculados a este retiro.
-          </DialogDescription>
+            <LocalizedText source={"Cole os nomes dos pastos, um por linha. Todos serão criados vinculados a este retiro."} /></DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
-          <Label htmlFor="bulk-names">Nomes dos pastos (um por linha)</Label>
+          <Label htmlFor="bulk-names"><LocalizedText source={"Nomes dos pastos (um por linha)"} /></Label>
           <Textarea
             id="bulk-names"
             rows={8}
@@ -67,11 +66,10 @@ export default function BulkPastosModal({ open, onOpenChange, retiroId, onCreate
             onChange={(e) => setText(e.target.value)}
           />
           <p className="text-xs text-muted-foreground">
-            {text.split("\n").filter((l) => l.trim()).length} pasto(s) serão criados
-          </p>
+            {text.split("\n").filter((l) => l.trim()).length} <LocalizedText source={"pasto(s) serão criados"} /></p>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}><LocalizedText source={"Cancelar"} /></Button>
           <Button onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Criar Pastos"}
           </Button>
