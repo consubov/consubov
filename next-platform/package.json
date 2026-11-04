@@ -18,6 +18,7 @@
     "test": "bun test qa/suites/",
     "check": "bun run typecheck && bun run test",
     "qa:q1": "bun run qa/scripts/run-q1-gate.ts",
+    "qa:q2": "bun run qa/scripts/run-q2-gate.ts",
     "dev:api": "bun run --cwd api dev",
     "dev:shell": "bun run --cwd apps/fazenda/shell dev",
     "dev:admin": "bun run --cwd apps/admin-global dev"

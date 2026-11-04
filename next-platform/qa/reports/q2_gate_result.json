@@ -1,0 +1,65 @@
+{
+  "gate_id": "GATE_Q2_API_SECURITY_AND_RBAC",
+  "task_id": "F23-NEXT-02",
+  "milestone": "FASE 02 (Identidade, Permissões, Contratos e Segurança da API)",
+  "worktree_path": "D:\\MATEUS\\Documentos\\GitHub\\consubov-worktrees\\f23-isolated-next-platform",
+  "branch": "feat/platform/f23-isolated-next-platform",
+  "executed_at": "2026-11-04T22:42:41.252Z",
+  "runtime": {
+    "bun_version": "1.4.2",
+    "node_version": "v26.3.0",
+    "os": "win32 x64"
+  },
+  "checks": [
+    {
+      "id": "Q2.1_AUTH_BARRIER",
+      "name": "Barreira Central de Autenticação Bearer e Proteção Anti-Spoofing",
+      "status": "PASS",
+      "duration_ms": 131
+    },
+    {
+      "id": "Q2.2_RBAC_MATRIX",
+      "name": "Matriz RBAC Declarativa (5 perfis x 22 comandos autorizados)",
+      "status": "PASS",
+      "duration_ms": 128
+    },
+    {
+      "id": "Q2.3_DOMAIN_VALIDATION",
+      "name": "Validação Estrita de Schemas Zod de Domínio na API Bun",
+      "status": "PASS",
+      "duration_ms": 132
+    },
+    {
+      "id": "Q2.4_MULTITENANT_OCC",
+      "name": "Isolamento Multi-Tenant, Deduplicação e Concorrência OCC na API",
+      "status": "PASS",
+      "duration_ms": 152
+    },
+    {
+      "id": "Q2.5_FAKE_SERVER_PARITY",
+      "name": "Paridade e Correção Forense de Multi-Tenancy no FakeApiServer",
+      "status": "PASS",
+      "duration_ms": 86
+    },
+    {
+      "id": "Q2.6_TYPECHECK",
+      "name": "TypeScript Strict Compilation em Todos os Workspaces (tsc -b)",
+      "status": "PASS",
+      "duration_ms": 3674
+    }
+  ],
+  "summary": {
+    "total_checks": 6,
+    "passed": 6,
+    "failed": 0,
+    "blocked": 0
+  },
+  "audit_flags": {
+    "isolation_preserved": true,
+    "hermetic_tokens": true,
+    "multitenant_partitioned": true,
+    "zero_cross_tenant_leak": true,
+    "zero_network_egress": true
+  },
+  "verdict": "PASS"
+}

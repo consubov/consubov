@@ -5,10 +5,22 @@ import {
 } from '@consubov/contracts';
 
 export class FakeApiServer {
-  private ledger = new Map<string, CommandAckResponse>(); // chave: tenant_id:idempotency_key
-  private aggregateVersions = new Map<string, number>();  // chave: aggregate_id
+  // Chave canônica: `${tenant_id}::${idempotency_key}`
+  private ledger = new Map<string, CommandAckResponse>();
+
+  // Chave canônica: `${tenant_id}::${aggregate_type}::${aggregate_id}`
+  private aggregateVersions = new Map<string, number>();
+
   private networkPaused: boolean = false;
   private forceStatusCode: number | null = null;
+
+  private getIdempotencyKey(tenantId: string, idempotencyKey: string): string {
+    return `${tenantId}::${idempotencyKey}`;
+  }
+
+  private getAggregateKey(tenantId: string, aggregateType: string, aggregateId: string): string {
+    return `${tenantId}::${aggregateType}::${aggregateId}`;
+  }
 
   public setNetworkPaused(paused: boolean): void {
     this.networkPaused = paused;
@@ -16,6 +28,11 @@ export class FakeApiServer {
 
   public setForceStatusCode(status: number | null): void {
     this.forceStatusCode = status;
+  }
+
+  public getAggregateVersion(tenantId: string, aggregateType: string, aggregateId: string): number {
+    const key = this.getAggregateKey(tenantId, aggregateType, aggregateId);
+    return this.aggregateVersions.get(key) ?? 0;
   }
 
   public async handleCommand(envelope: AtomicCommandEnvelope): Promise<
@@ -34,9 +51,9 @@ export class FakeApiServer {
       };
     }
 
-    const ledgerKey = `${envelope.tenant_id}:${envelope.idempotency_key}`;
+    const ledgerKey = this.getIdempotencyKey(envelope.tenant_id, envelope.idempotency_key);
 
-    // 1. Verificação de Idempotência
+    // 1. Verificação de Idempotência Particionada por Tenant
     if (this.ledger.has(ledgerKey)) {
       const stored = this.ledger.get(ledgerKey)!;
       return {
@@ -48,8 +65,14 @@ export class FakeApiServer {
       };
     }
 
-    // 2. Verificação de Concorrência Otimista (OCC)
-    const currentVer = this.aggregateVersions.get(envelope.aggregate_id) ?? 0;
+    // 2. Verificação de Concorrência Otimista (OCC) Particionada por Tenant
+    const aggKey = this.getAggregateKey(
+      envelope.tenant_id,
+      envelope.aggregate_type,
+      envelope.aggregate_id
+    );
+    const currentVer = this.aggregateVersions.get(aggKey) ?? 0;
+
     if (envelope.base_version !== currentVer) {
       return {
         status: 409,
@@ -59,15 +82,15 @@ export class FakeApiServer {
           aggregate_id: envelope.aggregate_id,
           base_version: envelope.base_version,
           current_version: currentVer,
-          conflict_reason: 'A versão base do registro divergiu no servidor.',
+          conflict_reason: `A versão base do registro divergiu no servidor para o tenant ${envelope.tenant_id}. Esperada: ${currentVer}, Recebida: ${envelope.base_version}`,
           resolution_strategy: 'MANUAL_RESOLUTION_REQUIRED'
         }
       };
     }
 
-    // 3. Commit e avanço de versão
+    // 3. Commit e avanço de versão isolado para este tenant
     const nextVer = currentVer + 1;
-    this.aggregateVersions.set(envelope.aggregate_id, nextVer);
+    this.aggregateVersions.set(aggKey, nextVer);
 
     const ack: CommandAckResponse = {
       command_id: envelope.command_id,

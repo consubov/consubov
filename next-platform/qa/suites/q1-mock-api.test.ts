@@ -2,15 +2,26 @@ import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { createApiServer } from '@consubov/platform-api';
 import { allocateAvailablePort } from '../harness/port-allocator';
 import { createSyntheticCommandEnvelope } from '../harness/synthetic-data';
+import { signSyntheticJwt } from '@consubov/auth-client';
 
 describe('Suíte Q1.5: Mock Server Bun (/api/v1/health, /commands, ledger in-memory)', () => {
   let apiInstance: ReturnType<typeof createApiServer>;
   let baseUrl: string;
+  let authToken: string;
 
   beforeAll(async () => {
     const port = await allocateAvailablePort(3340);
     apiInstance = createApiServer(port, '127.0.0.1');
     baseUrl = `http://127.0.0.1:${port}`;
+
+    // Token sintético autenticado para o envelope sintético padrão (capataz)
+    authToken = await signSyntheticJwt({
+      user_id: 'user-capataz-sintetico-001',
+      tenant_id: 'tenant-lab-001',
+      fazenda_id: 'fazenda-guarani-01',
+      profile_id: 'capataz',
+      roles: ['capataz']
+    });
   });
 
   afterAll(() => {
@@ -40,7 +51,10 @@ describe('Suíte Q1.5: Mock Server Bun (/api/v1/health, /commands, ledger in-mem
 
     const res = await fetch(`${baseUrl}/api/v1/commands`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`
+      },
       body: JSON.stringify(envelope)
     });
 
@@ -63,7 +77,10 @@ describe('Suíte Q1.5: Mock Server Bun (/api/v1/health, /commands, ledger in-mem
 
     const res = await fetch(`${baseUrl}/api/v1/commands`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`
+      },
       body: JSON.stringify(envelope)
     });
 
@@ -83,7 +100,10 @@ describe('Suíte Q1.5: Mock Server Bun (/api/v1/health, /commands, ledger in-mem
 
     const res = await fetch(`${baseUrl}/api/v1/commands`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`
+      },
       body: JSON.stringify(conflictingEnvelope)
     });
 
@@ -102,7 +122,10 @@ describe('Suíte Q1.5: Mock Server Bun (/api/v1/health, /commands, ledger in-mem
 
     const res = await fetch(`${baseUrl}/api/v1/commands`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`
+      },
       body: JSON.stringify(invalidEnvelope)
     });
 
