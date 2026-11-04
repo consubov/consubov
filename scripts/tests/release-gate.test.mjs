@@ -129,6 +129,10 @@ test('Vercel wrapper builds on explicit release and skips unrelated product', ()
   for (const file of ['release-gate.mjs', 'vercel-ignore.sh']) {
     fs.copyFileSync(path.join(deployDir, file), path.join(f.cwd, 'scripts/deploy', file));
   }
+  // The deployment gate now imports the shared camera safety contract.
+  fs.mkdirSync(path.join(f.cwd, 'scripts/ci'), { recursive: true });
+  fs.copyFileSync(path.join(deployDir, '../ci/capataz-camera-contract.mjs'),
+    path.join(f.cwd, 'scripts/ci/capataz-camera-contract.mjs'));
   updateMarker(f, 'relatto-app', 1); f.commit();
   const run = target => spawnSync('sh', [path.join(f.cwd, 'scripts/deploy/vercel-ignore.sh'), target], {
     cwd: path.join(f.cwd, 'apps/web'), encoding: 'utf8', env: { ...process.env, ...env() },
@@ -177,4 +181,53 @@ test('A future app with SemVer policy checks its own version file', () => withFi
   f.write('apps/future-app/src/lib/appVersion.ts','export const APP_VERSION = "1.0.1";\n'); f.commit();
   assert.equal(decideDeployment('future-app',env(),f.cwd).build,true);
   assert.equal(decideDeployment('consubov-app',env(),f.cwd).build,false);
+}));
+
+test('new Consubov release at 2.0.58 cannot publish without repaired camera source', () => withFixture(f => {
+  updateMarker(f, 'consubov-app', 1, '2.0.58');
+  f.write('apps/web/src/lib/appVersion.ts', 'export const APP_VERSION = "2.0.58";\n');
+  f.commit();
+  assert.deepEqual(decideDeployment('consubov-app', env(), f.cwd),
+    {build:false,reason:'camera-regression-contract-failed'});
+}));
+
+test('Consubov release floor blocks publishing old native picker from outdated main', () => withFixture(f => {
+  const p = path.join(f.cwd, 'releases/catalog.json');
+  const catalog = JSON.parse(fs.readFileSync(p, 'utf8'));
+  catalog.projects['consubov-app'].minVersion = '2.0.58';
+  f.write('releases/catalog.json', JSON.stringify(catalog));
+  updateMarker(f, 'consubov-app', 1, '2.0.46');
+  f.write('apps/web/src/lib/appVersion.ts', 'export const APP_VERSION = "2.0.46";\n');
+  f.commit();
+  assert.deepEqual(decideDeployment('consubov-app', env(), f.cwd),
+    {build:false,reason:'non-increasing-or-legacy-app-version'});
+}));
+
+test('safe Consubov camera contract permits an explicitly versioned release', () => withFixture(f => {
+  updateMarker(f, 'consubov-app', 1, '2.0.58');
+  f.write('apps/web/src/lib/appVersion.ts', 'export const APP_VERSION = "2.0.58";\n');
+  f.write('apps/web/src/components/capataz/CapatazCameraCapture.tsx', [
+    'navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}}})',
+    'canvas.toBlob(() => {}, "image/jpeg"); await onPhoto(blob);',
+    'stream.getTracks().forEach((track) => track.stop());',
+    'className="!h-[100dvh]" style={{height:"100dvh"}}',
+    'aria-label="Voltar" aria-label="Capturar foto" data-testid="camera-fullscreen-preview"',
+  ].join('\n'));
+  f.write('apps/web/src/components/capataz/SalgaForm.tsx', [
+    'const dataUrl = await prepareCapatazCameraBlob(blob);',
+    'setFotoAuditoria(dataUrl); setFotoCocho(dataUrl); setObsFoto(dataUrl);',
+    'if (auditoriaExigida && !fotoAuditoria) return false;',
+    'return exigirFotoCocho ? !!fotoCocho : true;',
+    'if (saving || photoProcessing !== null || !canSave()) return;',
+    'variant={auditoriaExigida ? "destructive" : "outline"}',
+    'Tirar foto (obrigatório) {numAnimais} cab',
+  ].join('\n'));
+  f.write('apps/web/src/lib/capatazPhoto.ts', [
+    'reader.readAsDataURL(file);',
+    'await compressImageDataUrl(original, {quality:0.68});',
+    'await checkPreview(dataUrl);',
+  ].join('\n'));
+  f.commit();
+  assert.deepEqual(decideDeployment('consubov-app', env(), f.cwd),
+    {build:true,reason:'explicit-product-release'});
 }));
