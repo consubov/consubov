@@ -28,3 +28,10 @@
 ## Source of truth
 Obsidian: 02-PROJECTS/CONSUBOV/20-CEREBRO-COMPLETO/INCIDENTES/2026-11-04-RCA-CAMERA-FOTO-NAO-CARREGA-GATE-ANTIRREGRESSAO.md
 Notion: CONSUBOV — Checklist Mestre de Execução.
+
+
+## Additional CI finding and controlled budget correction
+- First GitHub PR #167 CI: camera contract, checks, coverage and lint passed, but existing Web bundle budget failed: main and PR produced **exactly the same** 339 assets, 8,919,323 raw / 2,798,565 gzip bytes; old limits 8,918,834 raw / 2,797,886 gzip were already below the clean main build.
+- Independently rebuilt the clean exact origin/main `16b934996f11335b230dc9bca9631a8892c70204` and candidate under matching Bun 1.4.0 and GITHUB_ACTIONS push-mode: identical raw/gzip totals in both; no Web runtime/source change from this PR.
+- Extended the existing strict budget by the project's historical controlled buffer **measured main + 500 bytes**: maxTotalBytes **8,919,823**, maxTotalGzipBytes **2,799,065**; maxLargestAssetBytes remains **2,849,003**. Test remains active: values above these limits still fail. No bypass or arbitrary global threshold.
+- Separate CI rerun on updated PR commit required before merge. The prior failed CI is retained as evidence, not relabeled PASS.
