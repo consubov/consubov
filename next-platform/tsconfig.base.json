@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "allowImportingTsExtensions": false,
+    "strict": true,
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "jsx": "react-jsx",
+    "types": ["bun"],
+    "baseUrl": ".",
+    "paths": {
+      "@consubov/contracts": ["./packages/contracts/src/index.ts"],
+      "@consubov/contracts/*": ["./packages/contracts/src/*"],
+      "@consubov/ui": ["./packages/ui/src/index.ts"],
+      "@consubov/ui/*": ["./packages/ui/src/*"],
+      "@consubov/auth-client": ["./packages/auth-client/src/index.ts"],
+      "@consubov/auth-client/*": ["./packages/auth-client/src/*"],
+      "@consubov/module-release": ["./packages/module-release/src/index.ts"],
+      "@consubov/module-release/*": ["./packages/module-release/src/*"],
+      "@consubov/testing": ["./packages/testing/src/index.ts"],
+      "@consubov/testing/*": ["./packages/testing/src/*"],
+      "@consubov/platform-api": ["./api/src/index.ts"],
+      "@consubov/platform-api/*": ["./api/src/*"]
+    }
+  }
+}

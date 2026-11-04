@@ -1,0 +1,18 @@
+# Bun Configuration — next-platform (Hermetic & Local-First)
+
+[install]
+# Prioriza resolução a partir do cache local já existente na máquina
+prefer_offline = true
+# Garante a instalação de devDependencies durante o setup local
+production = false
+# Estratégia de linkagem hermética
+linker = "isolated"
+
+[test]
+# Configuração de timeout e padrão de testes embutidos
+timeout = 10000
+root = "."
+
+[run]
+# Política de execução segura
+silent = false

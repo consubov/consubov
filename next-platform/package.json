@@ -1,0 +1,30 @@
+{
+  "name": "@consubov/next-platform",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.2",
+  "workspaces": [
+    "apps/admin-global",
+    "apps/fazenda/*",
+    "packages/*",
+    "api",
+    "qa"
+  ],
+  "scripts": {
+    "build": "bun run --filter '*' build",
+    "typecheck": "tsc --noEmit --pretty false",
+    "lint": "bun run --filter '*' lint",
+    "test": "bun test qa/suites/",
+    "check": "bun run typecheck && bun run test",
+    "qa:q1": "bun run qa/scripts/run-q1-gate.ts",
+    "dev:api": "bun run --cwd api dev",
+    "dev:shell": "bun run --cwd apps/fazenda/shell dev",
+    "dev:admin": "bun run --cwd apps/admin-global dev"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "@types/node": "^26.6.4",
+    "typescript": "^5.8.3"
+  }
+}
