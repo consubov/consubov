@@ -4,7 +4,7 @@
   "milestone": "FASE 02 (Identidade, Permissões, Contratos e Segurança da API)",
   "worktree_path": "D:\\MATEUS\\Documentos\\GitHub\\consubov-worktrees\\f23-isolated-next-platform",
   "branch": "feat/platform/f23-isolated-next-platform",
-  "executed_at": "2026-11-04T22:42:41.252Z",
+  "executed_at": "2026-11-04T22:44:04.732Z",
   "runtime": {
     "bun_version": "1.4.2",
     "node_version": "v26.3.0",
@@ -15,37 +15,37 @@
       "id": "Q2.1_AUTH_BARRIER",
       "name": "Barreira Central de Autenticação Bearer e Proteção Anti-Spoofing",
       "status": "PASS",
-      "duration_ms": 131
+      "duration_ms": 136
     },
     {
       "id": "Q2.2_RBAC_MATRIX",
       "name": "Matriz RBAC Declarativa (5 perfis x 22 comandos autorizados)",
       "status": "PASS",
-      "duration_ms": 128
+      "duration_ms": 146
     },
     {
       "id": "Q2.3_DOMAIN_VALIDATION",
       "name": "Validação Estrita de Schemas Zod de Domínio na API Bun",
       "status": "PASS",
-      "duration_ms": 132
+      "duration_ms": 148
     },
     {
       "id": "Q2.4_MULTITENANT_OCC",
       "name": "Isolamento Multi-Tenant, Deduplicação e Concorrência OCC na API",
       "status": "PASS",
-      "duration_ms": 152
+      "duration_ms": 142
     },
     {
       "id": "Q2.5_FAKE_SERVER_PARITY",
       "name": "Paridade e Correção Forense de Multi-Tenancy no FakeApiServer",
       "status": "PASS",
-      "duration_ms": 86
+      "duration_ms": 82
     },
     {
       "id": "Q2.6_TYPECHECK",
       "name": "TypeScript Strict Compilation em Todos os Workspaces (tsc -b)",
       "status": "PASS",
-      "duration_ms": 3674
+      "duration_ms": 2945
     }
   ],
   "summary": {
