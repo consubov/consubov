@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "references": [
+    { "path": "../../packages/contracts" },
+    { "path": "../../packages/ui" },
+    { "path": "../../packages/auth-client" }
+  ],
+  "include": ["src/**/*"]
+}

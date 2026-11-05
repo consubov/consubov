@@ -1,0 +1,20 @@
+# Local monorepo artifacts
+node_modules/
+dist/
+build/
+.turbo/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Test outputs
+coverage/
+test-results/
+
+# Environment files
+.env
+.env.local
+
+# Operating System
+.DS_Store
+Thumbs.db

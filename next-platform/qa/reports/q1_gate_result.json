@@ -1,0 +1,60 @@
+{
+  "gate_id": "GATE_Q1_HERMETIC_BUILD_AND_LAB",
+  "task_id": "F23-NEXT-01",
+  "milestone": "FASE 01 (Fundação & Laboratório Local)",
+  "worktree_path": "D:\\MATEUS\\Documentos\\GitHub\\consubov-worktrees\\f23-isolated-next-platform",
+  "branch": "feat/platform/f23-isolated-next-platform",
+  "executed_at": "2026-11-04T21:45:16.174Z",
+  "runtime": {
+    "bun_version": "1.4.2",
+    "node_version": "v26.3.0",
+    "os": "win32 x64"
+  },
+  "checks": [
+    {
+      "id": "Q1.1_ISOLATION",
+      "name": "Confinamento Físico em next-platform/**",
+      "status": "PASS",
+      "duration_ms": 587
+    },
+    {
+      "id": "Q1.2_TYPECHECK",
+      "name": "TypeScript Strict Compilation (tsc -b)",
+      "status": "PASS",
+      "duration_ms": 4163
+    },
+    {
+      "id": "Q1.3_PACKAGES",
+      "name": "Integridade dos 5 Pacotes Compartilhados",
+      "status": "PASS",
+      "duration_ms": 135
+    },
+    {
+      "id": "Q1.4_IMPORTS",
+      "name": "Hermeticidade Estática de Imports",
+      "status": "PASS",
+      "duration_ms": 150
+    },
+    {
+      "id": "Q1.5_MOCK_API",
+      "name": "Mock Server Bun (/health, /commands, ledger)",
+      "status": "PASS",
+      "duration_ms": 178
+    },
+    {
+      "id": "Q1.6_ANTI_EGRESS",
+      "name": "Barreira Anti-Egress de Rede",
+      "status": "PASS",
+      "duration_ms": 113
+    }
+  ],
+  "summary": {
+    "total_checks": 6,
+    "passed": 6,
+    "failed": 0,
+    "blocked": 0
+  },
+  "network_egress_detected": false,
+  "root_contamination_detected": false,
+  "verdict": "PASS"
+}

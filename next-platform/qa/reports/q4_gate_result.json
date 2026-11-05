@@ -1,0 +1,76 @@
+{
+  "gate_id": "GATE_Q4_DOMAIN_MODULES_GERENTE_ESCRITORIO_FABRICA",
+  "task_id": "F23-NEXT-04",
+  "milestone": "FASE 04 (Módulos de Domínio Gerente, Escritório e Fábrica Local-First)",
+  "worktree_path": "D:\\MATEUS\\Documentos\\GitHub\\consubov-worktrees\\f23-isolated-next-platform",
+  "branch": "feat/platform/f23-isolated-next-platform",
+  "executed_at": "2026-11-05T06:37:03.628Z",
+  "runtime": {
+    "bun_version": "1.4.2",
+    "node_version": "v26.3.0",
+    "os": "win32 x64"
+  },
+  "checks": [
+    {
+      "id": "Q4.1_GERENTE_MODULE",
+      "name": "Módulo Gerente: Curvas de GMD, Lotes, Custos, Cocho e Bilinguismo (q4-gerente-module.test.ts)",
+      "status": "PASS",
+      "duration_ms": 401
+    },
+    {
+      "id": "Q4.2_ESCRITORIO_MODULE",
+      "name": "Módulo Escritório: NF-e 44 dígitos, Compras, Lotes, Fechamento e Bilinguismo (q4-escritorio-module.test.ts)",
+      "status": "PASS",
+      "duration_ms": 398
+    },
+    {
+      "id": "Q4.3_FABRICA_MODULE",
+      "name": "Módulo Fábrica: Batidas, Fórmulas 100%, Baixa em Silos, Balança e Bilinguismo (q4-fabrica-module.test.ts)",
+      "status": "PASS",
+      "duration_ms": 389
+    },
+    {
+      "id": "Q4.4_SHELL_ROUTING_AND_AST_GUARD",
+      "name": "Roteamento Lazy no Shell, RBAC Fail-Closed e AST Guard Multidomínio (q4-modules-shell-routing.test.ts)",
+      "status": "PASS",
+      "duration_ms": 441
+    },
+    {
+      "id": "Q4.5_API_COMMAND_DISPATCH",
+      "name": "Barreira da API: Despacho Atômico Multidomínio, Zod, RBAC e OCC 409 (q4-api-command-dispatch.test.ts)",
+      "status": "PASS",
+      "duration_ms": 131
+    },
+    {
+      "id": "Q4.6_TYPECHECK",
+      "name": "Compilação Estrita TypeScript sem Erros em Todo o Workspace (tsc --noEmit)",
+      "status": "PASS",
+      "duration_ms": 4374
+    },
+    {
+      "id": "Q4.7_REGRESSION_Q1_Q2_Q3",
+      "name": "Regressão Integral de Suítes Anteriores Q1, Q2 e Q3 (zero quebras de contrato)",
+      "status": "PASS",
+      "duration_ms": 5410
+    }
+  ],
+  "summary": {
+    "total_checks": 7,
+    "passed": 7,
+    "failed": 0,
+    "blocked": 0
+  },
+  "audit_flags": {
+    "isolation_preserved": true,
+    "modules_local_first_implemented": true,
+    "nfe_44_digit_key_enforced": true,
+    "feed_formula_sum_100_percent_enforced": true,
+    "silo_inventory_deduction_proportional": true,
+    "ast_ui_literal_guard_zero_violations": true,
+    "i18n_parity_286_keys_100_percent": true,
+    "occ_concurrency_control_409_verified": true,
+    "rbac_fail_closed_verified": true,
+    "zero_network_egress": true
+  },
+  "verdict": "PASS"
+}

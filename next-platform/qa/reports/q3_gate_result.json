@@ -1,0 +1,73 @@
+{
+  "gate_id": "GATE_Q3_SHELL_ROUTING_AND_I18N",
+  "task_id": "F23-NEXT-03",
+  "milestone": "FASE 03 (Shell CONSUBOV Fazendas, Login e Roteamento por Perfil)",
+  "worktree_path": "D:\\MATEUS\\Documentos\\GitHub\\consubov-worktrees\\f23-isolated-next-platform",
+  "branch": "feat/platform/f23-isolated-next-platform",
+  "executed_at": "2026-11-05T03:23:03.099Z",
+  "runtime": {
+    "bun_version": "1.4.2",
+    "node_version": "v26.3.0",
+    "os": "win32 x64"
+  },
+  "checks": [
+    {
+      "id": "Q3.1_SHELL_ROUTING_SUITE",
+      "name": "Suíte Completa do Shell, Login, Roteamento e PWA (q3-shell-routing.test.ts)",
+      "status": "PASS",
+      "duration_ms": 432
+    },
+    {
+      "id": "Q3.2_AUTH_CLIENT_TESTS",
+      "name": "Testes Unitários do @consubov/auth-client (Session, Anti-First-Match, Storage)",
+      "status": "PASS",
+      "duration_ms": 94
+    },
+    {
+      "id": "Q3.3_ISOLATION_CONFINEMENT",
+      "name": "Verificação de Confinamento Hermético e Anti-Egress",
+      "status": "PASS",
+      "duration_ms": 364
+    },
+    {
+      "id": "Q3.4_API_AUTH_REGRESSION",
+      "name": "Regressão de Barreira Central da API e Anti-Spoofing",
+      "status": "PASS",
+      "duration_ms": 133
+    },
+    {
+      "id": "Q3.5_RBAC_REGRESSION",
+      "name": "Regressão da Matriz RBAC Declarativa 5x22",
+      "status": "PASS",
+      "duration_ms": 160
+    },
+    {
+      "id": "Q3.6_TYPECHECK",
+      "name": "TypeScript Strict Compilation em Todos os Workspaces (tsc --noEmit)",
+      "status": "PASS",
+      "duration_ms": 4042
+    },
+    {
+      "id": "Q3.7_AST_LITERAL_GUARD",
+      "name": "Guarda Estrita por AST contra Strings Hardcoded em JSX/TSX (Shell & Componentes)",
+      "status": "PASS",
+      "duration_ms": 440
+    }
+  ],
+  "summary": {
+    "total_checks": 7,
+    "passed": 7,
+    "failed": 0,
+    "blocked": 0
+  },
+  "audit_flags": {
+    "isolation_preserved": true,
+    "anti_first_match_enforced": true,
+    "route_guards_fail_closed": true,
+    "i18n_parity_100_percent": true,
+    "ast_ui_literal_guard_enforced": true,
+    "pwa_manifest_compliant": true,
+    "zero_network_egress": true
+  },
+  "verdict": "PASS"
+}

@@ -1,0 +1,83 @@
+{
+  "gate_id": "GATE_Q6_ADMIN_GLOBAL_TENANTS_LICENSES_AUDIT_RBAC_MFA",
+  "task_id": "F23-NEXT-06",
+  "milestone": "FASE 06 (ADM CONSUBOV Independente — apps/admin-global, Tenants, Licenças, Auditoria Ledger, RBAC e Bilinguismo)",
+  "worktree_path": "D:\\MATEUS\\Documentos\\GitHub\\consubov-worktrees\\f23-isolated-next-platform",
+  "branch": "feat/platform/f23-isolated-next-platform",
+  "executed_at": "2026-11-05T09:07:49.886Z",
+  "runtime": {
+    "bun_version": "1.4.2",
+    "node_version": "v26.3.0",
+    "os": "win32 x64"
+  },
+  "checks": [
+    {
+      "id": "Q6.1_ADMIN_TENANTS",
+      "name": "Gestão Global de Tenants: Criação, Listagem, Suspensão, Reativação e Isolamento Criptográfico/Namespace (q6-admin-tenants.test.ts)",
+      "status": "PASS",
+      "duration_ms": 93
+    },
+    {
+      "id": "Q6.2_ADMIN_LICENSES",
+      "name": "Gestão de Licenças e Offgrid: Emissão com Validação 1-90 dias, HMAC/Assinatura Sintética, Upgrade e Revogação (q6-admin-licenses.test.ts)",
+      "status": "PASS",
+      "duration_ms": 88
+    },
+    {
+      "id": "Q6.3_ADMIN_AUDIT_LEDGER",
+      "name": "Auditoria Global e Ledger Imutável: Consulta Multi-critério, API GET /api/v1/admin/audit e Fail-Closed (q6-admin-audit-ledger.test.ts)",
+      "status": "PASS",
+      "duration_ms": 122
+    },
+    {
+      "id": "Q6.4_ADMIN_RBAC_USERS",
+      "name": "RBAC Administrativo e Gestão Global de Usuários: Super Admin, Support Admin, Financial Admin e Bloqueio (q6-admin-rbac-users.test.ts)",
+      "status": "PASS",
+      "duration_ms": 92
+    },
+    {
+      "id": "Q6.5_ADMIN_AUTH_MFA",
+      "name": "Autenticação Administrativa e MFA TOTP Simulado: 2 Etapas, Código 6 Dígitos e Claims JWT Sintéticas (q6-admin-auth-mfa.test.ts)",
+      "status": "PASS",
+      "duration_ms": 80
+    },
+    {
+      "id": "Q6.6_AST_LITERAL_GUARD",
+      "name": "AST QA Guard: Certificação de Zero Literais JSX Hardcoded e Paridade Bilíngue 100% no apps/admin-global (q6-ast-literal-guard.test.ts)",
+      "status": "PASS",
+      "duration_ms": 369
+    },
+    {
+      "id": "Q6.7_TYPECHECK",
+      "name": "Compilação Estrita TypeScript sem Erros em Todo o Workspace (tsc --noEmit)",
+      "status": "PASS",
+      "duration_ms": 5310
+    },
+    {
+      "id": "Q6.8_REGRESSION_Q1_Q5",
+      "name": "Regressão Integral das Suítes Anteriores Q1, Q2, Q3, Q4 e Q5 (zero quebras de contrato)",
+      "status": "PASS",
+      "duration_ms": 6725
+    }
+  ],
+  "summary": {
+    "total_checks": 8,
+    "passed": 8,
+    "failed": 0,
+    "blocked": 0
+  },
+  "audit_flags": {
+    "isolation_preserved": true,
+    "admin_global_spa_implemented": true,
+    "tenant_lifecycle_management_verified": true,
+    "license_issuance_offgrid_hmac_verified": true,
+    "immutable_audit_ledger_query_logs_verified": true,
+    "admin_audit_endpoint_fail_closed_verified": true,
+    "admin_rbac_super_support_financial_verified": true,
+    "two_step_mfa_totp_session_verified": true,
+    "ast_ui_literal_guard_zero_violations": true,
+    "i18n_parity_admin_keys_100_percent": true,
+    "zero_network_egress": true
+  },
+  "verdict": "PASS"
+}
