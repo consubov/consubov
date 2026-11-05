@@ -4,7 +4,7 @@
   "milestone": "FASE 07 (Atualização Automática sem Clique, Versões, Service Worker, Cache, Quiescência e Rollback Atômico)",
   "worktree_path": "D:\\MATEUS\\Documentos\\GitHub\\consubov-worktrees\\f23-isolated-next-platform",
   "branch": "feat/platform/f23-isolated-next-platform",
-  "executed_at": "2026-11-05T10:07:46.172Z",
+  "executed_at": "2026-11-05T10:31:36.209Z",
   "runtime": {
     "bun_version": "1.4.2",
     "node_version": "v26.3.0",
@@ -21,37 +21,37 @@
       "id": "Q7.2_QUIESCENCE_DETECTION",
       "name": "QuiescenceRegistry: Gerenciamento rigoroso das travas FORM_DIRTY, CAMERA_ACTIVE, WEIGHING_ACTIVE e OUTBOX_SYNCING (q7-quiescence-detection.test.ts)",
       "status": "PASS",
-      "duration_ms": 241
+      "duration_ms": 181
     },
     {
       "id": "Q7.3_SAFE_ACTIVATION",
       "name": "UpdateCoordinator: Retenção de atualização durante operações críticas e liberação automática na quiescência (q7-safe-activation.test.ts)",
       "status": "PASS",
-      "duration_ms": 270
+      "duration_ms": 267
     },
     {
       "id": "Q7.4_CHUNK_404_ROLLBACK",
       "name": "RollbackManager & safeDynamicImport: Intercepção de erro 404 em chunks e fallback atômico para N-1 sem WSOD (q7-chunk-404-rollback.test.ts)",
       "status": "PASS",
-      "duration_ms": 117
+      "duration_ms": 109
     },
     {
       "id": "Q7.5_INTEGRITY_CATALOG",
       "name": "Catálogo Zod & Integridade Criptográfica SHA-256 via Web Crypto Subtle com rejeição de adulterações (q7-integrity-catalog.test.ts)",
       "status": "PASS",
-      "duration_ms": 79
+      "duration_ms": 133
     },
     {
       "id": "Q7.6_AST_LITERAL_GUARD",
       "name": "AST QA Guard: Certificação de Zero Literais JSX Hardcoded e Paridade Bilíngue 100% em update.* (q7-ast-literal-guard.test.ts)",
       "status": "PASS",
-      "duration_ms": 351
+      "duration_ms": 374
     },
     {
       "id": "Q7.7_TYPECHECK",
       "name": "Compilação Estrita TypeScript sem Erros em Todo o Workspace next-platform (tsc --noEmit)",
       "status": "PASS",
-      "duration_ms": 6888
+      "duration_ms": 5476
     },
     {
       "id": "Q7.8_REGRESSION_Q1_Q6",
