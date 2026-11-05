@@ -200,3 +200,28 @@ export function scanAstLiterals(
 
   return violations;
 }
+
+/**
+ * Varre módulos específicos de apps/fazenda e retorna todas as violações encontradas.
+ */
+export function scanFazendaModules(
+  moduleNames: string[] = ['shell', 'gerente', 'escritorio', 'fabrica'],
+  baseFazendaDir?: string,
+  options?: AstGuardOptions
+): { module: string; filesCount: number; violations: AstLiteralViolation[] }[] {
+  const rootDir = baseFazendaDir ?? resolve(import.meta.dir, '../../apps/fazenda');
+  const results: { module: string; filesCount: number; violations: AstLiteralViolation[] }[] = [];
+
+  for (const mod of moduleNames) {
+    const modSrcDir = join(rootDir, mod, 'src');
+    const files = findTsxFiles(modSrcDir);
+    const violations = scanAstLiterals(files, options);
+    results.push({
+      module: mod,
+      filesCount: files.length,
+      violations
+    });
+  }
+
+  return results;
+}

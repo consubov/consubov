@@ -211,6 +211,31 @@ export const criarFormulaRacaoPayloadSchema = z.object({
   ativo: z.boolean()
 }).strict();
 
+export const iniciarBatidaPayloadSchema = z.object({
+  batida_id: z.string().min(1, 'ID da batida é obrigatório'),
+  ordem_producao_id: z.string().min(1, 'ID da ordem de produção é obrigatório'),
+  formula_id: z.string().min(1, 'ID da fórmula é obrigatório'),
+  misturador_id: z.string().min(1, 'ID do misturador é obrigatório'),
+  quantidade_planejada_kg: z.number().positive('Quantidade planejada deve ser positiva'),
+  operador_id: z.string().min(1, 'ID do operador é obrigatório'),
+  iniciado_em: z.string().datetime({ message: 'Início deve ser ISO 8601' }),
+  quantidade_realizada_kg: z.number().positive().optional(),
+  tempo_mistura_segundos: z.number().int().min(30).max(3600).optional(),
+  finalizado_em: z.string().datetime().optional(),
+  desvio_peso_kg: z.number().optional(),
+  observacoes: z.string().max(500).optional()
+}).strict();
+
+export const concluirBatidaPayloadSchema = z.object({
+  batida_id: z.string().min(1, 'ID da batida é obrigatório'),
+  quantidade_realizada_kg: z.number().positive('Quantidade realizada deve ser positiva'),
+  tempo_mistura_segundos: z.number().int().min(30, 'Tempo mínimo de mistura é 30s').max(3600, 'Tempo máximo de mistura é 1h'),
+  finalizado_em: z.string().datetime({ message: 'Fim deve ser ISO 8601' }),
+  desvio_peso_kg: z.number(),
+  foto_conclusao_attachment_id: z.string().min(1).optional(),
+  observacoes: z.string().max(500).optional()
+}).strict();
+
 export const registrarBatidaPayloadSchema = z.object({
   batida_id: z.string().min(1, 'ID da batida é obrigatório'),
   ordem_producao_id: z.string().min(1, 'ID da ordem de produção é obrigatório'),
@@ -337,3 +362,50 @@ export const atualizarLicencaPayloadSchema = z.object({
   justificativa: z.string().min(5).max(300),
   atualizado_em: z.string().datetime({ message: 'Data de atualização deve ser ISO 8601' })
 }).strict();
+
+// ==========================================
+// Tipos TypeScript Inferidos dos Payloads
+// ==========================================
+
+// Capataz
+export type PesagemAnimalPayload = z.infer<typeof pesagemAnimalPayloadSchema>;
+export type LancamentoCochoPayload = z.infer<typeof lancamentoCochoPayloadSchema>;
+export type ContagemRebanhoPayload = z.infer<typeof contagemRebanhoPayloadSchema>;
+export type LeituraPastoPayload = z.infer<typeof leituraPastoPayloadSchema>;
+export type MovimentacaoLotePayload = z.infer<typeof movimentacaoLotePayloadSchema>;
+export type FotoCochoPayload = z.infer<typeof fotoCochoPayloadSchema>;
+
+// Gerente
+export type DefinirMetasPayload = z.infer<typeof definirMetasPayloadSchema>;
+export type AprovarLeituraCochoPayload = z.infer<typeof aprovarLeituraCochoPayloadSchema>;
+export type AjustarDietaPayload = z.infer<typeof ajustarDietaPayloadSchema>;
+export type CriarLotePayload = z.infer<typeof criarLotePayloadSchema>;
+export type ApropriarCustosPayload = z.infer<typeof apropriarCustosPayloadSchema>;
+
+// Escritório
+export type ItemNotaFiscal = z.infer<typeof itemNotaFiscalSchema>;
+export type RegistrarNotaFiscalPayload = z.infer<typeof registrarNotaFiscalPayloadSchema>;
+export type RegistrarCompraInsumoPayload = z.infer<typeof registrarCompraInsumoPayloadSchema>;
+export type FecharCustoLotePayload = z.infer<typeof fecharCustoLotePayloadSchema>;
+export type EmitirRelatorioFinanceiroPayload = z.infer<typeof emitirRelatorioFinanceiroPayloadSchema>;
+export type ParticionarLotePayload = z.infer<typeof particionarLotePayloadSchema>;
+
+// Fábrica
+export type IngredienteFormula = z.infer<typeof ingredienteFormulaSchema>;
+export type CriarFormulaRacaoPayload = z.infer<typeof criarFormulaRacaoPayloadSchema>;
+export type IniciarBatidaPayload = z.infer<typeof iniciarBatidaPayloadSchema>;
+export type ConcluirBatidaPayload = z.infer<typeof concluirBatidaPayloadSchema>;
+export type RegistrarBatidaPayload = z.infer<typeof registrarBatidaPayloadSchema>;
+export type DarBaixaIngredientePayload = z.infer<typeof darBaixaIngredientePayloadSchema>;
+export type AjustarEstoqueMateriaPrimaPayload = z.infer<typeof ajustarEstoqueMateriaPrimaPayloadSchema>;
+export type CalibrarBalancaMisturadorPayload = z.infer<typeof calibrarBalancaMisturadorPayloadSchema>;
+export type ReceberMateriaPrimaPayload = z.infer<typeof receberMateriaPrimaPayloadSchema>;
+
+// ADM Global
+export type CriarTenantPayload = z.infer<typeof criarTenantPayloadSchema>;
+export type AtivarModuloPayload = z.infer<typeof ativarModuloPayloadSchema>;
+export type SuspenderTenantPayload = z.infer<typeof suspenderTenantPayloadSchema>;
+export type BloquearUsuarioPayload = z.infer<typeof bloquearUsuarioPayloadSchema>;
+export type VincularUsuarioPayload = z.infer<typeof vincularUsuarioPayloadSchema>;
+export type GerarLicencaOffgridPayload = z.infer<typeof gerarLicencaOffgridPayloadSchema>;
+export type AtualizarLicencaPayload = z.infer<typeof atualizarLicencaPayloadSchema>;

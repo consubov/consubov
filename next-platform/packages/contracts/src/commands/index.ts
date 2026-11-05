@@ -23,17 +23,22 @@ export const ALLOWED_COMMAND_TYPES = [
   'gerente.gmd.ajustar_curva',
   'gerente.lote.transferir_pasto',
   'gerente.custos.apropriar',
+  'gerente.leitura_cocho.aprovar',
   // Escritório (Administração da Fazenda)
   'escritorio.compras.criar_pedido',
   'escritorio.notas.registrar_entrada',
   'escritorio.lotes.cadastrar',
   'escritorio.lotes.particionar',
+  'escritorio.custos.fechar',
+  'escritorio.relatorios.emitir',
   // Fábrica (Nutrição e Moagem)
   'fabrica.formulas.salvar',
   'fabrica.batidas.iniciar',
   'fabrica.batidas.concluir',
   'fabrica.estoque.ajustar',
   'fabrica.materia_prima.receber',
+  'fabrica.ingrediente.dar_baixa',
+  'fabrica.balanca.calibrar',
   // ADM Global (SaaS Backoffice)
   'admin.tenants.criar',
   'admin.tenants.suspender',

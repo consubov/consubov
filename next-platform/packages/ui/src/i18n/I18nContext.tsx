@@ -39,13 +39,14 @@ function getInitialLanguage(): SupportedLanguage {
 }
 
 export interface I18nProviderProps {
-  children: ReactNode;
+  children?: ReactNode;
   defaultLanguage?: SupportedLanguage;
+  language?: SupportedLanguage;
 }
 
-export function I18nProvider({ children, defaultLanguage }: I18nProviderProps) {
+export function I18nProvider({ children, defaultLanguage, language: propLanguage }: I18nProviderProps) {
   const [language, setLanguageState] = useState<SupportedLanguage>(() => {
-    return defaultLanguage ?? getInitialLanguage();
+    return propLanguage ?? defaultLanguage ?? getInitialLanguage();
   });
 
   // Sincronização reativa cross-tab via storage event

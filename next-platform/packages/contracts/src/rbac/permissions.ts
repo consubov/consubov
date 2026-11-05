@@ -24,6 +24,7 @@ export const RBAC_PROFILE_COMMANDS: Record<UserProfileId, readonly string[]> = {
     'gerente.gmd.ajustar_curva',
     'gerente.lote.transferir_pasto',
     'gerente.custos.apropriar',
+    'gerente.leitura_cocho.aprovar',
     // Aliases de domínio
     'definir_metas',
     'aprovar_leitura_cocho',
@@ -35,6 +36,8 @@ export const RBAC_PROFILE_COMMANDS: Record<UserProfileId, readonly string[]> = {
     'escritorio.notas.registrar_entrada',
     'escritorio.lotes.cadastrar',
     'escritorio.lotes.particionar',
+    'escritorio.custos.fechar',
+    'escritorio.relatorios.emitir',
     // Aliases de domínio
     'registrar_nota_fiscal',
     'registrar_compra_insumo',
@@ -47,6 +50,8 @@ export const RBAC_PROFILE_COMMANDS: Record<UserProfileId, readonly string[]> = {
     'fabrica.batidas.concluir',
     'fabrica.estoque.ajustar',
     'fabrica.materia_prima.receber',
+    'fabrica.ingrediente.dar_baixa',
+    'fabrica.balanca.calibrar',
     // Aliases de domínio
     'criar_formula_racao',
     'registrar_batida',

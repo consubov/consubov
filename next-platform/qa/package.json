@@ -7,7 +7,8 @@
     "lint": "bun run typecheck",
     "test": "bun test suites/",
     "test:q0": "bun test suites/q1-isolation.test.ts",
-    "test:q1": "bun run scripts/run-q1-gate.ts"
+    "test:q1": "bun run scripts/run-q1-gate.ts",
+    "test:q4": "bun run scripts/run-q4-gate.ts"
   },
   "dependencies": {
     "@consubov/contracts": "workspace:*",
@@ -16,5 +17,11 @@
     "@consubov/module-release": "workspace:*",
     "@consubov/testing": "workspace:*",
     "@consubov/platform-api": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   }
 }

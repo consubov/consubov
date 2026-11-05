@@ -20,20 +20,20 @@ export const CapatazView: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
         <Card elevation="elevated">
           <h3 style={{ margin: '0 0 8px', fontSize: '1.1rem' }}>{t('domain.pasto', 'Pasto')}</h3>
-          <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0, color: '#B45309' }}>Pasto 07 - Sede</p>
-          <p style={{ margin: '8px 0 0', fontSize: '0.875rem', color: '#64748B' }}>Última leitura há 2h</p>
+          <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0, color: '#B45309' }}>{t('capataz.demo.pastureName', { pasto: '07', setor: 'Sede' })}</p>
+          <p style={{ margin: '8px 0 0', fontSize: '0.875rem', color: '#64748B' }}>{t('capataz.demo.lastReadingTime', { hours: '2' })}</p>
         </Card>
 
         <Card elevation="elevated">
           <h3 style={{ margin: '0 0 8px', fontSize: '1.1rem' }}>{t('domain.cocho', 'Cocho')}</h3>
-          <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0, color: '#15803D' }}>Escore 3 (Limpo)</p>
-          <p style={{ margin: '8px 0 0', fontSize: '0.875rem', color: '#64748B' }}>Consumo normal</p>
+          <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0, color: '#15803D' }}>{t('capataz.demo.scoreClean', { score: '3' })}</p>
+          <p style={{ margin: '8px 0 0', fontSize: '0.875rem', color: '#64748B' }}>{t('capataz.demo.normalConsumption')}</p>
         </Card>
 
         <Card elevation="elevated">
           <h3 style={{ margin: '0 0 8px', fontSize: '1.1rem' }}>{t('domain.salga', 'Salga e Nutrição')}</h3>
-          <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0, color: '#0369A1' }}>Abastecido</p>
-          <p style={{ margin: '8px 0 0', fontSize: '0.875rem', color: '#64748B' }}>250kg mineral 80</p>
+          <p style={{ fontSize: '2rem', fontWeight: 800, margin: 0, color: '#0369A1' }}>{t('capataz.demo.stocked')}</p>
+          <p style={{ margin: '8px 0 0', fontSize: '0.875rem', color: '#64748B' }}>{t('capataz.demo.stockedDesc', { amount: '250', type: '80' })}</p>
         </Card>
       </div>
 

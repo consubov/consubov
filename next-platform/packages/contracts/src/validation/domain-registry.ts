@@ -25,6 +25,7 @@ export const DOMAIN_PAYLOAD_VALIDATORS: Record<string, z.ZodType<any>> = {
   'gerente.gmd.ajustar_curva': schemas.ajustarDietaPayloadSchema,
   'gerente.lote.transferir_pasto': schemas.movimentacaoLotePayloadSchema,
   'gerente.custos.apropriar': schemas.apropriarCustosPayloadSchema,
+  'gerente.leitura_cocho.aprovar': schemas.aprovarLeituraCochoPayloadSchema,
 
   // Aliases de Domínio Gerente
   'definir_metas': schemas.definirMetasPayloadSchema,
@@ -37,6 +38,8 @@ export const DOMAIN_PAYLOAD_VALIDATORS: Record<string, z.ZodType<any>> = {
   'escritorio.notas.registrar_entrada': schemas.registrarNotaFiscalPayloadSchema,
   'escritorio.lotes.cadastrar': schemas.criarLotePayloadSchema,
   'escritorio.lotes.particionar': schemas.particionarLotePayloadSchema,
+  'escritorio.custos.fechar': schemas.fecharCustoLotePayloadSchema,
+  'escritorio.relatorios.emitir': schemas.emitirRelatorioFinanceiroPayloadSchema,
 
   // Aliases de Domínio Escritório
   'registrar_nota_fiscal': schemas.registrarNotaFiscalPayloadSchema,
@@ -46,10 +49,12 @@ export const DOMAIN_PAYLOAD_VALIDATORS: Record<string, z.ZodType<any>> = {
 
   // Fábrica
   'fabrica.formulas.salvar': schemas.criarFormulaRacaoPayloadSchema,
-  'fabrica.batidas.iniciar': schemas.registrarBatidaPayloadSchema,
-  'fabrica.batidas.concluir': schemas.registrarBatidaPayloadSchema,
+  'fabrica.batidas.iniciar': schemas.iniciarBatidaPayloadSchema,
+  'fabrica.batidas.concluir': schemas.concluirBatidaPayloadSchema,
   'fabrica.estoque.ajustar': schemas.ajustarEstoqueMateriaPrimaPayloadSchema,
   'fabrica.materia_prima.receber': schemas.receberMateriaPrimaPayloadSchema,
+  'fabrica.ingrediente.dar_baixa': schemas.darBaixaIngredientePayloadSchema,
+  'fabrica.balanca.calibrar': schemas.calibrarBalancaMisturadorPayloadSchema,
 
   // Aliases de Domínio Fábrica
   'criar_formula_racao': schemas.criarFormulaRacaoPayloadSchema,
