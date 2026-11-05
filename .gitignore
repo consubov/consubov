@@ -55,3 +55,6 @@ superpowers/
 
 # Local agent coordination notes; preserve locally, outside product QA source.
 /.agents/teamwork/
+
+# Local Vercel project metadata/build is never tracked.
+**/.vercel/
