@@ -1,3 +1,5 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { withReportExportDeadline } from "@/lib/reportPdfExport";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -267,6 +269,8 @@ async function signPath(path: string): Promise<string> {
 }
 
 export default function RevisaoVisitaPage() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const { visitaId } = useParams<{ visitaId: string }>();
   const navigate = useNavigate();
   const [visita, setVisita] = useState<Visita | null>(null);
@@ -538,7 +542,7 @@ export default function RevisaoVisitaPage() {
         pastos: (curr.pastos || []).map((x: SnapshotPasto) => x.id === pastoId ? { ...x, ...p } : x),
       }),
     });
-    if (!res.ok && !res.queued) toast.error("Erro ao salvar");
+    if (!res.ok && !res.queued) toast.error(uiText("Erro ao salvar"));
   }
 
   function updatePasto(id: string, patch: Partial<Pasto>) {
@@ -560,7 +564,7 @@ export default function RevisaoVisitaPage() {
           : p),
       }),
     });
-    if (!res.ok && !res.queued) { toast.error("Erro ao adicionar amostra"); return; }
+    if (!res.ok && !res.queued) { toast.error(uiText("Erro ao adicionar amostra")); return; }
     setPastos(prev => prev.map(p => p.id === pastoId
       ? { ...p, samples: { ...p.samples, [tipo]: [...p.samples[tipo], { id, nota }] } }
       : p));
@@ -594,13 +598,13 @@ export default function RevisaoVisitaPage() {
       rowId: visitaId!,
       patch,
     });
-    if (!res.ok && !res.queued) toast.error("Erro ao salvar");
+    if (!res.ok && !res.queued) toast.error(uiText("Erro ao salvar"));
   }
 
   async function addFoto(pastoId: string, file: File) {
     await notifyEdit();
     const p = pastos.find(x => x.id === pastoId); if (!p) return;
-    if (p.fotos.length >= 5) { toast.error("Máx. 5 fotos"); return; }
+    if (p.fotos.length >= 5) { toast.error(uiText("Máx. 5 fotos")); return; }
     const usadas = new Set(p.fotos.map(f => f.ordem));
     let ordem = 1;
     while (usadas.has(ordem) && ordem <= 5) ordem++;
@@ -624,12 +628,12 @@ export default function RevisaoVisitaPage() {
             })()
           : x),
       }));
-      toast.info("Foto salva off-line. Sincronize quando houver internet.");
+      toast.info(uiText("Foto salva off-line. Sincronize quando houver internet."));
     } catch (err: unknown) {
       const detalhe = err !== null && typeof err === "object" && "message" in err
         ? String(err.message || "")
         : "";
-      toast.error("Erro ao preparar foto: " + detalhe);
+      toast.error(uiText("Erro ao preparar foto: ") + detalhe);
     }
   }
 
@@ -678,7 +682,7 @@ export default function RevisaoVisitaPage() {
     setConfirmando(true);
     try {
       await autosaveVisita({ observacoes_gerais: obsGerais, conclusao, status: "revisao" });
-      toast.success("Visita revisada. Pronta para gerar o PDF.");
+      toast.success(uiText("Visita revisada. Pronta para gerar o PDF."));
       await load(true);
     } finally { setConfirmando(false); }
   }
@@ -686,12 +690,12 @@ export default function RevisaoVisitaPage() {
   async function gerarPdf(opts?: { ignorarFotosPendentes?: boolean; ignorarPendencias?: boolean; jaDescartouOrfaos?: boolean }) {
     if (!visita || !fazenda || !consultor) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      toast.error("Conecte à internet e sincronize antes de gerar o PDF.");
+      toast.error(uiText("Conecte à internet e sincronize antes de gerar o PDF."));
       return;
     }
     // Se houver pendências desta visita, sincroniza primeiro e aguarda concluir.
     if (!opts?.ignorarPendencias && await hasPendingLocalChanges(visita.id)) {
-      const tSync = toast.loading("Sincronizando dados desta visita…");
+      const tSync = toast.loading(uiText("Sincronizando dados desta visita…"));
       const { syncVisitaWithRetries } = await import("@/lib/consultorOffline/snapshotStore");
       const result = await syncVisitaWithRetries(visita.id, { attempts: 3, totalTimeoutMs: 90000 });
       toast.dismiss(tSync);
@@ -710,7 +714,7 @@ export default function RevisaoVisitaPage() {
                 .map((d) => `${d.kind} ${d.parentId.slice(0, 8)}… (${d.mutationIds.length} avaliação(ões), ${d.fotoIds.length} foto(s))`)
                 .join("; ");
               setNotaPerdaDados(`Atenção: ${res.descartados.length} registro(s) foram perdidos no aparelho antes da sincronização e não constam neste relatório: ${detalhes}. Total descartado: ${res.mutations} dado(s) e ${res.fotos} foto(s). Devem ser reavaliados presencialmente.`);
-              toast.warning(`Descartados automaticamente ${res.mutations} dado(s) e ${res.fotos} foto(s) irrecuperáveis. A perda está registrada no relatório.`);
+              toast.warning(`${uiText("Descartados automaticamente ")}${res.mutations}${uiText(" dado(s) e ")}${res.fotos}${uiText(" foto(s) irrecuperáveis. A perda está registrada no relatório.")}`);
               await gerarPdf({ ...opts, jaDescartouOrfaos: true });
               return;
             }
@@ -718,13 +722,13 @@ export default function RevisaoVisitaPage() {
         }
 
         const motivo = result.reason || "Ainda há itens pendentes.";
-        toast.error(`Não foi possível sincronizar. ${motivo}. Tentar novamente?`, {
-          action: { label: "Tentar novamente", onClick: () => void gerarPdf() },
+        toast.error(`${uiText("Não foi possível sincronizar. ")}${motivo}${uiText(". Tentar novamente?")}`, {
+          action: { label: uiText("Tentar novamente"), onClick: () => void gerarPdf() },
         });
-        toast.warning("Precisa do relatório agora? É possível gerar sem os itens pendentes.", {
+        toast.warning(uiText("Precisa do relatório agora? É possível gerar sem os itens pendentes."), {
           duration: 15000,
           action: {
-            label: "Gerar assim mesmo",
+            label: uiText("Gerar assim mesmo"),
             onClick: () => {
               setNotaPerdaDados("Atenção: itens pendentes de sincronização não entraram neste relatório e precisam ser reavaliados presencialmente.");
               void gerarPdf({ ignorarPendencias: true, ignorarFotosPendentes: true });
@@ -744,7 +748,7 @@ export default function RevisaoVisitaPage() {
     }
 
     setGerandoPdf(true);
-    const t = toast.loading("Gerando PDF...");
+    const t = toast.loading(uiText("Gerando PDF..."));
     try {
       // Salva últimas edições antes
       const saveRes = await offlineUpdate({
@@ -811,6 +815,7 @@ export default function RevisaoVisitaPage() {
 
       const cab = cabecalhoEfetivo();
       const { blob, fileName } = await withReportExportDeadline(generateVisitaPdf({
+        language,
         visitaId: visita.id,
         fazenda: {
           nome_fazenda: cab.fazenda_nome,
@@ -859,12 +864,12 @@ export default function RevisaoVisitaPage() {
       if (error) throw error;
 
       toast.dismiss(t);
-      toast.success("PDF gerado e visita finalizada!");
+      toast.success(uiText("PDF gerado e visita finalizada!"));
       setVisita(v => v ? { ...v, pdf_url: pdfUrl, status: "finalizada" } : v);
       setPdfVisualizar({ url: pdfUrl, nome: fazenda.nome_fazenda || "visita" });
     } catch (err: unknown) {
       toast.dismiss(t);
-      toast.error("Erro ao gerar PDF: " + getErrorMessage(err));
+      toast.error(uiText("Erro ao gerar PDF: ") + getErrorMessage(err));
     } finally { setGerandoPdf(false); }
   }
 
@@ -873,13 +878,13 @@ export default function RevisaoVisitaPage() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: `Visita – ${fazenda?.nome_fazenda || ""}`,
-          text: "Relatório de visita técnica Consubov",
+          title: `${uiText("Visita – ")}${fazenda?.nome_fazenda || ""}`,
+          text: uiText("Relatório de visita técnica Consubov"),
           url: visita.pdf_url,
         });
       } else {
         await navigator.clipboard.writeText(visita.pdf_url);
-        toast.success("Link copiado!");
+        toast.success(uiText("Link copiado!"));
       }
     } catch { /* user cancelou */ }
   }
@@ -918,14 +923,14 @@ export default function RevisaoVisitaPage() {
 
   if (tipoLoaded === "confinamento") return <ConfinamentoRevisaoView visitaId={visitaId!} />;
   if (loading || !tipoLoaded) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
-  if (!visita) return <div className="text-center py-12">Visita não encontrada</div>;
+  if (!visita) return <div className="text-center py-12"><LocalizedText source={"Visita não encontrada"} /></div>;
 
   const readOnly = false;
 
   return (
     <div className="space-y-4 pb-32" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1 -ml-2">
-        <ArrowLeft className="w-4 h-4" /> Voltar
+        <ArrowLeft className="w-4 h-4" /> <LocalizedText source={"Voltar"} />
       </Button>
 
       {/* Cabeçalho estilo relatório */}
@@ -936,7 +941,7 @@ export default function RevisaoVisitaPage() {
         <div className="flex items-center gap-2 mb-2">
           <div className="w-9 h-9 rounded-lg flex items-center justify-center font-extrabold text-lg" style={{ background: "#C9A84C", color: "#14432B" }}>C</div>
           <div>
-            <div className="text-[10px] uppercase tracking-widest opacity-80">Revisão · Rotina</div>
+            <div className="text-[10px] uppercase tracking-widest opacity-80"><LocalizedText source={"Revisão · Rotina"} /></div>
           </div>
         </div>
         <div className="text-lg font-extrabold leading-tight">{cabecalhoEfetivo().fazenda_nome || "—"}</div>
@@ -945,11 +950,11 @@ export default function RevisaoVisitaPage() {
         </div>
         <div className="grid grid-cols-2 gap-2 mt-3 text-[11px]">
           <div>
-            <div className="opacity-60">Consultor</div>
+            <div className="opacity-60"><LocalizedText source={"Consultor"} /></div>
             <div className="font-semibold">{cabecalhoEfetivo().consultor_nome || "—"}</div>
           </div>
           <div>
-            <div className="opacity-60">Início</div>
+            <div className="opacity-60"><LocalizedText source={"Início"} /></div>
             <div className="font-semibold">{format(new Date(visita.hora_inicio), "dd/MM HH:mm", { locale: ptBR })}</div>
           </div>
         </div>
@@ -958,7 +963,7 @@ export default function RevisaoVisitaPage() {
       {/* Dados do cabeçalho do relatório — editáveis nesta tela */}
       <div className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: "#E7E3D6" }}>
         <div className="text-[11px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>
-          Dados do cabeçalho do relatório
+          <LocalizedText source={"Dados do cabeçalho do relatório"} />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {CABECALHO_FIELDS.map(({ key, label }) => (
@@ -972,7 +977,7 @@ export default function RevisaoVisitaPage() {
           ))}
         </div>
         <p className="text-[10px] text-muted-foreground">
-          Alterações valem apenas para este relatório — os cadastros de fazenda e consultor não são modificados.
+          <LocalizedText source={"Alterações valem apenas para este relatório — os cadastros de fazenda e consultor não são modificados."} />
         </p>
       </div>
 
@@ -989,13 +994,13 @@ export default function RevisaoVisitaPage() {
               </div>
               <div className="flex-1 grid grid-cols-2 gap-2">
                 <FieldInline
-                  label="Nº Pasto"
+                  label={uiText("Nº Pasto")}
                   value={p.num_pasto || ""}
                   onSave={v => { updatePasto(p.id, { num_pasto: v || null }); autosavePasto(p.id, { num_pasto: v || null }); }}
                   disabled={readOnly}
                 />
                 <FieldInline
-                  label="Animais"
+                  label={uiText("Animais")}
                   value={p.qtd_animais?.toString() || ""}
                   type="number"
                   onSave={v => { const n = v ? Number(v) : null; updatePasto(p.id, { qtd_animais: n }); autosavePasto(p.id, { qtd_animais: n }); }}
@@ -1007,7 +1012,7 @@ export default function RevisaoVisitaPage() {
             <div className="p-3 space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>Produto</div>
+                  <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}><LocalizedText source={"Produto"} /></div>
                   <Select
                     value={p.tipo_produto || ""}
                     onValueChange={v => { updatePasto(p.id, { tipo_produto: v }); autosavePasto(p.id, { tipo_produto: v }); }}
@@ -1020,7 +1025,7 @@ export default function RevisaoVisitaPage() {
                   </Select>
                 </div>
                 <FieldInline
-                  label="% PV"
+                  label={uiText("% PV")}
                   value={p.percentual_pv || ""}
                   onSave={v => { updatePasto(p.id, { percentual_pv: v || null }); autosavePasto(p.id, { percentual_pv: v || null }); }}
                   disabled={readOnly}
@@ -1028,14 +1033,14 @@ export default function RevisaoVisitaPage() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <FieldInline
-                  label="Consumo Esperado (kg/dia)"
+                  label={uiText("Consumo Esperado (kg/dia)")}
                   type="number"
                   value={p.consumo_esperado_kg?.toString() || ""}
                   onSave={v => { const n = v ? Number(v) : null; updatePasto(p.id, { consumo_esperado_kg: n }); autosavePasto(p.id, { consumo_esperado_kg: n }); }}
                   disabled={readOnly}
                 />
                 <FieldInline
-                  label="Consumo Real (kg/dia)"
+                  label={uiText("Consumo Real (kg/dia)")}
                   type="number"
                   value={(p.consumo_real_kg ?? p.consumo_kg_dia)?.toString() || ""}
                   onSave={v => { const n = v ? Number(v) : null; updatePasto(p.id, { consumo_real_kg: n, consumo_kg_dia: n }); autosavePasto(p.id, { consumo_real_kg: n, consumo_kg_dia: n }); }}
@@ -1044,7 +1049,7 @@ export default function RevisaoVisitaPage() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <FieldInline
-                  label="Área do pasto (alqueires)"
+                  label={uiText("Área do pasto (alqueires)")}
                   type="number"
                   value={p.area_alqueires?.toString() || ""}
                   onSave={v => { const n = v ? Number(v) : null; updatePasto(p.id, { area_alqueires: n }); autosavePasto(p.id, { area_alqueires: n }); }}
@@ -1063,27 +1068,27 @@ export default function RevisaoVisitaPage() {
                 return (
                   <div className={cn("rounded-md border p-2 bg-muted/40 gap-2 text-[10px] grid", uaHa != null ? "grid-cols-5" : "grid-cols-4")} style={{ borderColor: "#E7E3D6" }}>
                     <div>
-                      <div className="uppercase tracking-wide text-muted-foreground">PV total</div>
-                      <div className="font-bold text-foreground text-xs">{pvt > 0 ? `${pvt.toLocaleString("pt-BR")} kg` : "—"}</div>
+                      <div className="uppercase tracking-wide text-muted-foreground"><LocalizedText source={"PV total"} /></div>
+                      <div className="font-bold text-foreground text-xs">{pvt > 0 ? `${pvt.toLocaleString(language)} kg` : "—"}</div>
                     </div>
                     <div>
-                      <div className="uppercase tracking-wide text-muted-foreground">Esperado</div>
-                      <div className="font-bold text-foreground text-xs">{esp > 0 ? `${esp.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg/dia` : "—"}</div>
+                      <div className="uppercase tracking-wide text-muted-foreground"><LocalizedText source={"Esperado"} /></div>
+                      <div className="font-bold text-foreground text-xs">{esp > 0 ? `${esp.toLocaleString(language, { maximumFractionDigits: 1 })} kg/dia` : "—"}</div>
                       {esp > 0 && <div className="text-muted-foreground">{fmtPorCabeca(n.espCab)}</div>}
                     </div>
                     <div>
-                      <div className="uppercase tracking-wide text-muted-foreground">Real</div>
-                      <div className="font-bold text-foreground text-xs">{real > 0 ? `${real.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} kg/dia` : "—"}</div>
+                      <div className="uppercase tracking-wide text-muted-foreground"><LocalizedText source={"Real"} /></div>
+                      <div className="font-bold text-foreground text-xs">{real > 0 ? `${real.toLocaleString(language, { maximumFractionDigits: 1 })} kg/dia` : "—"}</div>
                       {real > 0 && <div className="text-muted-foreground">{fmtPorCabeca(n.realCab)}</div>}
                     </div>
                     <div>
-                      <div className="uppercase tracking-wide text-muted-foreground">Índice</div>
+                      <div className="uppercase tracking-wide text-muted-foreground"><LocalizedText source={"Índice"} /></div>
                       <div className="font-bold text-foreground text-xs">{ind > 0 ? `${ind.toFixed(1)}%` : "—"}</div>
                     </div>
 
                     {uaHa != null && (
                       <div>
-                        <div className="uppercase tracking-wide text-muted-foreground">UA/ha</div>
+                        <div className="uppercase tracking-wide text-muted-foreground"><LocalizedText source={"UA/ha"} /></div>
                         <div className="font-bold text-foreground text-xs">{uaHa.toFixed(2).replace(".", ",")}</div>
                       </div>
                     )}
@@ -1093,20 +1098,20 @@ export default function RevisaoVisitaPage() {
 
               {/* Scores — múltiplas amostras */}
               <div className="space-y-4 pt-1">
-                <ScoreSamplesInput label="Fezes" samples={p.samples.fezes}
+                <ScoreSamplesInput label={uiText("Fezes")} samples={p.samples.fezes}
                   onAdd={n => addSample(p.id, "fezes", n)} onRemove={i => removeSample(p.id, "fezes", i)} disabled={readOnly} />
-                <ScoreSamplesInput label="Escore Corporal" samples={p.samples.corporal}
+                <ScoreSamplesInput label={uiText("Escore Corporal")} samples={p.samples.corporal}
                   onAdd={n => addSample(p.id, "corporal", n)} onRemove={i => removeSample(p.id, "corporal", i)} disabled={readOnly} />
-                <ScoreSamplesInput label="Bebedouro" samples={p.samples.bebedouro}
+                <ScoreSamplesInput label={uiText("Bebedouro")} samples={p.samples.bebedouro}
                   onAdd={n => addSample(p.id, "bebedouro", n)} onRemove={i => removeSample(p.id, "bebedouro", i)} disabled={readOnly} />
               </div>
 
               {/* Observação */}
               <div>
-                <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: "#767066" }}>Observação</div>
+                <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: "#767066" }}><LocalizedText source={"Observação"} /></div>
                 <MentionTextarea
                   fieldId={`pasto:${p.id}`}
-                  label="Observação do pasto"
+                  label={uiText("Observação do pasto")}
                   value={p.observacao || ""}
                   onChange={v => updatePasto(p.id, { observacao: v || null })}
                   onCommit={v => autosavePasto(p.id, { observacao: v || null })}
@@ -1155,19 +1160,19 @@ export default function RevisaoVisitaPage() {
       {/* Tabela Indicadores Gerais da Fazenda (auto + editável) */}
       <div className="rounded-lg border bg-card p-3 space-y-2" style={{ borderColor: "#E7E3D6" }}>
         <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
-          Indicadores Gerais da Fazenda
+          <LocalizedText source={"Indicadores Gerais da Fazenda"} />
         </div>
         <div className="text-[10px]" style={{ color: "#767066" }}>
-          Valores calculados automaticamente. Edite qualquer campo para sobrescrever.
+          <LocalizedText source={"Valores calculados automaticamente. Edite qualquer campo para sobrescrever."} />
         </div>
         <div className="grid grid-cols-2 gap-2 items-center">
           <div className="text-xs font-medium" style={{ color: "#1C1C1A" }}>
-            Área total dos pastos avaliados (alqueires)
+            <LocalizedText source={"Área total dos pastos avaliados (alqueires)"} />
           </div>
           <Input
             value={areaAlqueires}
             inputMode="decimal"
-            placeholder="opcional"
+            placeholder={uiText("opcional")}
             onChange={e => setAreaAlqueires(e.target.value)}
             onBlur={() => {
               const n = parseAlqueires(areaAlqueires);
@@ -1221,7 +1226,7 @@ export default function RevisaoVisitaPage() {
       {/* Tipo de gráfico dos 3 gráficos de amostras individuais (no PDF) */}
       <div className="rounded-lg border bg-card p-3 space-y-3" style={{ borderColor: "#E7E3D6" }}>
         <div className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: "#767066" }}>
-          Gráficos de amostras individuais (no PDF)
+          <LocalizedText source={"Gráficos de amostras individuais (no PDF)"} />
         </div>
         {([
           { label: "Fezes", value: sampleChartFezes, set: setSampleChartFezes },
@@ -1277,7 +1282,7 @@ export default function RevisaoVisitaPage() {
               style={{ background: "#1F7A4D", color: "white" }}
             >
               {confirmando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              Confirmar Revisão
+              <LocalizedText source={"Confirmar Revisão"} />
             </Button>
           )}
           {(visita.status === "revisao" || visita.status === "finalizada") && !online && (
@@ -1294,7 +1299,7 @@ export default function RevisaoVisitaPage() {
                     indicadores_tabela: indicadoresTabela,
                     area_total_alqueires: parseAlqueires(areaAlqueires),
                   });
-                  toast.success("Visita salva off-line. Sincronize quando tiver internet para gerar o PDF.");
+                  toast.success(uiText("Visita salva off-line. Sincronize quando tiver internet para gerar o PDF."));
                   navigate("/consultor/historico");
                 } finally { setSalvandoOffline(false); }
               }}
@@ -1303,7 +1308,7 @@ export default function RevisaoVisitaPage() {
               style={{ background: "#1F7A4D", color: "white" }}
             >
               {salvandoOffline ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              Salvar off-line
+              <LocalizedText source={"Salvar off-line"} />
             </Button>
           )}
           {(visita.status === "revisao" || visita.status === "finalizada") && online && (
@@ -1324,10 +1329,10 @@ export default function RevisaoVisitaPage() {
                 className="flex-1 gap-1.5"
                 onClick={() => setPdfVisualizar({ url: visita.pdf_url!, nome: fazenda?.nome_fazenda || "visita" })}
               >
-                <FileText className="w-4 h-4" /> Ver PDF
+                <FileText className="w-4 h-4" /> <LocalizedText source={"Ver PDF"} />
               </Button>
               <Button onClick={compartilhar} className="flex-1 gap-1.5" style={{ background: "#1F7A4D", color: "white" }}>
-                <Share2 className="w-4 h-4" /> Enviar
+                <Share2 className="w-4 h-4" /> <LocalizedText source={"Enviar"} />
               </Button>
             </>
           )}
@@ -1337,7 +1342,7 @@ export default function RevisaoVisitaPage() {
       <PdfViewerDialog
         url={pdfVisualizar?.url ?? null}
         fileName={pdfVisualizar ? `visita-${pdfVisualizar.nome}.pdf` : undefined}
-        title={pdfVisualizar ? `Relatório — ${pdfVisualizar.nome}` : undefined}
+        title={pdfVisualizar ? `${uiText("Relatório — ")}${pdfVisualizar.nome}` : undefined}
         onClose={() => {
           setPdfVisualizar(null);
           if (visita?.status === "finalizada") navigate("/consultor/historico");
@@ -1347,14 +1352,13 @@ export default function RevisaoVisitaPage() {
       <AlertDialog open={fotosPendentesAviso != null} onOpenChange={(v) => { if (!v) setFotosPendentesAviso(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Fotos ainda não sincronizadas</AlertDialogTitle>
+            <AlertDialogTitle><LocalizedText source={"Fotos ainda não sincronizadas"} /></AlertDialogTitle>
             <AlertDialogDescription>
-              Existem {fotosPendentesAviso} foto(s) ainda não sincronizada(s). Sincronize antes de gerar o
-              relatório para garantir que todas apareçam. Se gerar mesmo assim, essas fotos ficarão de fora do PDF.
+              {uiText("Existem ")}{fotosPendentesAviso}{uiText(" foto(s) ainda não sincronizada(s). Sincronize antes de gerar o relatório para garantir que todas apareçam. Se gerar mesmo assim, essas fotos ficarão de fora do PDF.")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={sincronizandoFotos}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={sincronizandoFotos}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <Button
               variant="outline"
               disabled={sincronizandoFotos}
@@ -1366,18 +1370,18 @@ export default function RevisaoVisitaPage() {
                   const restantes = visita ? await getQueuedPhotoCountForVisita(visita.id) : 0;
                   if (restantes > 0) {
                     setFotosPendentesAviso(restantes);
-                    toast.error(`Ainda restam ${restantes} foto(s) pendente(s).`);
+                    toast.error(`${uiText("Ainda restam ")}${restantes}${uiText(" foto(s) pendente(s).")}`);
                   } else {
                     setFotosPendentesAviso(null);
-                    toast.success("Fotos sincronizadas.");
+                    toast.success(uiText("Fotos sincronizadas."));
                     void gerarPdf({ ignorarFotosPendentes: true });
                   }
                 } catch (err) {
-                  toast.error(`Não foi possível sincronizar. ${getErrorMessage(err)}`);
+                  toast.error(`${uiText("Não foi possível sincronizar. ")}${getErrorMessage(err)}`);
                 } finally { setSincronizandoFotos(false); }
               }}
             >
-              {sincronizandoFotos ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sincronizar agora"}
+              {sincronizandoFotos ? <Loader2 className="w-4 h-4 animate-spin" /> : <LocalizedText source={"Sincronizar agora"} />}
             </Button>
             <AlertDialogAction
               disabled={sincronizandoFotos}
@@ -1387,7 +1391,7 @@ export default function RevisaoVisitaPage() {
                 void gerarPdf({ ignorarFotosPendentes: true });
               }}
             >
-              Gerar mesmo assim
+              <LocalizedText source={"Gerar mesmo assim"} />
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1452,12 +1456,13 @@ function PhotoManager({ pasto, readOnly, numeroMap, onAdd, onDelete, onMove }: {
 }) {
   // O snapshot pode conter registros/slots sem URL. No card de revisão, eles não
   // são fotos reais e não podem criar título, espaço reservado ou quadrados.
+  const uiText = useStaticUiText();
   const fotosReais = pasto.fotos.filter(isRenderablePastoFoto).slice(0, 5);
   if (fotosReais.length === 0) return null;
   return (
     <div>
       <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: "#767066" }}>
-        Fotos ({fotosReais.length}/5)
+        <LocalizedText source={"Fotos ("} />{fotosReais.length}/5)
       </div>
       <div className="grid grid-cols-5 gap-1.5">
         {fotosReais.map((f, i) => (
@@ -1474,11 +1479,11 @@ function PhotoManager({ pasto, readOnly, numeroMap, onAdd, onDelete, onMove }: {
               </div>
             )}
             {String(f.url || "").startsWith("queued:") ? (
-              <div className="absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded bg-background/85 px-1 py-0.5 text-[8px] font-medium text-amber-600" title="Foto ainda não sincronizada">
-                <CloudOff className="w-2.5 h-2.5" /> pendente
+              <div className="absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded bg-background/85 px-1 py-0.5 text-[8px] font-medium text-amber-600" title={uiText("Foto ainda não sincronizada")}>
+                <CloudOff className="w-2.5 h-2.5" /> <LocalizedText source={"pendente"} />
               </div>
             ) : (
-              <div className="absolute bottom-0.5 left-0.5 rounded-full bg-background/85 p-0.5" title="Foto sincronizada">
+              <div className="absolute bottom-0.5 left-0.5 rounded-full bg-background/85 p-0.5" title={uiText("Foto sincronizada")}>
                 <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
               </div>
             )}

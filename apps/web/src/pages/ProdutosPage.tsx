@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
@@ -75,6 +75,7 @@ interface ProdutosPageProps {
 }
 
 export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: ProdutosPageProps) {
+  const uiText = useStaticUiText();
   const { roleData, user } = useAuth();
   const dialogOpener = useRef<HTMLElement | null>(null);
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -192,15 +193,15 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
   }
 
   async function handleSave() {
-    if (!form.nome.trim()) { toast.error("Nome do produto é obrigatório."); return; }
-    if (!form.marca.trim()) { toast.error("Marca é obrigatória."); return; }
-    if (!form.tipo) { toast.error("Tipo é obrigatório."); return; }
-    if (form.tipo === "Outro" && !form.tipo_outro.trim()) { toast.error("Informe qual é o tipo."); return; }
-    if (!form.preco_por_kg) { toast.error("Custo por kg é obrigatório."); return; }
-    if (!form.consumo_por_100kg) { toast.error("Consumo por 100kg PV é obrigatório."); return; }
+    if (!form.nome.trim()) { toast.error(uiText("Nome do produto é obrigatório.")); return; }
+    if (!form.marca.trim()) { toast.error(uiText("Marca é obrigatória.")); return; }
+    if (!form.tipo) { toast.error(uiText("Tipo é obrigatório.")); return; }
+    if (form.tipo === "Outro" && !form.tipo_outro.trim()) { toast.error(uiText("Informe qual é o tipo.")); return; }
+    if (!form.preco_por_kg) { toast.error(uiText("Custo por kg é obrigatório.")); return; }
+    if (!form.consumo_por_100kg) { toast.error(uiText("Consumo por 100kg PV é obrigatório.")); return; }
 
     if (modo === "gerente" && !fazendasSelecionadas.some((id) => fazendasVinculaveisIds.includes(id))) {
-      toast.error("Selecione pelo menos uma fazenda vinculada.");
+      toast.error(uiText("Selecione pelo menos uma fazenda vinculada."));
       return;
     }
 
@@ -249,7 +250,7 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
       if (editingId) {
         const { error } = await supabase.from("produtos").update(payload).eq("id", editingId);
         if (error) throw error;
-        toast.success("Produto atualizado!");
+        toast.success(uiText("Produto atualizado!"));
       } else {
         if (modo === "admin") payload.administrador_id = roleData?.roleId ?? null;
         const { data, error } = await supabase.from("produtos").insert(payload).select("id").single();
@@ -265,22 +266,22 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
           throw new Error(`não foi possível vincular às fazendas (${productErrorMessage(vErr, "erro")})`);
         }
       }
-      if (!editingId) toast.success("Produto cadastrado!");
+      if (!editingId) toast.success(uiText("Produto cadastrado!"));
       setDialogOpen(false);
       loadProdutos(fazendasPermitidasIds);
     } catch (err: unknown) {
-      toast.error(`Erro: ${productErrorMessage(err, "Erro desconhecido")}`);
+      toast.error(`${uiText("Erro: ")}${productErrorMessage(err, uiText("Erro desconhecido"))}`);
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Deseja realmente excluir este produto?")) return;
+    if (!confirm(uiText("Deseja realmente excluir este produto?"))) return;
     const { error } = await supabase.from("produtos").delete().eq("id", id);
-    if (error) { toast.error("Erro ao excluir produto."); return; }
+    if (error) { toast.error(uiText("Erro ao excluir produto.")); return; }
     setProdutos((prev) => prev.filter((p) => p.id !== id));
-    toast.success("Produto excluído.");
+    toast.success(uiText("Produto excluído."));
   }
 
   function getMargemUnico(mais: string, menos: string): string {
@@ -377,16 +378,16 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label><LocalizedText source={"Marca *"} /></Label>
-              <Input value={form.marca} onChange={(e) => setForm({ ...form, marca: e.target.value })} placeholder="Ex: Vaccinar, Tortuga, Minerax" />
+              <Input value={form.marca} onChange={(e) => setForm({ ...form, marca: e.target.value })} placeholder={uiText("Ex: Vaccinar, Tortuga, Minerax")} />
             </div>
             <div className="space-y-2">
               <Label><LocalizedText source={"Nome do Produto *"} /></Label>
-              <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Tecnocorte Águas HD" />
+              <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder={uiText("Ex: Tecnocorte Águas HD")} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="produto-tipo"><LocalizedText source={"Tipo *"} /></Label>
               <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v, tipo_outro: v === "Outro" ? form.tipo_outro : "" })}>
-                <SelectTrigger id="produto-tipo"><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
+                <SelectTrigger id="produto-tipo"><SelectValue placeholder={uiText("Selecione o tipo")} /></SelectTrigger>
                 <SelectContent>
                   {TIPO_OPTIONS.map((t) => (
                     <SelectItem key={t} value={t}>{t}</SelectItem>
@@ -396,7 +397,7 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
               {form.tipo === "Outro" && (
                 <div className="space-y-2 pt-1">
                   <Label><LocalizedText source={"Qual tipo? *"} /></Label>
-                  <Input value={form.tipo_outro} onChange={(e) => setForm({ ...form, tipo_outro: e.target.value })} placeholder="Descreva o tipo" />
+                  <Input value={form.tipo_outro} onChange={(e) => setForm({ ...form, tipo_outro: e.target.value })} placeholder={uiText("Descreva o tipo")} />
                 </div>
               )}
             </div>
@@ -425,7 +426,7 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
             </div>
             <div className="space-y-2">
               <Label><LocalizedText source={"Consumo por 100kg PV (g/cab/dia) *"} /></Label>
-              <Input type="number" step="0.01" value={form.consumo_por_100kg} onChange={(e) => setForm({ ...form, consumo_por_100kg: e.target.value })} placeholder="Ex: 100" />
+              <Input type="number" step="0.01" value={form.consumo_por_100kg} onChange={(e) => setForm({ ...form, consumo_por_100kg: e.target.value })} placeholder={uiText("Ex: 100")} />
               <p className="text-xs text-muted-foreground"><LocalizedText source={"Parâmetro nutricional obrigatório para cálculos do sistema"} /></p>
             </div>
 
@@ -454,12 +455,12 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground"><LocalizedText source={"Consumo (kg/100kg PV)"} /></Label>
-                      <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_recria1} onChange={(e) => setForm({ ...form, consumo_recria1: e.target.value })} />
+                      <Input type="number" step="0.01" placeholder={uiText("Consumo")} value={form.consumo_recria1} onChange={(e) => setForm({ ...form, consumo_recria1: e.target.value })} />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground"><LocalizedText source={"Margem (%)"} /></Label>
                       <div className="relative">
-                        <Input type="number" step="0.01" placeholder="Margem" className="pr-6" value={getMargemUnico(form.margem_mais_recria1_pct, form.margem_menos_recria1_pct)} onChange={(e) => setForm({ ...form, margem_mais_recria1_pct: e.target.value, margem_menos_recria1_pct: e.target.value })} />
+                        <Input type="number" step="0.01" placeholder={uiText("Margem")} className="pr-6" value={getMargemUnico(form.margem_mais_recria1_pct, form.margem_menos_recria1_pct)} onChange={(e) => setForm({ ...form, margem_mais_recria1_pct: e.target.value, margem_menos_recria1_pct: e.target.value })} />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
                       </div>
                     </div>
@@ -470,12 +471,12 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground"><LocalizedText source={"Consumo (kg/100kg PV)"} /></Label>
-                      <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_recria2} onChange={(e) => setForm({ ...form, consumo_recria2: e.target.value })} />
+                      <Input type="number" step="0.01" placeholder={uiText("Consumo")} value={form.consumo_recria2} onChange={(e) => setForm({ ...form, consumo_recria2: e.target.value })} />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground"><LocalizedText source={"Margem (%)"} /></Label>
                       <div className="relative">
-                        <Input type="number" step="0.01" placeholder="Margem" className="pr-6" value={getMargemUnico(form.margem_mais_recria2_pct, form.margem_menos_recria2_pct)} onChange={(e) => setForm({ ...form, margem_mais_recria2_pct: e.target.value, margem_menos_recria2_pct: e.target.value })} />
+                        <Input type="number" step="0.01" placeholder={uiText("Margem")} className="pr-6" value={getMargemUnico(form.margem_mais_recria2_pct, form.margem_menos_recria2_pct)} onChange={(e) => setForm({ ...form, margem_mais_recria2_pct: e.target.value, margem_menos_recria2_pct: e.target.value })} />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
                       </div>
                     </div>
@@ -486,12 +487,12 @@ export default function ProdutosPage({ modo = "admin", fazendaAtivaId }: Produto
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground"><LocalizedText source={"Consumo (kg/100kg PV)"} /></Label>
-                      <Input type="number" step="0.01" placeholder="Consumo" value={form.consumo_engorda} onChange={(e) => setForm({ ...form, consumo_engorda: e.target.value })} />
+                      <Input type="number" step="0.01" placeholder={uiText("Consumo")} value={form.consumo_engorda} onChange={(e) => setForm({ ...form, consumo_engorda: e.target.value })} />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground"><LocalizedText source={"Margem (%)"} /></Label>
                       <div className="relative">
-                        <Input type="number" step="0.01" placeholder="Margem" className="pr-6" value={getMargemUnico(form.margem_mais_engorda_pct, form.margem_menos_engorda_pct)} onChange={(e) => setForm({ ...form, margem_mais_engorda_pct: e.target.value, margem_menos_engorda_pct: e.target.value })} />
+                        <Input type="number" step="0.01" placeholder={uiText("Margem")} className="pr-6" value={getMargemUnico(form.margem_mais_engorda_pct, form.margem_menos_engorda_pct)} onChange={(e) => setForm({ ...form, margem_mais_engorda_pct: e.target.value, margem_menos_engorda_pct: e.target.value })} />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
                       </div>
                     </div>

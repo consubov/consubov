@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ interface Props {
 }
 
 export default function ObservacaoLoteModal({ open, onClose, pastoId, pastoNome, userId, onSaved }: Props) {
+  const uiText = useStaticUiText();
   const [texto, setTexto] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -33,12 +34,12 @@ export default function ObservacaoLoteModal({ open, onClose, pastoId, pastoNome,
         dados: { texto: texto.trim() },
       });
       if (error) throw error;
-      toast.success("Observação registrada!");
+      toast.success(uiText("Observação registrada!"));
       setTexto("");
       onClose();
       onSaved?.();
     } catch (err: any) {
-      toast.error("Erro: " + (err.message || ""));
+      toast.error(uiText("Erro: ") + (err.message || ""));
     } finally {
       setSaving(false);
     }
@@ -53,7 +54,7 @@ export default function ObservacaoLoteModal({ open, onClose, pastoId, pastoNome,
         </DialogHeader>
         <div className="py-2">
           <Label><LocalizedText source={"Descrição"} /></Label>
-          <Textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={4} placeholder="Descreva a observação..." />
+          <Textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={4} placeholder={uiText("Descreva a observação...")} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { onClose(); setTexto(""); }}><LocalizedText source={"Cancelar"} /></Button>

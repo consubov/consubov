@@ -637,7 +637,7 @@ export default function LandingPage() {
               <div className="absolute inset-0 grid-bg opacity-30" />
               <div className="absolute inset-0 p-6 flex flex-col gap-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] tracking-widest text-red-400">SYSTEM ERROR // 0x4F</span>
+                  <span className="text-[10px] tracking-widest text-red-400">{language === "en-US" ? "SYSTEM ERROR // 0x4F" : "ERRO DO SISTEMA // 0x4F"}</span>
                   <EyeOff className="w-4 h-4 text-red-400" />
                 </div>
                 <div className="h-1 bg-red-500/30 rounded">
@@ -652,7 +652,7 @@ export default function LandingPage() {
                   ))}
                 </div>
                 <div className="mt-auto text-center text-red-400 font-mono text-xs opacity-60">
-                  ▮▮▮▮▮▮▯▯▯▯ DADOS PERDIDOS
+                  {"▮▮▮▮▮▮▯▯▯▯ "} {language === "en-US" ? "DATA LOST" : "DADOS PERDIDOS"}
                 </div>
               </div>
               <div className="absolute left-0 right-0 h-1" style={{ background: "rgba(239,68,68,0.4)", animation: "scanLine 4s linear infinite" }} />

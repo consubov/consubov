@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,7 @@ export default function AssinaturasSection({
   onNotifyEdit?: () => void | Promise<void>;
   onChange?: (list: Assinante[]) => void;
 }) {
+  const uiText = useStaticUiText();
   const [list, setList] = useState<Assinante[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -78,7 +79,7 @@ export default function AssinaturasSection({
   }
 
   async function remove(id: string) {
-    if (list.length <= 1) { toast.error("É necessário ao menos 1 assinante."); return; }
+    if (list.length <= 1) { toast.error(uiText("É necessário ao menos 1 assinante.")); return; }
     await onNotifyEdit?.();
     const next = list.filter(a => a.id !== id);
     setList(next);
@@ -127,6 +128,7 @@ function AssinanteRow({
   onRemove: () => void;
   index: number;
 }) {
+  const uiText = useStaticUiText();
   const [nome, setNome] = useState(assinante.nome);
   const [cargo, setCargo] = useState(assinante.cargo_funcao);
   useEffect(() => { setNome(assinante.nome); setCargo(assinante.cargo_funcao); }, [assinante.nome, assinante.cargo_funcao]);
@@ -150,7 +152,7 @@ function AssinanteRow({
             onChange={e => setNome(e.target.value)}
             onBlur={() => { if (nome !== assinante.nome) onSave("nome", nome); }}
             className="h-8 text-sm"
-            placeholder="Nome completo"
+            placeholder={uiText("Nome completo")}
           />
         </div>
         <div>
@@ -160,7 +162,7 @@ function AssinanteRow({
             onChange={e => setCargo(e.target.value)}
             onBlur={() => { if (cargo !== assinante.cargo_funcao) onSave("cargo_funcao", cargo); }}
             className="h-8 text-sm"
-            placeholder="Consultor Técnico"
+            placeholder={uiText("Consultor Técnico")}
           />
         </div>
       </div>

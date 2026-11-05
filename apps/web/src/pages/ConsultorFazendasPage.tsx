@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +47,7 @@ function normalize(s: string | null | undefined): string {
 }
 
 export default function ConsultorFazendasPage() {
+  const uiText = useStaticUiText();
   const { roleData } = useAuth();
   const navigate = useNavigate();
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
@@ -124,7 +125,7 @@ export default function ConsultorFazendasPage() {
   }
 
   async function handleSave() {
-    if (!form.nome_fazenda.trim()) return toast.error("Nome da fazenda é obrigatório");
+    if (!form.nome_fazenda.trim()) return toast.error(uiText("Nome da fazenda é obrigatório"));
     setSaving(true);
     try {
       const payload = {
@@ -139,21 +140,21 @@ export default function ConsultorFazendasPage() {
       if (editingId) {
         const { error } = await supabase.from("fazendas_consultor").update(payload).eq("id", editingId);
         if (error) throw error;
-        toast.success("Fazenda atualizada!");
+        toast.success(uiText("Fazenda atualizada!"));
       } else {
         const { error } = await supabase.from("fazendas_consultor").insert({
           consultor_id: roleData.consultorId!,
           ...payload,
         });
         if (error) throw error;
-        toast.success("Fazenda cadastrada!");
+        toast.success(uiText("Fazenda cadastrada!"));
       }
       setDialogOpen(false);
       setEditingId(null);
       setForm(emptyForm);
       load();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setSaving(false); }
   }
 
@@ -174,17 +175,17 @@ export default function ConsultorFazendasPage() {
           .update({ deleted_at: new Date().toISOString() } as any)
           .eq("id", deleteTarget.id);
         if (error) throw error;
-        toast.success("Fazenda arquivada. Histórico de visitas preservado.");
+        toast.success(uiText("Fazenda arquivada. Histórico de visitas preservado."));
       } else {
         // Delete físico
         const { error } = await supabase.from("fazendas_consultor").delete().eq("id", deleteTarget.id);
         if (error) throw error;
-        toast.success("Fazenda excluída.");
+        toast.success(uiText("Fazenda excluída."));
       }
       setDeleteTarget(null);
       load();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setDeleting(false); }
   }
 
@@ -214,7 +215,7 @@ export default function ConsultorFazendasPage() {
               size="sm"
               variant="outline"
               className="gap-1.5"
-              title="Personalizar logo do relatório"
+              title={uiText("Personalizar logo do relatório")}
             >
               <ImageIcon className="w-4 h-4" />
             </Button>
@@ -228,7 +229,7 @@ export default function ConsultorFazendasPage() {
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar fazenda..."
+            placeholder={uiText("Buscar fazenda...")}
             className="pl-9 pr-9"
           />
           {search && (
@@ -236,7 +237,7 @@ export default function ConsultorFazendasPage() {
               type="button"
               onClick={() => setSearch("")}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-muted"
-              aria-label="Limpar busca"
+              aria-label={uiText("Limpar busca")}
             >
               <X className="w-4 h-4 text-muted-foreground" />
             </button>
@@ -287,7 +288,7 @@ export default function ConsultorFazendasPage() {
                   size="icon"
                   className="h-8 w-8"
                   onClick={(e) => { e.stopPropagation(); openEdit(f); }}
-                  aria-label="Editar fazenda"
+                  aria-label={uiText("Editar fazenda")}
                 >
                   <Pencil className="w-4 h-4 text-muted-foreground" />
                 </Button>
@@ -296,7 +297,7 @@ export default function ConsultorFazendasPage() {
                   size="icon"
                   className="h-8 w-8"
                   onClick={(e) => { e.stopPropagation(); setDeleteTarget(f); }}
-                  aria-label="Excluir fazenda"
+                  aria-label={uiText("Excluir fazenda")}
                 >
                   <Trash2 className="w-4 h-4 text-destructive" />
                 </Button>
@@ -318,7 +319,7 @@ export default function ConsultorFazendasPage() {
           <div className="space-y-3">
             <div><Label><LocalizedText source={"Nome da fazenda *"} /></Label><Input value={form.nome_fazenda} onChange={e => setForm(f => ({ ...f, nome_fazenda: e.target.value }))} /></div>
             <div><Label><LocalizedText source={"Proprietário"} /></Label><Input value={form.proprietario} onChange={e => setForm(f => ({ ...f, proprietario: e.target.value }))} /></div>
-            <div><Label><LocalizedText source={"Responsável"} /></Label><Input placeholder="Nome do gerente ou responsável" value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} /></div>
+            <div><Label><LocalizedText source={"Responsável"} /></Label><Input placeholder={uiText("Nome do gerente ou responsável")} value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} /></div>
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-2"><Label><LocalizedText source={"Município"} /></Label><Input value={form.municipio} onChange={e => setForm(f => ({ ...f, municipio: e.target.value }))} /></div>
               <div><Label>UF</Label><Input maxLength={2} value={form.uf} onChange={e => setForm(f => ({ ...f, uf: e.target.value }))} /></div>
@@ -392,6 +393,7 @@ function LogoSlot({
   saving: boolean;
   isDefaultConsubov?: boolean;
 }) {
+  const uiText = useStaticUiText();
   return (
     <div className="rounded-lg border border-border p-3 space-y-3">
       <div className="flex items-center justify-between gap-3">
@@ -411,7 +413,7 @@ function LogoSlot({
               const f = e.target.files?.[0];
               if (!f) return;
               if (!/^image\/(png|jpe?g|webp|svg\+xml)$/.test(f.type)) {
-                toast.error("Envie um arquivo de imagem (PNG, JPG, WebP ou SVG)");
+                toast.error(uiText("Envie um arquivo de imagem (PNG, JPG, WebP ou SVG)"));
                 return;
               }
               onSelectFile(f);
@@ -419,7 +421,7 @@ function LogoSlot({
           />
           {previewUrl && (
             <div className="flex items-center gap-3 pt-1">
-              <img src={previewUrl} alt="Prévia" className="h-14 w-auto object-contain bg-muted rounded border p-1" />
+              <img src={previewUrl} alt={uiText("Prévia")} className="h-14 w-auto object-contain bg-muted rounded border p-1" />
               {showRemove && (
                 <Button variant="ghost" size="sm" onClick={onRemove} disabled={saving} className="text-destructive gap-1">
                   <Trash2 className="w-4 h-4" /> <LocalizedText source={"Remover"} /></Button>
@@ -442,6 +444,7 @@ function LogoSlot({
 function PersonalizarLogoModal({
   open, onOpenChange, consultorId,
 }: { open: boolean; onOpenChange: (v: boolean) => void; consultorId: string | null }) {
+  const uiText = useStaticUiText();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -524,10 +527,10 @@ function PersonalizarLogoModal({
         .update({ logo_esquerda_url: newEsquerda, logo_direita_url: newDireita } as any)
         .eq("id", consultorId);
       if (error) throw error;
-      toast.success("Preferência de logo salva!");
+      toast.success(uiText("Preferência de logo salva!"));
       onOpenChange(false);
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally {
       setSaving(false);
     }
@@ -545,9 +548,9 @@ function PersonalizarLogoModal({
       setEsquerdaPreview(null);
       setEsquerdaFile(null);
       setEsquerdaCustom(false);
-      toast.success("Logo esquerda removida");
+      toast.success(uiText("Logo esquerda removida"));
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setSaving(false); }
   }
 
@@ -563,9 +566,9 @@ function PersonalizarLogoModal({
       setDireitaPreview(null);
       setDireitaFile(null);
       setDireitaOn(false);
-      toast.success("Logo direita removida");
+      toast.success(uiText("Logo direita removida"));
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setSaving(false); }
   }
 
@@ -583,7 +586,7 @@ function PersonalizarLogoModal({
         ) : (
           <div className="space-y-3">
             <LogoSlot
-              title="Logo à Esquerda"
+              title={uiText("Logo à Esquerda")}
               toggleLabel={esquerdaCustom ? "Minha logo" : "Consubov (padrão)"}
               toggleOn={esquerdaCustom}
               onToggle={(v) => {
@@ -599,7 +602,7 @@ function PersonalizarLogoModal({
             />
 
             <LogoSlot
-              title="Logo à Direita"
+              title={uiText("Logo à Direita")}
               toggleLabel={direitaOn ? "Ativada" : "Desativada"}
               toggleOn={direitaOn}
               onToggle={(v) => {

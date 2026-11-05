@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,6 +45,7 @@ function fileToDataUrl(file: File): Promise<string> {
 }
 
 export default function ConferenciaChecklist({ dados, userId, perfil, onBack, onSaved }: Props) {
+  const uiText = useStaticUiText();
   const [marcados, setMarcados] = useState<Record<ChecklistKey, boolean>>(() =>
     Object.fromEntries(ITENS.map((i) => [i.key, false])) as Record<ChecklistKey, boolean>
   );
@@ -76,10 +77,10 @@ export default function ConferenciaChecklist({ dados, userId, perfil, onBack, on
         observacoes: observacoes.trim() || null,
         fotosDataUrls: fotos,
       });
-      toast.success(queued ? "Conferência salva offline. Será sincronizada ao reconectar." : "Conferência registrada.");
+      toast.success(queued ? uiText("Conferência salva offline. Será sincronizada ao reconectar.") : uiText("Conferência registrada."));
       onSaved();
     } catch (err) {
-      toast.error("Não foi possível salvar a conferência.");
+      toast.error(uiText("Não foi possível salvar a conferência."));
     } finally {
       setSaving(false);
     }
@@ -119,7 +120,7 @@ export default function ConferenciaChecklist({ dados, userId, perfil, onBack, on
             id="obs"
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}
-            placeholder="Descreva detalhes da conferência..."
+            placeholder={uiText("Descreva detalhes da conferência...")}
             rows={4}
             maxLength={1000}
           />
@@ -135,7 +136,7 @@ export default function ConferenciaChecklist({ dados, userId, perfil, onBack, on
                   type="button"
                   onClick={() => setFotos((prev) => prev.filter((_, idx) => idx !== i))}
                   className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1"
-                  aria-label="Remover foto"
+                  aria-label={uiText("Remover foto")}
                 >
                   <X className="w-3 h-3" />
                 </button>

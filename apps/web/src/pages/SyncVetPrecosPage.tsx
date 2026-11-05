@@ -1,3 +1,5 @@
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,6 +36,8 @@ const UNIDADES = [
 ];
 
 export default function SyncVetPrecosPage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const { user, roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
   const [vetId, setVetId] = useState<string | null>(null);
@@ -78,7 +82,7 @@ export default function SyncVetPrecosPage() {
   async function save() {
     if (!vetId) return;
     const v = parseFloat(valor.replace(",", "."));
-    if (isNaN(v) || v < 0) { toast.error("Valor inválido"); return; }
+    if (isNaN(v) || v < 0) { toast.error(uiText("Valor inválido")); return; }
     setSaving(true);
     try {
       const payload = { veterinario_id: vetId, tipo_servico: tipo, descricao: descricao || null, valor: v, unidade };
@@ -89,16 +93,16 @@ export default function SyncVetPrecosPage() {
         const { error } = await supabase.from("syncvet_tabela_precos").insert(payload);
         if (error) throw error;
       }
-      toast.success("Salvo");
+      toast.success(uiText("Salvo"));
       setOpen(false); reset(); void load();
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   }
 
   async function del(id: string) {
-    if (!confirm("Excluir este preço?")) return;
+    if (!confirm(uiText("Excluir este preço?"))) return;
     const { error } = await supabase.from("syncvet_tabela_precos").delete().eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success("Excluído"); void load();
+    toast.success(uiText("Excluído")); void load();
   }
 
   const grouped = useMemo(() => {
@@ -114,36 +118,36 @@ export default function SyncVetPrecosPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-primary flex items-center gap-2">
-          <DollarSign className="w-5 h-5" /> Tabela de Preços
+          <DollarSign className="w-5 h-5" /> <LocalizedText source={"Tabela de Preços"} />
         </h1>
         <Button size="sm" onClick={() => { reset(); setOpen(true); }} disabled={!vetId}>
-          <Plus className="w-4 h-4 mr-1" /> Novo
+          <Plus className="w-4 h-4 mr-1" /> <LocalizedText source={"Novo"} />
         </Button>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : !vetId ? (
-        <Card className="p-6 text-sm text-center text-muted-foreground">Seu usuário não está vinculado a nenhuma equipe syncvet.</Card>
+        <Card className="p-6 text-sm text-center text-muted-foreground"><LocalizedText source={"Seu usuário não está vinculado a nenhuma equipe syncvet."} /></Card>
       ) : rows.length === 0 ? (
-        <Card className="p-6 text-sm text-center text-muted-foreground">Nenhum preço cadastrado. Adicione o primeiro.</Card>
+        <Card className="p-6 text-sm text-center text-muted-foreground"><LocalizedText source={"Nenhum preço cadastrado. Adicione o primeiro."} /></Card>
       ) : (
         <div className="space-y-3">
           {grouped.map(([tipoV, items]) => (
             <div key={tipoV} className="space-y-2">
               <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {TIPOS.find(t => t.v === tipoV)?.label ?? tipoV}
+                {uiText(TIPOS.find(t => t.v === tipoV)?.label ?? tipoV)}
               </div>
               {items.map(r => (
                 <Card key={r.id} className="p-3 flex items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{r.descricao || "—"}</div>
                     <div className="text-xs text-muted-foreground">
-                      {UNIDADES.find(u => u.v === r.unidade)?.label ?? r.unidade}
+                      {uiText(UNIDADES.find(u => u.v === r.unidade)?.label ?? r.unidade)}
                     </div>
                   </div>
                   <div className="text-base font-bold text-primary">
-                    {r.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    {r.valor.toLocaleString(language, { style: "currency", currency: "BRL" })}
                   </div>
                   <Button size="icon" variant="ghost" onClick={() => openEdit(r)}><Pencil className="w-4 h-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => del(r.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
@@ -156,37 +160,37 @@ export default function SyncVetPrecosPage() {
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editing ? "Editar preço" : "Novo preço"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? uiText("Editar preço") : uiText("Novo preço")}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Tipo de serviço</Label>
+              <Label><LocalizedText source={"Tipo de serviço"} /></Label>
               <Select value={tipo} onValueChange={setTipo}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{TIPOS.map(t => <SelectItem key={t.v} value={t.v}>{t.label}</SelectItem>)}</SelectContent>
+                <SelectContent>{TIPOS.map(t => <SelectItem key={t.v} value={t.v}>{uiText(t.label)}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Descrição</Label>
-              <Input value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Ex: DG por US" />
+              <Label><LocalizedText source={"Descrição"} /></Label>
+              <Input value={descricao} onChange={e => setDescricao(e.target.value)} placeholder={uiText("Ex: DG por US")} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Valor (R$)</Label>
+                <Label><LocalizedText source={"Valor (R$)"} /></Label>
                 <Input inputMode="decimal" value={valor} onChange={e => setValor(e.target.value)} placeholder="0,00" />
               </div>
               <div>
-                <Label>Unidade</Label>
+                <Label><LocalizedText source={"Unidade"} /></Label>
                 <Select value={unidade} onValueChange={setUnidade}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{UNIDADES.map(u => <SelectItem key={u.v} value={u.v}>{u.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{UNIDADES.map(u => <SelectItem key={u.v} value={u.v}>{uiText(u.label)}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={save} disabled={saving}>
-              {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />} Salvar
+              {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />} <LocalizedText source={"Salvar"} />
             </Button>
           </DialogFooter>
         </DialogContent>

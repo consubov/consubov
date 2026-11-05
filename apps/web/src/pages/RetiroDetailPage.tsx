@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,6 +67,7 @@ function categoriaBadgeClass(cat: string) {
 }
 
 export default function RetiroDetailPage() {
+  const uiText = useStaticUiText();
   const { fazendaId, retiroId } = useParams<{ fazendaId: string; retiroId: string }>();
   const navigate = useNavigate();
   const [retiro, setRetiro] = useState<Retiro | null>(null);
@@ -92,7 +93,7 @@ export default function RetiroDetailPage() {
         supabase.from("pastos").select("*").eq("retiro_id", retiroId).order("nome"),
       ]);
       if (retRes.error || fazRes.error) {
-        toast.error("Retiro não encontrado.");
+        toast.error(uiText("Retiro não encontrado."));
         navigate(`/admin/fazendas/${fazendaId}`);
         return;
       }
@@ -114,7 +115,7 @@ export default function RetiroDetailPage() {
       }
     } catch (err) {
       console.error("Erro ao carregar retiro:", err);
-      toast.error("Erro ao carregar dados.");
+      toast.error(uiText("Erro ao carregar dados."));
     } finally {
       setLoading(false);
     }
@@ -169,8 +170,8 @@ export default function RetiroDetailPage() {
   }
 
   async function handleSave() {
-    if (!form.nome.trim()) { toast.error("O nome é obrigatório."); return; }
-    if (faltaCategoria(form.num_animais, form.categoria)) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
+    if (!form.nome.trim()) { toast.error(uiText("O nome é obrigatório.")); return; }
+    if (faltaCategoria(form.num_animais, form.categoria)) { toast.error(uiText(MSG_CATEGORIA_OBRIGATORIA)); return; }
     setSaving(true);
     const payload = {
       nome: form.nome.trim(),
@@ -191,7 +192,7 @@ export default function RetiroDetailPage() {
         setPastos((prev) =>
           prev.map((p) => (p.id === editingId ? { ...p, ...payload } : p))
         );
-        toast.success("Pasto atualizado!");
+        toast.success(uiText("Pasto atualizado!"));
       } else {
         const { data, error } = await supabase
           .from("pastos")
@@ -202,25 +203,25 @@ export default function RetiroDetailPage() {
         if (error || !data) throw error || new Error("Dados não retornados");
 
         setPastos((prev) => [...prev, data].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
-        toast.success("Pasto criado!");
+        toast.success(uiText("Pasto criado!"));
       }
 
       setDialogOpen(false);
       setForm(emptyPastoForm);
     } catch (err: any) {
       console.error("Erro Supabase pastos:", err);
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`${uiText("Erro: ")}${err?.message || uiText("Erro desconhecido")}`);
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Deseja realmente excluir este pasto?")) return;
+    if (!confirm(uiText("Deseja realmente excluir este pasto?"))) return;
     const { error } = await supabase.from("pastos").delete().eq("id", id);
-    if (error) { toast.error("Erro ao excluir pasto."); return; }
+    if (error) { toast.error(uiText("Erro ao excluir pasto.")); return; }
     setPastos((prev) => prev.filter((p) => p.id !== id));
-    toast.success("Pasto excluído.");
+    toast.success(uiText("Pasto excluído."));
   }
 
   if (loading) {
@@ -248,7 +249,7 @@ export default function RetiroDetailPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2"><Map className="w-5 h-5" /> {retiro.nome}</CardTitle>
-            <Badge variant={retiro.ativo ? "default" : "secondary"}>{retiro.ativo ? "Ativo" : "Inativo"}</Badge>
+            <Badge variant={retiro.ativo ? "default" : "secondary"}>{uiText(retiro.ativo ? "Ativo" : "Inativo")}</Badge>
           </div>
         </CardHeader>
         <CardContent>
@@ -265,7 +266,7 @@ export default function RetiroDetailPage() {
           <div className="flex gap-2">
             <Button onClick={() => {
               if (!retiroId) {
-                toast.error("Retiro inválido.");
+                toast.error(uiText("Retiro inválido."));
                 return;
               }
 
@@ -284,7 +285,7 @@ export default function RetiroDetailPage() {
         </div>
 
         {!configOpen && configSummary && (
-          <p className="text-xs text-muted-foreground mb-4 px-1">{configSummary}</p>
+          <p className="text-xs text-muted-foreground mb-4 px-1">{configSummary === "Nenhum produto configurado" ? uiText(configSummary) : configSummary.replace(/^Produto: /, uiText("Produto: ")).replace(/^Estoque: /, uiText("Estoque: ")).replace(" · Estoque: ", uiText(" · Estoque: ")).replace(/ sacos$/, uiText(" sacos"))}</p>
         )}
 
         <CollapsibleContent>
@@ -311,7 +312,7 @@ export default function RetiroDetailPage() {
                   <TableHead><LocalizedText source={"Animais"} /></TableHead>
                   <TableHead><LocalizedText source={"Peso Médio"} /></TableHead>
                   <TableHead><LocalizedText source={"Categoria"} /></TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead><LocalizedText source={"Status"} /></TableHead>
                   <TableHead className="w-24 text-right"><LocalizedText source={"Ações"} /></TableHead>
                 </TableRow>
               </TableHeader>
@@ -333,7 +334,7 @@ export default function RetiroDetailPage() {
                       ) : "—"}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={p.ativo ? "default" : "secondary"}>{p.ativo ? "Ativo" : "Inativo"}</Badge>
+                      <Badge variant={p.ativo ? "default" : "secondary"}>{uiText(p.ativo ? "Ativo" : "Inativo")}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
@@ -354,14 +355,14 @@ export default function RetiroDetailPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md" aria-describedby="pasto-dialog-desc">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Pasto" : "Novo Pasto"}</DialogTitle>
+            <DialogTitle>{uiText(editingId ? "Editar Pasto" : "Novo Pasto")}</DialogTitle>
             <DialogDescription id="pasto-dialog-desc">
               <LocalizedText source={"Preencha os dados do pasto. A categoria é calculada automaticamente pelo peso e sexo."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label htmlFor="nome"><LocalizedText source={"Nome *"} /></Label>
-              <Input id="nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Pasto A1" />
+              <Input id="nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder={uiText("Ex: Pasto A1")} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
@@ -377,7 +378,7 @@ export default function RetiroDetailPage() {
               <div className="space-y-2">
                 <Label><LocalizedText source={"Sexo"} /></Label>
                 <Select value={form.sexo} onValueChange={handleSexoChange}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={uiText("Selecione")} /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Macho"><LocalizedText source={"Macho"} /></SelectItem>
                     <SelectItem value="Fêmea"><LocalizedText source={"Fêmea"} /></SelectItem>
@@ -388,7 +389,7 @@ export default function RetiroDetailPage() {
               <div className="space-y-2">
                 <Label><LocalizedText source={"Categoria"} /></Label>
                 <Select value={form.categoria} onValueChange={handleCategoriaChange}>
-                  <SelectTrigger><SelectValue placeholder="Automática" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={uiText("Automática")} /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Recria 1"><LocalizedText source={"Recria 1"} /></SelectItem>
                     <SelectItem value="Recria 2"><LocalizedText source={"Recria 2"} /></SelectItem>
@@ -411,7 +412,7 @@ export default function RetiroDetailPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <LocalizedText source={"Salvar"} />}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useRef, useState } from "react";
 import { diasCalendarioSP } from "@/lib/diasCalendario";
 import { useNavigate } from "react-router-dom";
@@ -90,6 +91,8 @@ function conferenciaErrorMessage(error: unknown, fallback: string): string {
 }
 
 export default function ConferenciaPage() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const navigate = useNavigate();
   const { user, role, roleData } = useAuth();
   const isAdmin = role === "administrador";
@@ -199,16 +202,16 @@ export default function ConferenciaPage() {
   /** Transforma a verificação livre em registro formal (tópicos + assinaturas liberados). */
   const handleRegistrarConferencia = async () => {
     if (registros.length === 0) {
-      toast.error("Escaneie e registre pelo menos um pasto antes de registrar a conferência.");
+      toast.error(uiText("Escaneie e registre pelo menos um pasto antes de registrar a conferência."));
       return;
     }
     setCriandoVisita(true);
     try {
       await garantirVisita();
       setRegistroFormalConfirmado(true);
-      toast.success("Conferência registrada. Os pastos escaneados entram no relatório.");
+      toast.success(uiText("Conferência registrada. Os pastos escaneados entram no relatório."));
     } catch (e: unknown) {
-      toast.error(conferenciaErrorMessage(e, "Não foi possível registrar a conferência."));
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível registrar a conferência.")));
     } finally {
       setCriandoVisita(false);
     }
@@ -233,7 +236,7 @@ export default function ConferenciaPage() {
       assinantesCarregados.current = null;
       setEtapa("inicio");
     } catch (e: unknown) {
-      toast.error(conferenciaErrorMessage(e, "Não foi possível abrir a conferência para edição."));
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível abrir a conferência para edição.")));
     } finally {
       setLoadingHistorico(false);
     }
@@ -246,7 +249,7 @@ export default function ConferenciaPage() {
     try {
       setHistorico(await listConferenciasHistorico(roleData.roleId));
     } catch (e: unknown) {
-      toast.error(conferenciaErrorMessage(e, "Não foi possível carregar o histórico."));
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível carregar o histórico.")));
     } finally {
       setLoadingHistorico(false);
     }
@@ -260,10 +263,10 @@ export default function ConferenciaPage() {
       if (visita?.id === confirmarExclusaoConf.id) {
         setVisita(null); setRegistroFormalConfirmado(false); setRegistros([]); setTopicos([]); setAssinantes([]); setPdfGerado(null);
       }
-      toast.success("Conferência excluída.");
+      toast.success(uiText("Conferência excluída."));
       setConfirmarExclusaoConf(null);
     } catch (e: unknown) {
-      toast.error(conferenciaErrorMessage(e, "Não foi possível excluir a conferência."));
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível excluir a conferência.")));
     }
   };
 
@@ -293,12 +296,12 @@ export default function ConferenciaPage() {
       });
       if (dados.fazenda.id) setFazendaIdConf(dados.fazenda.id);
       setRegistros(await listConferenciaPastos(v.id));
-      toast.success("Pasto registrado na visita.");
+      toast.success(uiText("Pasto registrado na visita."));
       setDados(null);
       setEtapa("inicio");
 
     } catch (e: unknown) {
-      toast.error(conferenciaErrorMessage(e, "Não foi possível salvar o registro."));
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível salvar o registro.")));
     } finally {
       setSavingPasto(false);
     }
@@ -335,12 +338,12 @@ export default function ConferenciaPage() {
         novasFotosDataUrls: values.novasFotos,
       });
       setRegistros(await listConferenciaPastos(visita.id));
-      toast.success("Pasto atualizado.");
+      toast.success(uiText("Pasto atualizado."));
       setEditando(null);
       setFotosEdicao([]);
       setEtapa("inicio");
     } catch (e: unknown) {
-      toast.error(conferenciaErrorMessage(e, "Não foi possível salvar as alterações."));
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível salvar as alterações.")));
     } finally {
       setSavingPasto(false);
     }
@@ -353,10 +356,10 @@ export default function ConferenciaPage() {
       await invalidarPdf(visita);
       await excluirPastoConferencia(confirmarExclusao, visita.id);
       setRegistros(await listConferenciaPastos(visita.id));
-      toast.success("Pasto removido da conferência.");
+      toast.success(uiText("Pasto removido da conferência."));
       setConfirmarExclusao(null);
     } catch (e: unknown) {
-      toast.error(conferenciaErrorMessage(e, "Não foi possível excluir o pasto."));
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível excluir o pasto.")));
     } finally {
       setExcluindo(false);
     }
@@ -442,7 +445,7 @@ export default function ConferenciaPage() {
         data_override: cab.data || null,
       } : prev);
     } catch (e: unknown) {
-      toast.error(conferenciaErrorMessage(e, "Não foi possível salvar o cabeçalho do relatório."));
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível salvar o cabeçalho do relatório.")));
     }
   };
 
@@ -480,6 +483,7 @@ export default function ConferenciaPage() {
       const dataIso = cab.data ? new Date(`${cab.data}T12:00:00`).toISOString() : visita.hora_inicio;
 
       const { blob, fileName } = await generateVisitaPdf({
+        language,
         visitaId: visita.id,
         modo: "conferencia",
         fazenda: {
@@ -516,14 +520,14 @@ export default function ConferenciaPage() {
       try {
         pdfUrl = await uploadVisitaPdf(blob, fileName, roleData.roleId || "admin", visita.id);
       } catch {
-        toast.error("PDF gerado, mas não foi possível enviá-lo ao histórico.");
+        toast.error(uiText("PDF gerado, mas não foi possível enviá-lo ao histórico."));
       }
 
       await encerrarConferenciaVisita(visita.id, pdfUrl);
       setVisita({ ...visita, status: "finalizada", pdf_url: pdfUrl });
-      toast.success(`Conferência finalizada. PDF gerado: ${fileName}`);
+      toast.success(`${uiText("Conferência finalizada. PDF gerado: ")}${fileName}`);
     } catch (e: unknown) {
-      toast.error(conferenciaErrorMessage(e, "Não foi possível gerar o PDF."));
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível gerar o PDF.")));
     } finally {
       setGerandoPdf(false);
     }
@@ -533,7 +537,7 @@ export default function ConferenciaPage() {
   const handleScan = async (raw: string) => {
     const qrUuid = extractQrUuid(raw);
     if (!qrUuid) {
-      toast.error("QR Code não encontrado ou inativo.");
+      toast.error(uiText("QR Code não encontrado ou inativo."));
       setEtapa("inicio");
       return;
     }
@@ -556,7 +560,7 @@ export default function ConferenciaPage() {
         .maybeSingle();
 
       if (!isQrResourceAvailable(pasto, pErr)) {
-        toast.error("QR Code não encontrado ou inativo.");
+        toast.error(uiText("QR Code não encontrado ou inativo."));
         setEtapa("inicio");
         return;
       }
@@ -594,11 +598,13 @@ export default function ConferenciaPage() {
         .maybeSingle();
 
       // 3b) consumo/status — fonte única: view_painel_mae_pasto_atual (Consumo Global, sem filtro de mês)
-      const { data: maePasto } = await supabase
-        .from("view_painel_mae_pasto_atual")
-        .select("consumo_global_g_cab_dia, status_global")
-        .eq("pasto_id", pasto.id)
+      const { data: maePastoData } = await supabase
+        .rpc("get_painel_pasto_atual_rapido" as never,
+          { p_pasto_id: pasto.id } as never)
         .maybeSingle();
+      const maePasto = maePastoData as {
+        consumo_global_g_cab_dia: number | null; status_global: string | null;
+      } | null;
 
 
       // 4) responsável (nome) da última salga
@@ -703,7 +709,7 @@ export default function ConferenciaPage() {
       setEtapa("resultado");
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao consultar dados do pasto.");
+      toast.error(uiText("Erro ao consultar dados do pasto."));
       setEtapa("inicio");
     }
   };
@@ -923,7 +929,7 @@ export default function ConferenciaPage() {
                 </div>
                 <button
                   type="button"
-                  aria-label="Editar pasto"
+                  aria-label={uiText("Editar pasto")}
                   onClick={() => void abrirEdicao(r)}
                   className="p-2 rounded hover:bg-muted"
                 >
@@ -931,7 +937,7 @@ export default function ConferenciaPage() {
                 </button>
                 <button
                   type="button"
-                  aria-label="Excluir pasto"
+                  aria-label={uiText("Excluir pasto")}
                   onClick={() => setConfirmarExclusao(r)}
                   className="p-2 rounded hover:bg-destructive/10 text-destructive"
                 >
@@ -956,7 +962,7 @@ export default function ConferenciaPage() {
                   value={cabecalho.fazenda}
                   onChange={(e) => setCabecalho({ ...cabecalho, fazenda: e.target.value })}
                   onBlur={() => void persistirCabecalho(cabecalho, visita)}
-                  placeholder="Nome da fazenda"
+                  placeholder={uiText("Nome da fazenda")}
                 />
               </div>
               <div>
@@ -965,7 +971,7 @@ export default function ConferenciaPage() {
                   value={cabecalho.proprietario}
                   onChange={(e) => setCabecalho({ ...cabecalho, proprietario: e.target.value })}
                   onBlur={() => void persistirCabecalho(cabecalho, visita)}
-                  placeholder="Proprietário"
+                  placeholder={uiText("Proprietário")}
                 />
               </div>
               <div>
@@ -974,7 +980,7 @@ export default function ConferenciaPage() {
                   value={cabecalho.gerente}
                   onChange={(e) => setCabecalho({ ...cabecalho, gerente: e.target.value })}
                   onBlur={() => void persistirCabecalho(cabecalho, visita)}
-                  placeholder="Gerente"
+                  placeholder={uiText("Gerente")}
                 />
               </div>
               <div>
@@ -983,7 +989,7 @@ export default function ConferenciaPage() {
                   value={cabecalho.consultor}
                   onChange={(e) => setCabecalho({ ...cabecalho, consultor: e.target.value })}
                   onBlur={() => void persistirCabecalho(cabecalho, visita)}
-                  placeholder="Responsável"
+                  placeholder={uiText("Responsável")}
                 />
               </div>
               <div>
@@ -1093,7 +1099,7 @@ export default function ConferenciaPage() {
         <PdfViewerDialog
           url={pdfAberto && pdfGerado ? pdfGerado.url : null}
           fileName={pdfGerado?.fileName}
-          title="Visita de Rotina"
+          title={uiText("Visita de Rotina")}
           onClose={() => setPdfAberto(false)}
         />
 

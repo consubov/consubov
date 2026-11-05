@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +37,7 @@ const SEGUIR = "__seguir__";
  * (gerentes_fazendas); tudo é filtrado por fazenda_id/retiro_id.
  */
 export default function GerenteProdutoRetiroCard({ retiroId, retiroNome, fazendaId }: Props) {
+  const uiText = useStaticUiText();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [retiros, setRetiros] = useState<RetiroRow[]>([]);
   const [pastosFazenda, setPastosFazenda] = useState<PastoRow[]>([]);
@@ -151,13 +152,13 @@ export default function GerenteProdutoRetiroCard({ retiroId, retiroNome, fazenda
           .in("id", conflitosALimpar.map((c) => c.id)).in("retiro_id", retIds);
         if (error) throw new Error(`pastos seguindo o retiro: ${error.message}`);
       }
-      toast.success("Produtos atualizados!");
+      toast.success(uiText("Produtos atualizados!"));
       setConfirmOpen(false);
       setEditing(false);
       await load();
     } catch (err: any) {
       console.error("Erro ao trocar produto:", err);
-      toast.error(`Erro ao salvar ${err?.message || ""}`);
+      toast.error(`${uiText("Erro ao salvar ")}${err?.message || ""}`);
     } finally {
       setSaving(false);
     }
@@ -185,7 +186,7 @@ export default function GerenteProdutoRetiroCard({ retiroId, retiroNome, fazenda
             <Label><LocalizedText source={"Produto do retiro"} /></Label>
             {editing ? (
               <Select value={produtoId} onValueChange={setProdutoId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione")} /></SelectTrigger>
                 <SelectContent>
                   {produtos.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{nomeProduto(p.id)}</SelectItem>

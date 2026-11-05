@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ interface EstoqueCapatazSectionProps {
 }
 
 export default function EstoqueCapatazSection({ retiroId, fazendaId }: EstoqueCapatazSectionProps) {
+  const uiText = useStaticUiText();
   const [estoqueAtual, setEstoqueAtual] = useState<number>(0);
   const [outrosRetiros, setOutrosRetiros] = useState<{ id: string; nome: string }[]>([]);
   const [transferencias, setTransferencias] = useState<any[]>([]);
@@ -71,9 +72,9 @@ export default function EstoqueCapatazSection({ retiroId, fazendaId }: EstoqueCa
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("transferencias_estoque").delete().eq("id", id);
     if (error) {
-      toast.error("Erro ao excluir transferência");
+      toast.error(uiText("Erro ao excluir transferência"));
     } else {
-      toast.success("Transferência excluída");
+      toast.success(uiText("Transferência excluída"));
       refresh();
     }
   };

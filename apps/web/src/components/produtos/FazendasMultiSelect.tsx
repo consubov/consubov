@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,7 @@ export default function FazendasMultiSelect({
   emptyMessage = "Nenhuma fazenda disponível.",
   searchPlaceholder = "Pesquisar fazenda...",
 }: Props) {
+  const uiText = useStaticUiText();
   const [busca, setBusca] = useState("");
 
   const filtradas = useMemo(() => {
@@ -42,7 +43,7 @@ export default function FazendasMultiSelect({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label>{label}</Label>
+        <Label>{uiText(label)}</Label>
         <span className="text-xs text-muted-foreground">{selected.length} <LocalizedText source={"selecionada(s)"} /></span>
       </div>
       <div className="relative">
@@ -50,13 +51,13 @@ export default function FazendasMultiSelect({
         <Input
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          placeholder={searchPlaceholder}
+          placeholder={uiText(searchPlaceholder)}
           className="pl-8"
         />
       </div>
       <div className="max-h-48 overflow-y-auto rounded-md border border-input divide-y">
         {filtradas.length === 0 ? (
-          <p className="text-xs text-muted-foreground p-3">{emptyMessage}</p>
+          <p className="text-xs text-muted-foreground p-3">{uiText(emptyMessage)}</p>
         ) : (
           filtradas.map((f) => (
             <label

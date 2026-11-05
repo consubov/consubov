@@ -49,14 +49,10 @@ export async function fetchPastosRetiroSources(
       .eq("retiro_id", retiroId)
       .eq("ativo", true)
       .order("nome"),
-    (supabase as any)
-      .from("view_painel_mae_pasto_atual")
-      .select(
-        "pasto_id, consumo_global_g_cab_dia, indice_global, status_global, num_animais, peso_medio_kg",
-      )
-      .eq("retiro_id", retiroId),
-    (supabase as any)
-      .from("view_painel_mae_pasto")
+    supabase.rpc("get_painel_pasto_atual_rapido" as never,
+      { p_retiro_id: retiroId } as never),
+    supabase
+      .from("lancamentos")
       .select("pasto_id, num_sacos")
       .eq("retiro_id", retiroId)
       .eq("mes_referencia", mes)

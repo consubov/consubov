@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +27,6 @@ import QrCodePrintPDF, { type QrCodePdfItem } from "@/components/QrCodePrintPDF"
 import { buildFixedPages } from "@/lib/qrCodeLayout";
 import { createQrCodeDataUri } from "@/lib/qrCodePdf";
 import { QRCodeSVG } from "qrcode.react";
-import { format } from "date-fns";
 import ExportarRelatorioModal from "@/components/relatorio/ExportarRelatorioModal";
 import RelatorioSalgaPage from "@/pages/RelatorioSalgaPage";
 import AdicionarEstoqueModal from "@/components/estoque/AdicionarEstoqueModal";
@@ -286,6 +286,8 @@ function EscritorioRelatorios({ fazendaId, fazendaNome, escritorioNome }: { faze
    QR CODES SECTION
    ════════════════════════════════════════════════════════════════════ */
 function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const [selectedRetiro, setSelectedRetiro] = useState("");
   const [generatedPastos, setGeneratedPastos] = useState<Pasto[]>([]);
   const [generating, setGenerating] = useState(false);
@@ -383,7 +385,7 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
         const qrDataUri = await createQrCodeDataUri(p.qr_uuid);
         items.push({ id: p.id, qrDataUri, nome: p.nome, retiro_nome: p.retiro_nome });
       }
-      const blob = await pdf(<QrCodePrintPDF items={items} />).toBlob();
+      const blob = await pdf(<QrCodePrintPDF items={items} language={language} />).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -394,14 +396,14 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) {
       console.error(e);
-      toast.error("Erro ao gerar o PDF.");
+      toast.error(uiText("Erro ao gerar o PDF."));
     } finally { setExportingPdf(false); }
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">QR Codes da Fazenda</h2>
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide"><LocalizedText source={"QR Codes da Fazenda"} /></h2>
         {generatedPastos.length > 0 && (
           <Button size="sm" onClick={handleExportPdf} disabled={exportingPdf}>
             {exportingPdf ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileDown className="mr-1 h-4 w-4" />}
@@ -412,9 +414,9 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
 
       <div className="space-y-2">
         <Select value={selectedRetiro} onValueChange={setSelectedRetiro}>
-          <SelectTrigger><SelectValue placeholder="Filtrar por retiro" /></SelectTrigger>
+          <SelectTrigger><SelectValue placeholder={uiText("Filtrar por retiro")} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all__">Todos os retiros</SelectItem>
+            <SelectItem value="__all__"><LocalizedText source={"Todos os retiros"} /></SelectItem>
             {retiros.map((r) => (
               <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
             ))}
@@ -422,13 +424,13 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
         </Select>
         <Button className="w-full" onClick={() => (selectedRetiro && selectedRetiro !== "__all__") ? generateByRetiro(selectedRetiro) : generateAll()} disabled={generating}>
           {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
-          Gerar QR Codes
+          <LocalizedText source={"Gerar QR Codes"} />
         </Button>
       </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Buscar pasto por nome..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+        <Input placeholder={uiText("Buscar pasto por nome...")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
       </div>
       <div className="max-h-48 overflow-y-auto divide-y rounded-md border">
         {searchResults.map((p) => (
@@ -441,7 +443,7 @@ function EscritorioQrCodes({ fazendaId }: { fazendaId: string }) {
           </button>
         ))}
         {searchResults.length === 0 && !searching && (
-          <p className="py-4 text-center text-sm text-muted-foreground">Nenhum pasto encontrado</p>
+          <p className="py-4 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum pasto encontrado"} /></p>
         )}
         <div ref={loadMoreRef} className="h-1" />
         {searching && <div className="flex justify-center py-3"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>}
@@ -513,6 +515,8 @@ function EscritorioEstoque({ fazendaId }: { fazendaId: string }) {
    MORTALIDADE SECTION
    ════════════════════════════════════════════════════════════════════ */
 function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Mortalidade | null>(null);
 
@@ -569,7 +573,7 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
     await supabase.from("notificacoes").update({ lida: true }).in("id", ids);
     queryClient.invalidateQueries({ queryKey: ["escritorio-notif-mortalidade"] });
     queryClient.invalidateQueries({ queryKey: ["escritorio-mortalidade-count"] });
-    toast.success("Todas marcadas como lidas");
+    toast.success(uiText("Todas marcadas como lidas"));
   };
 
   // Show empty message if no data
@@ -577,7 +581,7 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <Skull className="w-10 h-10 text-muted-foreground/40 mb-3" />
-        <p className="text-sm text-muted-foreground">Nenhum alerta de mortalidade para a fazenda</p>
+        <p className="text-sm text-muted-foreground"><LocalizedText source={"Nenhum alerta de mortalidade para a fazenda"} /></p>
       </div>
     );
   }
@@ -591,15 +595,15 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
       {notificacoes.length > 0 && (
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-            <Skull className="w-4 h-4 text-destructive" /> {notificacoes.length} alerta{notificacoes.length > 1 ? "s" : ""} não lido{notificacoes.length > 1 ? "s" : ""}
+            <Skull className="w-4 h-4 text-destructive" /> {notificacoes.length} {uiText(notificacoes.length === 1 ? "alerta não lido" : "alertas não lidos")}
           </h2>
           <Button variant="ghost" size="sm" className="text-xs" onClick={marcarTodasLidas}>
-            <Check className="w-3 h-3 mr-1" /> Marcar todas lidas
+            <Check className="w-3 h-3 mr-1" /> <LocalizedText source={"Marcar todas lidas"} />
           </Button>
         </div>
       )}
 
-      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Registros de Mortalidade</h2>
+      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide"><LocalizedText source={"Registros de Mortalidade"} /></h2>
       {mortalidades.map((m) => {
         const relatedNotif = notificacoes.find((n: any) => {
           const d = n.dados as Record<string, any> | null;
@@ -608,18 +612,18 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
         return (
           <Card key={m.id} className={`cursor-pointer hover:shadow-md transition-shadow ${relatedNotif ? "border-destructive/50 bg-destructive/5" : ""}`} onClick={() => setSelected(m)}>
             <CardContent className="p-3 flex items-center gap-3">
-              <img src={m.foto_url} alt="Mortalidade" className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
+              <img src={m.foto_url} alt={uiText("Mortalidade")} className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold text-foreground truncate">{m.pasto_nome}</p>
-                  {relatedNotif && <Badge variant="destructive" className="text-[9px] h-4">Novo</Badge>}
+                  {relatedNotif && <Badge variant="destructive" className="text-[9px] h-4"><LocalizedText source={"Novo"} /></Badge>}
                 </div>
-                <p className="text-xs text-muted-foreground">{m.quantidade} animal{m.quantidade > 1 ? "is" : ""} • {format(new Date(m.data), "dd/MM/yyyy")}</p>
+                <p className="text-xs text-muted-foreground">{m.quantidade} {uiText(m.quantidade === 1 ? "animal" : "animais")} • {new Date(m.data).toLocaleDateString(language)}</p>
                 {m.observacao && <p className="text-xs text-muted-foreground truncate mt-0.5">{m.observacao}</p>}
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
                 {relatedNotif && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); marcarLida(relatedNotif.id); }} title="Marcar como lida">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); marcarLida(relatedNotif.id); }} title={uiText("Marcar como lida")} aria-label={uiText("Marcar como lida")}>
                     <Check className="w-4 h-4" />
                   </Button>
                 )}
@@ -633,16 +637,16 @@ function EscritorioMortalidade({ fazendaId }: { fazendaId: string }) {
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Skull className="w-5 h-5 text-destructive" /> Mortalidade</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Skull className="w-5 h-5 text-destructive" /> <LocalizedText source={"Mortalidade"} /></DialogTitle>
           </DialogHeader>
           {selected && (
             <div className="space-y-4">
-              <img src={selected.foto_url} alt="Foto mortalidade" className="w-full rounded-lg object-cover max-h-64" />
+              <img src={selected.foto_url} alt={uiText("Foto mortalidade")} className="w-full rounded-lg object-cover max-h-64" />
               <div className="space-y-2 text-sm">
-                <div><strong>Data:</strong> {format(new Date(selected.data), "dd/MM/yyyy HH:mm")}</div>
-                <div><strong>Pasto:</strong> {selected.pasto_nome}</div>
-                <div><strong>Quantidade:</strong> {selected.quantidade} animal{selected.quantidade > 1 ? "is" : ""}</div>
-                {selected.observacao && <div><strong>Observação:</strong> {selected.observacao}</div>}
+                <div><strong><LocalizedText source={"Data:"} /></strong> {new Date(selected.data).toLocaleString(language, { dateStyle: "short", timeStyle: "short" })}</div>
+                <div><strong><LocalizedText source={"Pasto:"} /></strong> {selected.pasto_nome}</div>
+                <div><strong><LocalizedText source={"Quantidade:"} /></strong> {selected.quantidade} {uiText(selected.quantidade === 1 ? "animal" : "animais")}</div>
+                {selected.observacao && <div><strong><LocalizedText source={"Observação:"} /></strong> {selected.observacao}</div>}
               </div>
             </div>
           )}

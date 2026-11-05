@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ export default function ConferenciaAssinaturasSection({
   nomePadrao: string;
   onChange?: (list: ConferenciaAssinante[]) => void;
 }) {
+  const uiText = useStaticUiText();
   const [list, setList] = useState<ConferenciaAssinante[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -66,7 +67,7 @@ export default function ConferenciaAssinaturasSection({
       .insert({ visita_id: visitaId, nome: "", cargo_funcao: "Consultor Técnico", ordem })
       .select("id, nome, cargo_funcao, ordem")
       .maybeSingle();
-    if (error || !data) { toast.error("Não foi possível adicionar o assinante."); return; }
+    if (error || !data) { toast.error(uiText("Não foi possível adicionar o assinante.")); return; }
     update([...list, data as ConferenciaAssinante]);
   }
 
@@ -76,7 +77,7 @@ export default function ConferenciaAssinaturasSection({
   }
 
   async function remove(id: string) {
-    if (list.length <= 1) { toast.error("É necessário ao menos 1 assinante."); return; }
+    if (list.length <= 1) { toast.error(uiText("É necessário ao menos 1 assinante.")); return; }
     update(list.filter(a => a.id !== id));
     await (supabase as any).from("visita_assinantes").delete().eq("id", id);
   }
@@ -121,6 +122,7 @@ function AssinanteRow({
   onSave: (field: "nome" | "cargo_funcao", value: string) => void;
   onRemove: () => void;
 }) {
+  const uiText = useStaticUiText();
   const [nome, setNome] = useState(assinante.nome);
   const [cargo, setCargo] = useState(assinante.cargo_funcao);
   useEffect(() => {
@@ -148,7 +150,7 @@ function AssinanteRow({
             onChange={e => setNome(e.target.value)}
             onBlur={() => { if (nome !== assinante.nome) onSave("nome", nome); }}
             className="h-8 text-sm"
-            placeholder="Nome completo"
+            placeholder={uiText("Nome completo")}
           />
         </div>
         <div>
@@ -158,7 +160,7 @@ function AssinanteRow({
             onChange={e => setCargo(e.target.value)}
             onBlur={() => { if (cargo !== assinante.cargo_funcao) onSave("cargo_funcao", cargo); }}
             className="h-8 text-sm"
-            placeholder="Consultor Técnico"
+            placeholder={uiText("Consultor Técnico")}
           />
         </div>
       </div>

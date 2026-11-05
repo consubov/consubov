@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Loader2 } from "lucide-react";
@@ -26,10 +26,11 @@ export function ForcarSyncButton({
   variant = "ghost",
 }: ForcarSyncButtonProps) {
   const [sending, setSending] = useState(false);
+  const uiText = useStaticUiText();
 
   const handleClick = async () => {
     if (!targetUserId) {
-      toast.error("Este usuário não possui conta vinculada");
+      toast.error(uiText("Este usuário não possui conta vinculada"));
       return;
     }
     setSending(true);
@@ -48,7 +49,7 @@ export function ForcarSyncButton({
         .single();
       if (error || !inserted?.id) {
         console.error("[ForcarSyncButton] insert failed:", error);
-        toast.error("Erro ao enviar sinal — tente novamente.");
+        toast.error(uiText("Erro ao enviar sinal — tente novamente."));
         return;
       }
 
@@ -62,10 +63,10 @@ export function ForcarSyncButton({
         console.warn("[ForcarSyncButton] insert succeeded but verification failed (likely RLS) — signal still delivered");
       }
       void maybeUpdateActiveServiceWorker();
-      toast.success(`Sinal enviado ✓ — aguardando ${targetName}...`);
+      toast.success(`${uiText("Sinal enviado ✓ — aguardando ")}${targetName}...`);
     } catch (err: any) {
       console.error("[ForcarSyncButton] error:", err);
-      toast.error("Erro ao enviar sinal — tente novamente.");
+      toast.error(uiText("Erro ao enviar sinal — tente novamente."));
     } finally {
       setSending(false);
     }
@@ -78,7 +79,7 @@ export function ForcarSyncButton({
         variant={variant}
         onClick={handleClick}
         disabled={sending || !targetUserId}
-        title="Forçar sincronização"
+        title={uiText("Forçar sincronização")}
       >
         {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4 text-primary" />}
       </Button>

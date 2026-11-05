@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState, type ComponentType } from "react";
 import { Button } from "@/components/ui/button";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -24,6 +24,7 @@ function CapatazFallback({
 }
 
 export default function CapatazRoute() {
+  const uiText = useStaticUiText();
   const [Dashboard, setDashboard] = useState<ComponentType | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -73,7 +74,7 @@ export default function CapatazRoute() {
   }, []);
 
   if (loadError) {
-    return <CapatazFallback title="Falha ao abrir o painel" description={loadError} />;
+    return <CapatazFallback title={uiText("Falha ao abrir o painel")} description={loadError} />;
   }
 
   if (!Dashboard) {
@@ -89,9 +90,9 @@ export default function CapatazRoute() {
 
   return (
     <ErrorBoundary
-      title="Erro ao carregar"
-      message="Seus dados estão salvos."
-      retryLabel="Tentar novamente"
+      title={uiText("Erro ao carregar")}
+      message={uiText("Seus dados estão salvos.")}
+      retryLabel={uiText("Tentar novamente")}
       showErrorDetails={false}
       autoResetOnVisibility
     >

@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,8 @@ interface Props {
 type Step = "inicio" | "digitacao" | "finalizando";
 
 export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, numAnimais, pesoMedioAtual, userId, userName, fazendaId, fazendaNome, retiroNome, retiroId, sanitarioData, onSaved }: Props) {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const [step, setStep] = useState<Step>("inicio");
   const [pesos, setPesos] = useState<number[]>([]);
   const [currentPeso, setCurrentPeso] = useState("");
@@ -79,7 +82,7 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
 
   async function finalizar() {
     if (pesos.length === 0) {
-      toast.error("Nenhum peso registrado.");
+      toast.error(uiText("Nenhum peso registrado."));
       return;
     }
 
@@ -109,7 +112,7 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
           sanitario_data: sanitarioData || null,
         };
         await savePesagemPendente(pendente);
-        toast.success("Pesagem salva localmente. Sincronização pendente.", { icon: "📴" });
+        toast.success(uiText("Pesagem salva localmente. Sincronização pendente."), { icon: "📴" });
         const animais = buildAnimaisArray(pesos);
         const hora = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
         setExportData({ pesagemId: pendente.id, animais, dataPesagem: now, hora });
@@ -191,14 +194,14 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
       }
 
       await supabase.from("pastos").update(pastoUpdate).eq("id", pastoId);
-      toast.success(`Pesagem finalizada! ${pesos.length} animais, média ${Math.round(mp * 10) / 10} kg`);
+      toast.success(`${uiText("Pesagem finalizada! ")}${pesos.length}${uiText(" animais, média ")}${(Math.round(mp * 10) / 10).toLocaleString(language)} kg`);
       const animais = buildAnimaisArray(pesos);
       const hora = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
       setExportData({ pesagemId: pesagemRow?.id || evento.id, animais, dataPesagem: now, hora });
       setStep("inicio");
       onSaved?.();
     } catch (err: any) {
-      toast.error("Erro ao salvar: " + (err.message || ""));
+      toast.error(uiText("Erro ao salvar: ") + (err.message || ""));
     } finally {
       setSaving(false);
     }
@@ -295,7 +298,7 @@ export default function PesagemFlowModal({ open, onClose, pastoId, pastoNome, nu
                 ref={inputRef}
                 type="number"
                 inputMode="decimal"
-                placeholder="Peso (kg)"
+                placeholder={uiText("Peso (kg)")}
                 value={currentPeso}
                 onChange={(e) => setCurrentPeso(e.target.value)}
                 onKeyDown={handleKeyDown}

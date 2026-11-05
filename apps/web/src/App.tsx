@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { AppLanguageProvider, useTranslation } from "@/hooks/useTranslation";
 import { AppLanguageSwitch } from "@/components/AppLanguageSwitch";
 import { GerenteFabricaGuard } from "@/hooks/useGerenteTemFabrica";
@@ -249,7 +250,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
           <p className="text-destructive font-semibold text-lg">{t("auth.denied")}</p>
           <p className="text-muted-foreground text-sm">{t("auth.deniedDetail")}</p>
           <Button variant="outline" onClick={() => navigate("/app", { replace: true })}>
-            Voltar ao painel
+            <LocalizedText source={"Voltar ao painel"} />
           </Button>
         </div>
       </div>
@@ -267,7 +268,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
           <p className="text-destructive font-semibold text-lg">{t("auth.noProfile")}</p>
           <p className="text-muted-foreground text-sm">{t("auth.contact")}</p>
           <Button variant="outline" onClick={() => void signOut()}>
-            Sair
+            <LocalizedText source={"Sair"} />
           </Button>
         </div>
       </div>
@@ -295,7 +296,7 @@ function RoleRedirect() {
         <p className="text-destructive font-semibold text-lg">{t("auth.noProfile")}</p>
         <p className="text-muted-foreground text-sm">{t("auth.contact")}</p>
         <Button variant="outline" onClick={() => void signOut()}>
-          Sair
+          <LocalizedText source={"Sair"} />
         </Button>
       </div>
     </div>

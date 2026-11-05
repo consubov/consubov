@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef, useState } from "react";
 import { Camera, CloudOff, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -40,6 +40,7 @@ interface Local {
 export default function PennStateFotoGrid({
   analiseId, fotos, numeroMap, proximoNumero, onChange, disabled, className,
 }: Props) {
+  const uiText = useStaticUiText();
   const [signed, setSigned] = useState<Record<string, string>>({});
   const [locais, setLocais] = useState<Record<number, Local>>({});
   const inputRef = useRef<HTMLInputElement>(null);
@@ -61,7 +62,7 @@ export default function PennStateFotoGrid({
   });
 
   async function handleUpload(file: File) {
-    if (!analiseId) { toast.error("Salve a análise antes de anexar fotos."); return; }
+    if (!analiseId) { toast.error(uiText("Salve a análise antes de anexar fotos.")); return; }
     const ordem = slotRef.current;
     try {
       // Preview instantâneo — nunca espera o upload.
@@ -89,7 +90,7 @@ export default function PennStateFotoGrid({
       await onChange();
     } catch (err: any) {
       setLocais(prev => ({ ...prev, [ordem]: { ...(prev[ordem] as Local), uploading: false } }));
-      toast.error("Não foi possível enviar a foto: " + (err?.message || "sem conexão"));
+      toast.error(uiText("Não foi possível enviar a foto: ") + (err?.message || uiText("sem conexão")));
     } finally {
       if (inputRef.current) inputRef.current.value = "";
     }
@@ -109,7 +110,7 @@ export default function PennStateFotoGrid({
       setLocais({});
       await onChange();
     } catch {
-      toast.error("Erro ao remover foto");
+      toast.error(uiText("Erro ao remover foto"));
     }
   }
 
@@ -126,7 +127,7 @@ export default function PennStateFotoGrid({
               {foto ? (
                 <>
                   {signed[foto.id]
-                    ? <img loading="lazy" decoding="async" src={signed[foto.id]} alt={`Foto ${numero ?? ordem} da análise`} className="w-full h-full object-cover" />
+                    ? <img loading="lazy" decoding="async" src={signed[foto.id]} alt={`${uiText("Foto ")}${numero ?? ordem}${uiText(" da análise")}`} className="w-full h-full object-cover" />
                     : <div className="w-full h-full flex items-center justify-center"><Loader2 className="w-3 h-3 animate-spin text-muted-foreground" /></div>}
                   {numero != null && (
                     <div className="absolute bottom-0.5 left-0.5 rounded bg-background/85 px-1 text-[9px] font-semibold text-foreground">
@@ -135,7 +136,7 @@ export default function PennStateFotoGrid({
                   )}
                   {!disabled && (
                     <button type="button" onClick={() => handleDelete(foto)}
-                      aria-label={`Excluir foto ${numero ?? ordem}`}
+                      aria-label={`${uiText("Excluir foto ")}${numero ?? ordem}`}
                       className="absolute top-0.5 right-0.5 bg-destructive/90 rounded p-0.5">
                       <X className="w-3 h-3 text-destructive-foreground" />
                     </button>
@@ -152,7 +153,7 @@ export default function PennStateFotoGrid({
                   {!disabled && (
                     <button type="button"
                       onClick={() => setLocais(prev => { const cp = { ...prev }; delete cp[ordem]; return cp; })}
-                      aria-label="Descartar foto"
+                      aria-label={uiText("Descartar foto")}
                       className="absolute top-0.5 right-0.5 bg-destructive/90 rounded p-0.5">
                       <X className="w-3 h-3 text-destructive-foreground" />
                     </button>

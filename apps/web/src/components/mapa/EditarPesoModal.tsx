@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,8 @@ interface Props {
 }
 
 export default function EditarPesoModal({ open, onClose, pasto, onDone }: Props) {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const [peso, setPeso] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [categoria, setCategoria] = useState("");
@@ -41,7 +44,7 @@ export default function EditarPesoModal({ open, onClose, pasto, onDone }: Props)
 
   async function handleSave() {
     if (!pasto) return;
-    if (precisaCategoria && !isCategoriaValida(categoria)) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
+    if (precisaCategoria && !isCategoriaValida(categoria)) { toast.error(uiText(MSG_CATEGORIA_OBRIGATORIA)); return; }
     if (!isValid) return;
     setSalvando(true);
     try {
@@ -50,11 +53,11 @@ export default function EditarPesoModal({ open, onClose, pasto, onDone }: Props)
         .eq("id", pasto.pasto_id);
       if (error) throw error;
 
-      toast.success(`Peso médio de ${pasto.pasto_nome} atualizado para ${pesoNum.toFixed(1).replace(".", ",")} kg`);
+      toast.success(`${uiText("Peso médio de ")}${pasto.pasto_nome}${uiText(" atualizado para ")}${pesoNum.toLocaleString(language, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`);
       onDone();
       handleClose();
     } catch (err: any) {
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`${uiText("Erro: ")}${err?.message || uiText("Erro desconhecido")}`);
     } finally {
       setSalvando(false);
     }

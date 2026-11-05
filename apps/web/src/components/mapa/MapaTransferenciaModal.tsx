@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ interface Props {
 export default function MapaTransferenciaModal({
   open, onClose, pasto, allPastos, fazendaId, retiroId, mes, ano, onDone, onSelectDestino, selectedDestino,
 }: Props) {
+  const uiText = useStaticUiText();
   const [quantidade, setQuantidade] = useState("");
   const [pesoMedio, setPesoMedio] = useState("");
   const [confirmando, setConfirmando] = useState(false);
@@ -60,7 +61,7 @@ export default function MapaTransferenciaModal({
 
   async function handleConfirm() {
     if (!pasto || !selectedDestino) return;
-    if (!categoriaOk) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
+    if (!categoriaOk) { toast.error(uiText(MSG_CATEGORIA_OBRIGATORIA)); return; }
     if (!isValid) return;
     setConfirmando(true);
     try {
@@ -129,12 +130,12 @@ export default function MapaTransferenciaModal({
         ]);
       }
 
-      toast.success(`${qtd} animais transferidos de ${pasto.pasto_nome} → ${selectedDestino.pasto_nome}`);
+      toast.success(`${qtd} ${uiText(qtd === 1 ? "animal transferido de " : "animais transferidos de ")}${pasto.pasto_nome} → ${selectedDestino.pasto_nome}`);
       onDone();
       handleClose();
     } catch (err: any) {
       console.error("Erro na transferência:", err);
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`${uiText("Erro: ")}${err?.message || uiText("Erro desconhecido")}`);
     } finally {
       setConfirmando(false);
     }
@@ -183,7 +184,7 @@ export default function MapaTransferenciaModal({
             </div>
 
             {destinoSemCategoria && (
-              <CategoriaPastoSelect label="Categoria do pasto destino *" value={categoriaDestino} onChange={setCategoriaDestino} />
+              <CategoriaPastoSelect label={uiText("Categoria do pasto destino *")} value={categoriaDestino} onChange={setCategoriaDestino} />
             )}
 
             {qtd > 0 && selectedDestino && qtd <= pasto.num_animais && (

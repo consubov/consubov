@@ -1,6 +1,7 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { withReportExportDeadline, downloadGeneratedPdf } from "@/lib/reportPdfExport";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { FileText, ExternalLink, Loader2, Camera, Share2, ChevronRight } from "lucide-react";
@@ -30,12 +31,19 @@ export default function ExportarPesagemModal({
   open, onClose, pesagemId, fazendaId, fazendaNome, retiroNome, pastoNome,
   dataPesagem, horaFinalizacao, responsavelNome, animais,
 }: Props) {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [sharingPdf, setSharingPdf] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const pdfBlobRef = useRef<Blob | null>(null);
+  // A cached PDF must not remain in the previous UI language.
+  useEffect(() => {
+    pdfBlobRef.current = null;
+    setPdfUrl(null);
+  }, [language]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isOnline = useOnlineStatus();
 
@@ -52,7 +60,7 @@ export default function ExportarPesagemModal({
     try {
       const pdfData: PesagemPdfData = {
         pesagemId, fazendaNome, retiroNome, pastoNome,
-        dataPesagem, horaFinalizacao, responsavelNome, animais,
+        dataPesagem, horaFinalizacao, responsavelNome, animais, language,
       };
       const { blob, fileName } = gerarPdfPesagem(pdfData);
       pdfBlobRef.current = blob;
@@ -79,7 +87,7 @@ export default function ExportarPesagemModal({
           if (error) throw error;
         } catch (uploadError) {
           console.warn("[PDF] Pesagem gerada, cópia remota pendente:", uploadError);
-          toast.warning("PDF disponível no aparelho, mas não foi possível confirmar o backup.");
+          toast.warning(uiText("PDF disponível no aparelho, mas não foi possível confirmar o backup."));
         }
       }
 
@@ -88,7 +96,7 @@ export default function ExportarPesagemModal({
       return blob;
     } catch (err) {
       console.error("Erro ao gerar PDF:", err);
-      toast.error("Erro ao gerar PDF.");
+      toast.error(uiText("Erro ao gerar PDF."));
       return null;
     } finally {
       setGeneratingPdf(false);
@@ -212,7 +220,7 @@ export default function ExportarPesagemModal({
               variant="outline"
               size="icon"
               onClick={abrirCamera}
-              title="Tirar foto"
+              title={uiText("Tirar foto")}
             >
               <Camera className="w-4 h-4" />
             </Button>

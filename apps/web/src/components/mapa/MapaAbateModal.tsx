@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ interface Props {
 }
 
 export default function MapaAbateModal({ open, onClose, pasto, fazendaId, retiroId, mes, ano, onDone }: Props) {
+  const uiText = useStaticUiText();
   const [quantidade, setQuantidade] = useState("");
   const [pesoAbate, setPesoAbate] = useState("");
   const [confirmando, setConfirmando] = useState(false);
@@ -81,12 +82,12 @@ export default function MapaAbateModal({ open, onClose, pasto, fazendaId, retiro
         .eq("id", pasto.pasto_id);
       if (updateErr) throw updateErr;
 
-      toast.success(`${qtd} animais abatidos de ${pasto.pasto_nome}. Restam ${newTotal}.`);
+      toast.success(`${qtd} ${uiText(qtd === 1 ? "animal abatido de " : "animais abatidos de ")}${pasto.pasto_nome}${uiText(". Restam ")}${newTotal}.`);
       onDone();
       handleClose();
     } catch (err: any) {
       console.error("Erro no abate:", err);
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`${uiText("Erro: ")}${err?.message || uiText("Erro desconhecido")}`);
     } finally {
       setConfirmando(false);
     }
@@ -118,7 +119,7 @@ export default function MapaAbateModal({ open, onClose, pasto, fazendaId, retiro
               <Label><LocalizedText source={"Peso médio dos abatidos (kg) — opcional"} /></Label>
               <Input type="number" inputMode="decimal" step="0.1" min={0}
                 value={pesoAbate} onChange={e => setPesoAbate(e.target.value)}
-                placeholder="Deixe vazio para manter peso do lote" />
+                placeholder={uiText("Deixe vazio para manter peso do lote")} />
             </div>
 
             {qtd > 0 && qtd <= pasto.num_animais && (

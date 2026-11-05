@@ -2,9 +2,6 @@ import { LocalizedText } from "@/components/i18n/LocalizedText";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MapaData, PastoMapaData } from "@/hooks/useMapaData";
-import engordaAsset from "@/assets/mapa/engorda.png.asset.json";
-import recria2Asset from "@/assets/mapa/recria-2.png.asset.json";
-import recria1Asset from "@/assets/mapa/recria-1.png.asset.json";
 
 
 interface Props {
@@ -13,6 +10,8 @@ interface Props {
   selectedPastoId?: string | null;
   selectingDestino?: boolean;
   highlightDestinos?: boolean;
+  cacheScope?: string; // authenticated user ID; no persistent or shared image cache
+  detailsLoading?: boolean;
 }
 
 export type LabelLine = {
@@ -186,10 +185,75 @@ function calcularCategoriaViva(pesoMedioKg: number | null, sexo: string | null):
   return "Engorda";
 }
 
-function getSilhuetaAsset(categoria: CategoriaBovina) {
-  if (categoria === "Engorda") return engordaAsset.url;
-  if (categoria === "Recria 2") return recria2Asset.url;
-  return recria1Asset.url;
+/** Silhueta vetorial incorporada: não depende de assets legados indisponíveis. */
+function BovineSilhouette({ categoria }: { categoria: CategoriaBovina }) {
+  const size = categoria === "Engorda" ? 1.08 : categoria === "Recria 2" ? 0.96 : 0.84;
+  return (
+    <g transform={`translate(0 -6.1) scale(${size})`} fill="currentColor" stroke="currentColor" strokeLinejoin="round">
+      <path d="M-7.2-2.5C-7.2-4.7-5.9-5.5-4-5.5H2.1C3.2-5.5 4-4.8 4.8-4.2L6.3-5.8 7.8-5.2 7.9-1.3 6.4-.8 5-2.2 3.7-1.8H-5.1L-6.2-.6-7.1-1.4Z" />
+      <path d="M-5.4-2H-4.4V1.6H-5.5ZM1.6-2H2.7V1.6H1.5Z" />
+      <path d="M5.5-5.3 5-7.2 6.1-6.3 7.2-7.1 7.4-5.3Z" />
+      <path d="M-6.8-4.3C-9.1-3.6-8.6-1.3-8.2-.7" fill="none" strokeWidth="0.9" strokeLinecap="round" />
+      <circle cx="6.7" cy="-3.5" r="0.4" fill="white" stroke="none" />
+    </g>
+  );
+}
+
+type MapImageState = {
+  source: string | null;
+  status: "loading" | "ready" | "error";
+  width: number;
+  height: number;
+};
+
+// Bounded, RAM-only decoded image reuse while the installed app is open.
+// Never store image URLs or cross-tenant pixels in a shared Service Worker cache.
+type CachedMapImage = { image: HTMLImageElement; width: number; height: number; cachedAt: number };
+const mapImageMemory = new Map<string, CachedMapImage>();
+let activeImageUser: string | null = null;
+const MAX_MAP_MEMORY_IMAGES = 2;
+const MAP_IMAGE_TTL_MS = 5 * 60_000;
+
+export function clearMapImageMemoryCache(): void {
+  mapImageMemory.clear();
+  activeImageUser = null;
+}
+
+function scopedMapImage(user: string | undefined, url: string): CachedMapImage | undefined {
+  if (!user) return undefined;
+  if (activeImageUser !== user) { mapImageMemory.clear(); activeImageUser = user; }
+  const hit = mapImageMemory.get(url);
+  if (!hit) return undefined;
+  if (Date.now() - hit.cachedAt > MAP_IMAGE_TTL_MS) {
+    mapImageMemory.delete(url);
+    return undefined;
+  }
+  mapImageMemory.delete(url);
+  mapImageMemory.set(url, hit);
+  return hit;
+}
+
+function rememberMapImage(user: string | undefined, url: string, image: HTMLImageElement) {
+  if (!user || activeImageUser !== user) return;
+  const width = image.naturalWidth;
+  const height = image.naturalHeight;
+  if (!Number.isFinite(width) || !Number.isFinite(height) ||
+      width <= 0 || height <= 0 || width * height > 8_000_000) return;
+  mapImageMemory.delete(url);
+  mapImageMemory.set(url, { image, width, height, cachedAt: Date.now() });
+  while (mapImageMemory.size > MAX_MAP_MEMORY_IMAGES) {
+    const oldest = mapImageMemory.keys().next().value;
+    if (!oldest) break;
+    mapImageMemory.delete(oldest);
+  }
+}
+
+
+function isValidMapPoint(value: unknown): value is number[] {
+  return Array.isArray(value)
+    && value.length >= 2
+    && typeof value[0] === "number" && Number.isFinite(value[0])
+    && typeof value[1] === "number" && Number.isFinite(value[1]);
 }
 
 export function PastoPin({ pasto, centerX, centerY, scale }: { pasto: PastoMapaData; centerX: number; centerY: number; scale: number }) {
@@ -205,7 +269,7 @@ export function PastoPin({ pasto, centerX, centerY, scale }: { pasto: PastoMapaD
     >
       <path d="M0 19C-3 14-13 6-13-5.5A13 13 0 0 1 13-5.5C13 6 3 14 0 19Z" fill={color} stroke="hsl(0 0% 100%)" strokeWidth="1.5" />
       <circle cx="0" cy="-5.5" r="9.7" fill="hsl(0 0% 100%)" />
-      <image href={getSilhuetaAsset(categoria)} x="-8.2" y="-11.2" width="16.4" height="11.4" preserveAspectRatio="xMidYMid meet" />
+      <BovineSilhouette categoria={categoria} />
       <rect x="-8.5" y="5.5" width="17" height="8" rx="4" fill={color} stroke="hsl(0 0% 100%)" strokeWidth="1" />
       <text x="0" y="11.2" textAnchor="middle" fill="hsl(0 0% 100%)" fontSize="6.2" fontWeight="700">
         {pasto.num_animais}
@@ -243,7 +307,12 @@ function rectFitsPolygon(centerX: number, centerY: number, width: number, height
 }
 
 export function computeLabelLayout(pasto: PastoMapaData): LabelLayout | null {
-  if (pasto.coordenadas.length < 3) return null;
+  if (!Array.isArray(pasto.coordenadas) || pasto.coordenadas.length < 3
+    || !pasto.coordenadas.every(isValidMapPoint)) return null;
+  const xs = pasto.coordenadas.map(([x]) => x);
+  const ys = pasto.coordenadas.map(([, y]) => y);
+  // A zero-area polygon would leave the label-search loop with step=0 forever.
+  if (Math.max(...xs) <= Math.min(...xs) || Math.max(...ys) <= Math.min(...ys)) return null;
   const bounds = getBounds(pasto.coordenadas);
   const labelPoint = getPolygonLabelPoint(pasto.coordenadas);
   const pinScale = pasto.num_animais > 0 ? 1 : 0;
@@ -291,10 +360,56 @@ export function computeLabelLayout(pasto: PastoMapaData): LabelLayout | null {
   };
 }
 
-export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, selectingDestino, highlightDestinos }: Props) {
+export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, selectingDestino, highlightDestinos, cacheScope, detailsLoading = false }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [view, setView] = useState({ z: 1, x: 0, y: 0 });
+  const source = typeof mapa.imagem_url === "string" && mapa.imagem_url.trim().startsWith("https://")
+    ? mapa.imagem_url.trim()
+    : null;
+  const [mapImage, setMapImage] = useState<MapImageState>({
+    source, status: source ? "loading" : "error", width: 0, height: 0,
+  });
+
+  useEffect(() => {
+    setView({ z: 1, x: 0, y: 0 });
+    if (!source) {
+      setMapImage({ source: null, status: "error", width: 0, height: 0 });
+      return;
+    }
+    let current = true;
+    const cached = scopedMapImage(cacheScope, source);
+    if (cached) {
+      setMapImage({ source, status: "ready", width: cached.width, height: cached.height });
+      return;
+    }
+    const image = new Image();
+    setMapImage({ source, status: "loading", width: 0, height: 0 });
+    image.onload = () => {
+      if (!current) return;
+      const width = image.naturalWidth;
+      const height = image.naturalHeight;
+      if (width > 0 && height > 0 && Number.isFinite(width) && Number.isFinite(height)) {
+        rememberMapImage(cacheScope, source, image);
+        setMapImage({ source, status: "ready", width, height });
+      } else {
+        setMapImage({ source, status: "error", width: 0, height: 0 });
+      }
+    };
+    image.onerror = () => {
+      if (current) setMapImage({ source, status: "error", width: 0, height: 0 });
+    };
+    image.src = source;
+    return () => {
+      current = false;
+      image.onload = null;
+      image.onerror = null;
+    };
+  }, [mapa.id, source, cacheScope]);
+
+  const imageReady = Boolean(source && mapImage.source === source && mapImage.status === "ready");
+  const imageFailed = !source || (mapImage.source === source && mapImage.status === "error");
+
   const viewRef = useRef(view);
   viewRef.current = view;
   const dragRef = useRef<{ id: number; sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
@@ -397,32 +512,37 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
   };
 
   const allCoords = [
-    ...mapa.pastos.flatMap((p) => p.coordenadas),
-    ...(mapa.linhas ?? []).flatMap((l) => l.coordenadas),
+    ...mapa.pastos.flatMap((p) => p.coordenadas ?? []),
+    ...(mapa.linhas ?? []).flatMap((l) => l.coordenadas ?? []),
     ...(mapa.elementos ?? []).map((e) => [e.posicao_x, e.posicao_y]),
-  ];
+  ].filter(isValidMapPoint);
 
   const layouts = useMemo(
     () => mapa.pastos.map((pasto) => ({ pasto, layout: computeLabelLayout(pasto) })),
     [mapa.pastos],
   );
 
-  if (allCoords.length === 0) {
-    return <div className="py-12 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum pasto desenhado no mapa."} /></div>;
+  if (allCoords.length === 0 && !imageReady) {
+    return (
+      <div className="space-y-2 py-12 text-center text-sm text-muted-foreground">
+        {imageFailed
+          ? <p role="alert"><LocalizedText source={"Imagem do mapa indisponível. Verifique o cadastro ou a conexão."} /></p>
+          : <p><LocalizedText source={"Carregando imagem do mapa..."} /></p>}
+        {!detailsLoading && <p><LocalizedText source={"Nenhum pasto desenhado no mapa."} /></p>}
+      </div>
+    );
   }
 
-
-  const minX = Math.min(...allCoords.map(([x]) => x));
-  const minY = Math.min(...allCoords.map(([, y]) => y));
-  const maxX = Math.max(...allCoords.map(([x]) => x));
-  const maxY = Math.max(...allCoords.map(([, y]) => y));
+  const xs = allCoords.map(([x]) => x);
+  const ys = allCoords.map(([, y]) => y);
   const outerPadding = 30;
-  const viewBoxX = minX - outerPadding;
-  const viewBoxY = minY - outerPadding;
-  const viewBoxWidth = maxX - minX + outerPadding * 2;
-  const viewBoxHeight = maxY - minY + outerPadding * 2;
+  const viewBoxX = imageReady ? 0 : Math.min(...xs) - outerPadding;
+  const viewBoxY = imageReady ? 0 : Math.min(...ys) - outerPadding;
+  const viewBoxWidth = imageReady ? mapImage.width : Math.max(1, Math.max(...xs) - Math.min(...xs) + outerPadding * 2);
+  const viewBoxHeight = imageReady ? mapImage.height : Math.max(1, Math.max(...ys) - Math.min(...ys) + outerPadding * 2);
 
-  const toPoints = (coords: number[][]) => coords.map(([x, y]) => `${x},${y}`).join(" ");
+  const toPoints = (coords: number[][]) =>
+    coords.filter(isValidMapPoint).map(([x, y]) => `${x},${y}`).join(" ");
 
   function getFillColor(pasto: PastoMapaData) {
     if (selectedPastoId === pasto.pasto_id) return "hsl(120 60% 90%)";
@@ -447,15 +567,41 @@ export default function MapaViewer({ mapa, onPastoClick, selectedPastoId, select
         <div className="bg-primary/10 border-b border-primary/30 px-3 py-2 text-sm text-primary font-medium text-center">
           <LocalizedText source={"🎯 Clique no pasto de destino"} /></div>
       )}
+      {imageFailed && (
+        <p role="alert" className="border-b border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <LocalizedText source={"Imagem do mapa indisponível. Mostrando apenas os desenhos."} />
+        </p>
+      )}
+      {!imageReady && !imageFailed && (
+        <p className="border-b px-3 py-2 text-xs text-muted-foreground">
+          <LocalizedText source={"Carregando imagem do mapa..."} />
+        </p>
+      )}
       <svg ref={svgRef} className="block h-auto w-full" viewBox={`${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`}
         preserveAspectRatio="xMidYMid meet"
+        aria-label="Mapa do retiro"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={endPointer}
         onPointerCancel={endPointer}
         onPointerLeave={endPointer}
-        style={{ background: MAP_COLORS.background, touchAction: "none", cursor: view.z > 1 ? "grab" : "default" }}>
+        style={{ background: MAP_COLORS.background, aspectRatio: `${viewBoxWidth} / ${viewBoxHeight}`, touchAction: "none", cursor: view.z > 1 ? "grab" : "default" }}>
         <g transform={`translate(${view.x} ${view.y}) scale(${view.z})`}>
+        {imageReady && source && (
+          <image
+            href={source}
+            x={0}
+            y={0}
+            width={mapImage.width}
+            height={mapImage.height}
+            preserveAspectRatio="none"
+            pointerEvents="none"
+            role="img"
+            aria-label="Imagem de fundo do mapa"
+            onError={() => setMapImage((prev) => prev.source === source
+              ? { ...prev, status: "error" } : prev)}
+          />
+        )}
 
 
 

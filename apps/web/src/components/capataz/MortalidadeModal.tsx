@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +51,7 @@ function FotoField({ label, buttonLabel, value, onChange }: {
   value: string | null;
   onChange: (v: string | null) => void;
 }) {
+  const uiText = useStaticUiText();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,7 +75,7 @@ function FotoField({ label, buttonLabel, value, onChange }: {
       />
       {value ? (
         <div className="relative">
-          <img src={value} alt="Foto" className="w-full h-32 object-cover rounded-md" />
+          <img src={value} alt={uiText("Foto")} className="w-full h-32 object-cover rounded-md" />
           <Button
             variant="ghost"
             size="icon"
@@ -95,6 +96,7 @@ function FotoField({ label, buttonLabel, value, onChange }: {
 }
 
 export default function MortalidadeModal({ open, onClose, pastos, retiroId, fazendaId, capatazNome, onPastoUpdated }: Props) {
+  const uiText = useStaticUiText();
   const [pastoId, setPastoId] = useState("");
   const [quantidade, setQuantidade] = useState(1);
   const [fotoAnimal, setFotoAnimal] = useState<string | null>(null);
@@ -119,10 +121,10 @@ export default function MortalidadeModal({ open, onClose, pastos, retiroId, faze
   }, [open]);
 
   const handleSave = async () => {
-    if (!pastoId) { toast.error("Selecione um pasto"); return; }
-    if (!fotoAnimal) { toast.error("Foto do animal obrigatória"); return; }
-    if (!fotoBrinco) { toast.error("Foto do brinco obrigatória"); return; }
-    if (quantidade < 1 || quantidade > animaisAtuais) { toast.error("Quantidade inválida"); return; }
+    if (!pastoId) { toast.error(uiText("Selecione um pasto")); return; }
+    if (!fotoAnimal) { toast.error(uiText("Foto do animal obrigatória")); return; }
+    if (!fotoBrinco) { toast.error(uiText("Foto do brinco obrigatória")); return; }
+    if (quantidade < 1 || quantidade > animaisAtuais) { toast.error(uiText("Quantidade inválida")); return; }
 
     const now = new Date();
     setSaving(true);
@@ -146,13 +148,13 @@ export default function MortalidadeModal({ open, onClose, pastos, retiroId, faze
         .eq("id", pastoId);
       if (updateError) throw updateError;
 
-      toast.success("✅ Mortalidade registrada");
+      toast.success(uiText("✅ Mortalidade registrada"));
       // O push é disparado pelo gatilho do banco (notificar_mortalidade),
       // já segmentado por fazenda — evita envio duplicado e global.
       onPastoUpdated();
       onClose();
     } catch (err: any) {
-      toast.error(err?.message || "Erro ao registrar mortalidade");
+      toast.error(err?.message || uiText("Erro ao registrar mortalidade"));
     } finally {
       setSaving(false);
     }
@@ -174,7 +176,7 @@ export default function MortalidadeModal({ open, onClose, pastos, retiroId, faze
             <label className="text-sm font-medium mb-1 block"><LocalizedText source={"Pasto *"} /></label>
             <Select value={pastoId} onValueChange={(v) => { setPastoId(v); setQuantidade(1); }}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione o pasto" />
+                <SelectValue placeholder={uiText("Selecione o pasto")} />
               </SelectTrigger>
               <SelectContent>
                 {pastos.filter(p => p.num_animais > 0).map((p) => (
@@ -220,16 +222,16 @@ export default function MortalidadeModal({ open, onClose, pastos, retiroId, faze
 
           {/* Foto do Animal */}
           <FotoField
-            label="Foto do Animal *"
-            buttonLabel="Tirar foto / Upload — Animal"
+            label={uiText("Foto do Animal *")}
+            buttonLabel={uiText("Tirar foto / Upload — Animal")}
             value={fotoAnimal}
             onChange={setFotoAnimal}
           />
 
           {/* Foto do Brinco */}
           <FotoField
-            label="Foto do Brinco / Identificação *"
-            buttonLabel="Tirar foto / Upload — Brinco"
+            label={uiText("Foto do Brinco / Identificação *")}
+            buttonLabel={uiText("Tirar foto / Upload — Brinco")}
             value={fotoBrinco}
             onChange={setFotoBrinco}
           />
@@ -237,7 +239,7 @@ export default function MortalidadeModal({ open, onClose, pastos, retiroId, faze
           {/* Observação */}
           <div>
             <label className="text-sm font-medium mb-1 block"><LocalizedText source={"Observação (opcional)"} /></label>
-            <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Detalhes adicionais..." rows={2} />
+            <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder={uiText("Detalhes adicionais...")} rows={2} />
           </div>
 
           <Button onClick={handleSave} className="w-full" variant="destructive" disabled={saving || !isValid}>

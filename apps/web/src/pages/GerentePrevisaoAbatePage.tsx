@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,16 +21,16 @@ interface Prev {
 }
 type Form = { peso: string; dias: string };
 
-const nf = (n: number | null | undefined, d = 0) =>
-  n == null ? "—" : Number(n).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const nf = (n: number | null | undefined, d = 0, locale = "pt-BR") =>
+  n == null ? "—" : Number(n).toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d });
 const toStr = (r?: CfgRow): Form => ({
   peso: r ? String(r.peso_alvo_kg).replace(".", ",") : "",
   dias: r ? String(r.janela_dias) : "",
 });
-const fmtData = (s: string | null) => {
+const fmtData = (s: string | null, locale: string) => {
   if (!s) return "—";
   const [y, m, d] = s.slice(0, 10).split("-");
-  return `${d}/${m}/${y}`;
+  return locale === "en-US" ? `${m}/${d}/${y}` : `${d}/${m}/${y}`;
 };
 
 function validar(f: Form): { peso: number; dias: number } | null | string {
@@ -44,7 +45,10 @@ function validar(f: Form): { peso: number; dias: number } | null | string {
 }
 
 export default function GerentePrevisaoAbatePage() {
+  const uiText = useStaticUiText();
   const navigate = useNavigate();
+  const { language } = useTranslation();
+  const formatNumber = (value: number | null | undefined, digits = 0) => nf(value, digits, language);
   const { roleData } = useAuth();
   const { fazendas, fazendaId, setFazendaId, carregado } = useGerenteFazendaAtiva();
   const [retiros, setRetiros] = useState<{ id: string; nome: string }[]>([]);
@@ -69,7 +73,7 @@ export default function GerentePrevisaoAbatePage() {
       supabase.from("fazendas").select("gmd_modo" as any).eq("id", id).maybeSingle(),
       (supabase as any).from("gmd_config").select("id").eq("fazenda_id", id).limit(1),
     ]);
-    if (pe) toast.error("Erro ao calcular previsão: " + pe.message);
+    if (pe) toast.error(uiText("Erro ao calcular previsão: ") + pe.message);
     setRetiros((r ?? []) as any);
     setCfg((c ?? []) as CfgRow[]);
     const lista = ((p ?? []) as Prev[]).slice().sort((a, b) => (a.dias_para_alvo ?? 1e9) - (b.dias_para_alvo ?? 1e9));
@@ -98,7 +102,7 @@ export default function GerentePrevisaoAbatePage() {
     const vals: Record<string, { peso: number; dias: number } | null> = {};
     for (const e of escopos) {
       const v = validar(draft[e.key] ?? { peso: "", dias: "" });
-      if (typeof v === "string") { toast.error(`${e.nome}: ${v}`); return; }
+      if (typeof v === "string") { toast.error(`${e.nome === "Fazenda" ? uiText("Fazenda") : e.nome}: ${uiText(v)}`); return; }
       vals[e.key] = v;
     }
     setSaving(true);
@@ -122,10 +126,10 @@ export default function GerentePrevisaoAbatePage() {
           if (error) throw error;
         }
       }
-      toast.success("Configuração de abate salva");
+      toast.success(uiText("Configuração de abate salva"));
       await load(fazendaId);
     } catch (e: any) {
-      toast.error("Erro ao salvar: " + (e?.message ?? ""));
+      toast.error(uiText("Erro ao salvar: ") + (e?.message ?? ""));
     } finally {
       setSaving(false);
     }
@@ -139,11 +143,11 @@ export default function GerentePrevisaoAbatePage() {
         <div className="flex gap-2">
           <div className="flex-1 min-w-0 space-y-1">
             <label className="block text-xs font-medium whitespace-nowrap leading-none"><LocalizedText source={"Peso-alvo (kg)"} /></label>
-            <Input inputMode="decimal" placeholder="Ex.: 540" className="h-9 w-full" value={f.peso} onChange={(e) => set({ peso: e.target.value })} />
+            <Input inputMode="decimal" placeholder={uiText("Ex.: 540")} className="h-9 w-full" value={f.peso} onChange={(e) => set({ peso: e.target.value })} />
           </div>
           <div className="flex-1 min-w-0 space-y-1">
             <label className="block text-xs font-medium whitespace-nowrap leading-none"><LocalizedText source={"Janela (dias)"} /></label>
-            <Input inputMode="numeric" placeholder="Ex.: 60" className="h-9 w-full" value={f.dias} onChange={(e) => set({ dias: e.target.value })} />
+            <Input inputMode="numeric" placeholder={uiText("Ex.: 60")} className="h-9 w-full" value={f.dias} onChange={(e) => set({ dias: e.target.value })} />
           </div>
         </div>
         <p className="text-xs text-muted-foreground leading-snug"><LocalizedText source={"O lote aparece na previsão quando faltar até esse número de dias para atingir o peso-alvo."} /></p>
@@ -152,11 +156,11 @@ export default function GerentePrevisaoAbatePage() {
   };
 
   const leitura = (r?: CfgRow, vazio = "Não definido") =>
-    r ? <span>{nf(r.peso_alvo_kg, 0)} <LocalizedText source={"kg · até"} />{" "}{r.janela_dias} <LocalizedText source={"dias"} /></span> : <span className="text-muted-foreground italic">{vazio}</span>;
+    r ? <span>{formatNumber(r.peso_alvo_kg, 0)} <LocalizedText source={"kg · até"} />{" "}{r.janela_dias} <LocalizedText source={"dias"} /></span> : <span className="text-muted-foreground italic">{uiText(vazio)}</span>;
 
   const totalAnimais = prev.reduce((s, p) => s + (p.num_animais ?? 0), 0);
   const dias = (p: Prev) =>
-    p.dias_para_alvo === 0 ? <Badge className="bg-primary text-primary-foreground"><LocalizedText source={"Pronto"} /></Badge> : <span>{nf(p.dias_para_alvo)}</span>;
+    p.dias_para_alvo === 0 ? <Badge className="bg-primary text-primary-foreground"><LocalizedText source={"Pronto"} /></Badge> : <span>{formatNumber(p.dias_para_alvo)}</span>;
 
   return (
     <div className="min-h-screen bg-background">
@@ -190,7 +194,7 @@ export default function GerentePrevisaoAbatePage() {
                         <button className="w-full flex items-center justify-between p-2 text-sm font-medium" onClick={() => setAbertos((a) => ({ ...a, [r.id]: !aberto }))}>
                           <span>{r.nome}</span>
                           <span className="flex items-center gap-2 text-xs text-muted-foreground font-normal">
-                            {!editing && (linha(r.id) ? leitura(linha(r.id)) : "Seguindo a fazenda")}
+                            {!editing && (linha(r.id) ? leitura(linha(r.id)) : uiText("Seguindo a fazenda"))}
                             {aberto ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                           </span>
                         </button>
@@ -228,7 +232,7 @@ export default function GerentePrevisaoAbatePage() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm"><LocalizedText source={"Previsão"} /></CardTitle>
-                <p className="text-xs text-muted-foreground">{prev.length} <LocalizedText source={"pasto(s) ·"} />{" "}{nf(totalAnimais)} <LocalizedText source={"animais"} /></p>
+                <p className="text-xs text-muted-foreground">{prev.length} <LocalizedText source={"pasto(s) ·"} />{" "}{formatNumber(totalAnimais)} <LocalizedText source={"animais"} /></p>
               </CardHeader>
               <CardContent>
                 {prev.length === 0 ? (
@@ -251,12 +255,12 @@ export default function GerentePrevisaoAbatePage() {
                               <td className="py-2 pr-2 font-medium">{p.pasto}</td>
                               <td className="pr-2">{p.retiro}</td>
                               <td className="pr-2">{p.categoria ?? "—"}</td>
-                              <td className="pr-2 text-right">{nf(p.num_animais)}</td>
-                              <td className="pr-2 text-right">{nf(p.peso_atual, 1)} kg</td>
-                              <td className="pr-2 text-right">{nf(p.peso_alvo, 0)} kg</td>
-                              <td className="pr-2 text-right">{nf(p.gmd_hoje, 3)}</td>
+                              <td className="pr-2 text-right">{formatNumber(p.num_animais)}</td>
+                              <td className="pr-2 text-right">{formatNumber(p.peso_atual, 1)} kg</td>
+                              <td className="pr-2 text-right">{formatNumber(p.peso_alvo, 0)} kg</td>
+                              <td className="pr-2 text-right">{formatNumber(p.gmd_hoje, 3)}</td>
                               <td className="pr-2 text-right">{dias(p)}</td>
-                              <td className="text-right">{fmtData(p.data_prevista)}</td>
+                              <td className="text-right">{fmtData(p.data_prevista, language)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -269,12 +273,12 @@ export default function GerentePrevisaoAbatePage() {
                             <span className="font-semibold">{p.pasto}</span>
                             {dias(p)}
                           </div>
-                          <p className="text-xs text-muted-foreground">{p.retiro} · {p.categoria ?? "—"} · {nf(p.num_animais)} <LocalizedText source={"animais"} /></p>
+                          <p className="text-xs text-muted-foreground">{p.retiro} · {p.categoria ?? "—"} · {formatNumber(p.num_animais)} <LocalizedText source={"animais"} /></p>
                           <div className="grid grid-cols-2 gap-x-3 text-xs">
-                            <span><LocalizedText source={"Peso:"} />{" "}{nf(p.peso_atual, 1)} → {nf(p.peso_alvo, 0)} kg</span>
-                            <span><LocalizedText source={"GMD:"} />{" "}{nf(p.gmd_hoje, 3)}</span>
-                            <span><LocalizedText source={"Dias:"} />{" "}{p.dias_para_alvo === 0 ? "0" : nf(p.dias_para_alvo)}</span>
-                            <span><LocalizedText source={"Data:"} />{" "}{fmtData(p.data_prevista)}</span>
+                            <span><LocalizedText source={"Peso:"} />{" "}{formatNumber(p.peso_atual, 1)} → {formatNumber(p.peso_alvo, 0)} kg</span>
+                            <span><LocalizedText source={"GMD:"} />{" "}{formatNumber(p.gmd_hoje, 3)}</span>
+                            <span><LocalizedText source={"Dias:"} />{" "}{p.dias_para_alvo === 0 ? "0" : formatNumber(p.dias_para_alvo)}</span>
+                            <span><LocalizedText source={"Data:"} />{" "}{fmtData(p.data_prevista, language)}</span>
                           </div>
                         </div>
                       ))}

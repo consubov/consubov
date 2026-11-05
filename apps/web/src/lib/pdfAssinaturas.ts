@@ -1,4 +1,6 @@
 import type jsPDF from "jspdf";
+import { translatePdfLabel } from "@/lib/pdfUiLabels";
+import type { SiteLanguage } from "@/lib/siteLanguage";
 
 const INK_SOFT = "#767066";
 
@@ -40,7 +42,9 @@ export function drawAssinaturas(
   assinantes: PdfAssinante[] | undefined,
   consultorNomeFallback: string,
   startY?: number,
+  language: SiteLanguage = "pt-BR",
 ) {
+  const tr = (source: string) => translatePdfLabel(language, source);
   const lista = resolverLista(assinantes, consultorNomeFallback);
 
   if (lista.length === 1) {
@@ -53,7 +57,7 @@ export function drawAssinaturas(
     doc.setFont("helvetica", "normal");
     doc.text(lista[0].nome, pageW / 2, sigY + 5, { align: "center" });
     doc.setFontSize(8);
-    doc.text(lista[0].cargo_funcao || "Consultor Técnico", pageW / 2, sigY + 10, { align: "center" });
+    doc.text(lista[0].cargo_funcao || tr("Consultor Técnico"), pageW / 2, sigY + 10, { align: "center" });
     return;
   }
 
@@ -64,7 +68,7 @@ export function drawAssinaturas(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   for (const a of lista) {
-    const line = `${a.nome}, ${a.cargo_funcao || "Consultor Técnico"}`;
+    const line = `${a.nome}, ${a.cargo_funcao || tr("Consultor Técnico")}`;
     doc.text(line, pageW / 2, y, { align: "center" });
     y += lineH;
   }

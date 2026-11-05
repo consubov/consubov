@@ -3,6 +3,7 @@ import { describe, expect, it, afterEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { AppLanguageProvider, useTranslation } from "@/hooks/useTranslation";
 import { AppLanguageSwitch } from "@/components/AppLanguageSwitch";
+import { AppVersionBadge } from "@/components/AppVersionBadge";
 import { APP_TRANSLATIONS } from "@/lib/translations";
 
 function Probe() {
@@ -26,7 +27,7 @@ describe("App language preference", () => {
     expect(screen.getByTestId("manager")).toHaveTextContent("Gerente");
     expect(screen.getByTestId("app-language-switch")).toHaveClass("top-0");
     expect(screen.getByTestId("app-language-switch")).not.toHaveClass("bottom-20");
-    fireEvent.change(screen.getByRole("combobox", { name: "Idioma / Language" }), { target: { value: "en-US" } });
+    fireEvent.click(screen.getByRole("button", { name: "English (United States)" }));
     expect(screen.getByTestId("locale")).toHaveTextContent("en-US");
     expect(document.documentElement.lang).toBe("en-US");
     expect(screen.getByTestId("copy")).toHaveTextContent("Sign in");
@@ -34,9 +35,22 @@ describe("App language preference", () => {
     expect(screen.getByTestId("manager")).toHaveTextContent("Manager");
     expect(localStorage.getItem("consubov:site-language")).toBe("pt-BR");
     expect(localStorage.getItem("consubov:app-language")).toBe("en-US");
-    fireEvent.change(screen.getByRole("combobox", { name: "Idioma / Language" }), { target: { value: "pt-BR" } });
+    fireEvent.click(screen.getByRole("button", { name: "Português (Brasil)" }));
     expect(screen.getByTestId("ranches")).toHaveTextContent("Fazendas");
     expect(localStorage.getItem("consubov:app-language")).toBe("pt-BR");
+  });
+  it("renders site-style flags before the version in operational layouts", () => {
+    localStorage.setItem("consubov:app-language", "pt-BR");
+    render(<MemoryRouter initialEntries={["/admin"]}><AppLanguageProvider><AppLanguageSwitch /><AppVersionBadge /><Probe /></AppLanguageProvider></MemoryRouter>);
+    expect(screen.queryByTestId("app-language-switch")).toBeNull();
+    const group = screen.getByTestId("app-language-version");
+    expect(group.querySelector("[data-testid=site-flag-br]")).not.toBeNull();
+    expect(group.querySelector("[data-testid=site-flag-us]")).not.toBeNull();
+    expect(group.firstElementChild).toHaveAttribute("role", "group");
+    expect(group.lastElementChild).toHaveAttribute("aria-label", expect.stringContaining("Versão do app"));
+    fireEvent.click(screen.getByRole("button", { name: "English (United States)" }));
+    expect(screen.getByTestId("ranches")).toHaveTextContent("Ranches");
+    expect(screen.getByRole("button", { name: "English (United States)" })).toHaveAttribute("aria-pressed", "true");
   });
   it("leaves operational values untouched for missing keys", () => {
     function DynamicProbe() { const { t } = useTranslation(); return <span>{t("Fazenda Águas Claras")}</span>; }

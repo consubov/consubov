@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Beef, Droplets, TrendingUp, Calendar, Package } from "lucide-react";
@@ -46,6 +46,7 @@ interface Props {
 }
 
 export default function PastoInfoModal({ open, onOpenChange, pasto }: Props) {
+  const uiText = useStaticUiText();
   if (!pasto) return null;
 
   return (
@@ -67,19 +68,19 @@ export default function PastoInfoModal({ open, onOpenChange, pasto }: Props) {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <InfoItem icon={Beef} label="Animais" value={String(pasto.num_animais)} />
+            <InfoItem icon={Beef} label={uiText("Animais")} value={String(pasto.num_animais)} />
             <InfoItem
               icon={Droplets}
-              label="Consumo global"
+              label={uiText("Consumo global")}
               value={pasto.consumo_medio != null ? `${fmtNum(pasto.consumo_medio, 1)} g` : "—"}
             />
             <InfoItem
               icon={TrendingUp}
-              label="Peso médio"
+              label={uiText("Peso médio")}
               value={pasto.peso_medio_kg != null ? `${fmtNum(pasto.peso_medio_kg, 1)} kg` : "—"}
             />
-            <InfoItem label="Categoria" value={pasto.categoria || "—"} />
-            <InfoItem label="Sexo" value={pasto.sexo || "—"} />
+            <InfoItem label={uiText("Categoria")} value={pasto.categoria || "—"} />
+            <InfoItem label={uiText("Sexo")} value={pasto.sexo || "—"} />
           </div>
 
           <div className="border-t pt-3 space-y-2">

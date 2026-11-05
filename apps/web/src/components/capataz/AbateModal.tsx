@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ export default function AbateModal({
   open, onClose, pasto, fazendaId, retiroId,
   mesOperacional, anoOperacional, onAbateConfirmed,
 }: AbateModalProps) {
+  const uiText = useStaticUiText();
   const [quantidade, setQuantidade] = useState("");
   const [confirmando, setConfirmando] = useState(false);
   const [step, setStep] = useState<'input' | 'confirm'>('input');
@@ -60,12 +61,12 @@ export default function AbateModal({
         .eq("id", pasto.id);
       if (updateErr) throw updateErr;
 
-      toast.success(`${qtd} animais abatidos de ${pasto.nome}. Restam ${newTotal}.`);
+      toast.success(`${qtd} ${uiText(qtd === 1 ? "animal abatido de " : "animais abatidos de ")}${pasto.nome}${uiText(". Restam ")}${newTotal}.`);
       onAbateConfirmed(pasto.id, qtd);
       handleClose();
     } catch (err: any) {
       console.error("Erro no abate:", err);
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`${uiText("Erro: ")}${err?.message || uiText("Erro desconhecido")}`);
     } finally {
       setConfirmando(false);
     }

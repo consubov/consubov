@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -53,24 +54,26 @@ type LoteRegistro = {
   identificado?: boolean | null;
 };
 
-const fmt = (n: number, d = 2) =>
-  n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
-const fmtHora = (iso: string) => {
-  try { return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
+const fmt = (n: number, language: string, d = 2) =>
+  n.toLocaleString(language, { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtHora = (iso: string, language: string) => {
+  try { return new Date(iso).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
 };
-const fmtDataLinha = (fim?: string | null) => {
+const fmtDataLinha = (fim: string | null | undefined, language: string) => {
   if (!fim) return null;
-  return new Date(fim).toLocaleDateString("pt-BR");
+  return new Date(fim).toLocaleDateString(language);
 };
-const fmtHorarioLinha = (fim?: string | null, ini?: string | null) => {
+const fmtHorarioLinha = (fim: string | null | undefined, ini: string | null | undefined, language: string) => {
   if (!fim) return null;
-  const hFim = fmtHora(fim);
-  const hIni = ini ? fmtHora(ini) : "";
-  if (hIni && hFim) return `Início da pesagem: ${hIni}h - Término da pesagem: ${hFim}h`;
+  const hFim = fmtHora(fim, language);
+  const hIni = ini ? fmtHora(ini, language) : "";
+  if (hIni && hFim) return `${language === "en-US" ? "Weighing started: " : "Início da pesagem: "}${hIni}${language === "en-US" ? "" : "h"} - ${language === "en-US" ? "Weighing ended: " : "Término da pesagem: "}${hFim}${language === "en-US" ? "" : "h"}`;
   return null;
 };
 
 export default function PecuaristaPesagemResumoPage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const { fazendaId, loteId, pesagemId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -133,12 +136,12 @@ export default function PecuaristaPesagemResumoPage() {
       const file = new File([blob], `pesagem-${pesagemId}.pdf`, { type: "application/pdf" });
       const nav = navigator;
       if (nav.canShare?.({ files: [file] }) && nav.share) {
-        await nav.share({ files: [file], title: "Relatório de Pesagem" });
+        await nav.share({ files: [file], title: uiText("Relatório de Pesagem") });
       } else if (nav.share) {
-        await nav.share({ title: "Relatório de Pesagem", url: pdfUrl });
+        await nav.share({ title: uiText("Relatório de Pesagem"), url: pdfUrl });
       } else {
         await navigator.clipboard.writeText(pdfUrl);
-        toast.success("Link copiado");
+        toast.success(uiText("Link copiado"));
       }
     } catch {/* ignore */} finally { setSharing(false); }
   }
@@ -153,13 +156,13 @@ export default function PecuaristaPesagemResumoPage() {
         <div className="text-xs uppercase text-muted-foreground"><LocalizedText source={"Pesagem finalizada"} /></div>
         <div className="text-lg font-semibold">{data.loteNome ?? "Lote"}</div>
         <div className="text-xs text-muted-foreground">
-          {data.identificado ? "Lote identificado" : "Sem identificação"}
+          {uiText(data.identificado ? "Lote identificado" : "Sem identificação")}
         </div>
-        {fmtDataLinha(data.dataFim) && (
-          <div className="text-xs text-muted-foreground mt-1">{fmtDataLinha(data.dataFim)}</div>
+        {fmtDataLinha(data.dataFim, language) && (
+          <div className="text-xs text-muted-foreground mt-1">{fmtDataLinha(data.dataFim, language)}</div>
         )}
-        {fmtHorarioLinha(data.horaFim ?? data.dataFim, data.horaInicio) && (
-          <div className="text-xs text-muted-foreground">{fmtHorarioLinha(data.horaFim ?? data.dataFim, data.horaInicio)}</div>
+        {fmtHorarioLinha(data.horaFim ?? data.dataFim, data.horaInicio, language) && (
+          <div className="text-xs text-muted-foreground">{fmtHorarioLinha(data.horaFim ?? data.dataFim, data.horaInicio, language)}</div>
         )}
       </Card>
 
@@ -170,20 +173,20 @@ export default function PecuaristaPesagemResumoPage() {
         </Card>
         <Card className="p-3 text-center">
           <div className="text-xs text-muted-foreground"><LocalizedText source={"Peso total"} /></div>
-          <div className="text-xl font-bold">{fmt(data.peso_total, 1)} kg</div>
+          <div className="text-xl font-bold">{fmt(data.peso_total, language, 1)} kg</div>
         </Card>
         <Card className="p-3 text-center">
           <div className="text-xs text-muted-foreground"><LocalizedText source={"Peso médio (kg)"} /></div>
-          <div className="text-xl font-bold">{fmt(data.peso_medio, 1)} kg</div>
+          <div className="text-xl font-bold">{fmt(data.peso_medio, language, 1)} kg</div>
         </Card>
         <Card className="p-3 text-center">
           <div className="text-xs text-muted-foreground"><LocalizedText source={"Peso médio (@)"} /></div>
-          <div className="text-xl font-bold">{fmt(data.peso_medio / 30, 2)} @</div>
+          <div className="text-xl font-bold">{fmt(data.peso_medio / 30, language, 2)} @</div>
         </Card>
         {data.gmd != null && (
           <Card className="p-3 text-center col-span-2 bg-primary/10 border-primary/30">
             <div className="text-xs text-muted-foreground"><LocalizedText source={"GMD do lote"} /></div>
-            <div className="text-2xl font-bold text-primary">{fmt(data.gmd, 3)} <LocalizedText source={"kg/dia"} /></div>
+            <div className="text-2xl font-bold text-primary">{fmt(data.gmd, language, 3)} <LocalizedText source={"kg/dia"} /></div>
             {data.dias != null && <div className="text-xs text-muted-foreground mt-1">{data.dias} <LocalizedText source={"dias desde pesagem anterior"} /></div>}
           </Card>
         )}
@@ -200,8 +203,8 @@ export default function PecuaristaPesagemResumoPage() {
             {data.identificados.map((r, i) => (
               <div key={i} className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-border/40 py-1">
                 <span>{r.numero}</span>
-                <span className="text-right">{fmt(r.peso_kg, 1)} kg</span>
-                <span className="text-right">{r.gmd_individual != null ? `${fmt(r.gmd_individual, 3)}` : "—"}</span>
+                <span className="text-right">{fmt(r.peso_kg, language, 1)} kg</span>
+                <span className="text-right">{r.gmd_individual != null ? `${fmt(r.gmd_individual, language, 3)}` : "—"}</span>
               </div>
             ))}
           </div>
@@ -214,7 +217,7 @@ export default function PecuaristaPesagemResumoPage() {
           <div className="max-h-72 overflow-y-auto text-xs grid grid-cols-3 gap-1">
             {data.semId.map(p => (
               <div key={p.ordem} className="border-b border-border/40 py-1">
-                {p.ordem} - {fmt(p.peso_kg, 1)} kg
+                {p.ordem} - {fmt(p.peso_kg, language, 1)} kg
               </div>
             ))}
           </div>
@@ -229,14 +232,14 @@ export default function PecuaristaPesagemResumoPage() {
               <span><LocalizedText source={"Ordem"} /></span>
               <span className="text-right"><LocalizedText source={"Peso total"} /></span>
               <span className="text-right"><LocalizedText source={"Qtd"} /></span>
-              <span className="text-right">Individual</span>
+              <span className="text-right"><LocalizedText source={"Individual"} /></span>
             </div>
             {leiturasBalancao.map((l) => (
               <div key={l.ordem} className="grid grid-cols-4 gap-2 border-b border-border/40 py-1">
                 <span>#{l.ordem}</span>
-                <span className="text-right">{fmt(l.peso_total, 1)} kg</span>
+                <span className="text-right">{fmt(l.peso_total, language, 1)} kg</span>
                 <span className="text-right">{l.quantidade_animais}</span>
-                <span className="text-right">{fmt(l.peso_individual, 1)} kg</span>
+                <span className="text-right">{fmt(l.peso_individual, language, 1)} kg</span>
               </div>
             ))}
           </div>

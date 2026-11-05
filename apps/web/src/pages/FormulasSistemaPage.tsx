@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +30,7 @@ const CATEGORIA_LABEL: Record<string, string> = {
 };
 
 export default function FormulasSistemaPage() {
+  const uiText = useStaticUiText();
   const [formulas, setFormulas] = useState<Formula[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -47,7 +48,7 @@ export default function FormulasSistemaPage() {
       .order("categoria", { ascending: true })
       .order("nome", { ascending: true });
     if (error) {
-      toast.error("Erro ao carregar fórmulas");
+      toast.error(uiText("Erro ao carregar fórmulas"));
     } else {
       setFormulas((data ?? []) as any);
     }
@@ -88,10 +89,10 @@ export default function FormulasSistemaPage() {
       .eq("chave", f.chave);
     setSaving(false);
     if (error) {
-      toast.error("Erro ao salvar: " + error.message);
+      toast.error(uiText("Erro ao salvar: ") + error.message);
       return;
     }
-    toast.success("Fórmula atualizada");
+    toast.success(uiText("Fórmula atualizada"));
     setEditingId(null);
     await load();
   };
@@ -102,7 +103,7 @@ export default function FormulasSistemaPage() {
       .update({ ativo })
       .eq("chave", f.chave);
     if (error) {
-      toast.error("Erro ao atualizar status");
+      toast.error(uiText("Erro ao atualizar status"));
       return;
     }
     setFormulas((prev) => prev.map((x) => (x.id === f.id ? { ...x, ativo } : x)));
@@ -173,7 +174,7 @@ export default function FormulasSistemaPage() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => startEdit(f)}
-                                aria-label="Editar"
+                                aria-label={uiText("Editar")}
                               >
                                 <Pencil className="w-4 h-4" />
                               </Button>

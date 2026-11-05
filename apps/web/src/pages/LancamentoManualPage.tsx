@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,7 @@ interface PastoRow {
 }
 
 export default function LancamentoManualPage() {
+  const uiText = useStaticUiText();
   const now = new Date();
   const [fazendas, setFazendas] = useState<{ id: string; nome: string }[]>([]);
   const [retiros, setRetiros] = useState<{ id: string; nome: string; produto_id: string | null }[]>([]);
@@ -227,9 +228,9 @@ export default function LancamentoManualPage() {
   // Trava suave: pede confirmação se algum pasto já tem lançamento hoje (SP)
   async function handleSalvar() {
     for (const r of rows) {
-      if (r.num_animais < 0) { toast.error(`Animais inválido em ${r.nome}`); return; }
-      if (r.num_sacos < 0) { toast.error(`Sacos inválido em ${r.nome}`); return; }
-      if (r.dias_no_pasto <= 0) { toast.error(`Dias no pasto deve ser > 0 em ${r.nome}`); return; }
+      if (r.num_animais < 0) { toast.error(`${uiText("Animais inválido em ")}${r.nome}`); return; }
+      if (r.num_sacos < 0) { toast.error(`${uiText("Sacos inválido em ")}${r.nome}`); return; }
+      if (r.dias_no_pasto <= 0) { toast.error(`${uiText("Dias no pasto deve ser > 0 em ")}${r.nome}`); return; }
     }
 
     const pastoIds = rows.filter(r => r.num_sacos > 0).map(r => r.pasto_id);
@@ -300,10 +301,10 @@ export default function LancamentoManualPage() {
       if (fechErr) throw fechErr;
 
       setCicloFechado(true);
-      toast.success("Lançamentos salvos e ciclo fechado com sucesso!");
+      toast.success(uiText("Lançamentos salvos e ciclo fechado com sucesso!"));
     } catch (e: any) {
       console.error(e);
-      toast.error("Erro ao salvar: " + (e.message || "tente novamente"));
+      toast.error(uiText("Erro ao salvar: ") + (e.message || uiText("tente novamente")));
     } finally {
       setSaving(false);
     }
@@ -325,7 +326,7 @@ export default function LancamentoManualPage() {
             <div className="space-y-2">
               <Label><LocalizedText source={"Fazenda"} /></Label>
               <Select value={fazendaId} onValueChange={setFazendaId}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione...")} /></SelectTrigger>
                 <SelectContent>
                   {fazendas.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
                 </SelectContent>
@@ -334,7 +335,7 @@ export default function LancamentoManualPage() {
             <div className="space-y-2">
               <Label><LocalizedText source={"Retiro"} /></Label>
               <Select value={retiroId} onValueChange={setRetiroId} disabled={!fazendaId}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione...")} /></SelectTrigger>
                 <SelectContent>
                   {retiros.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
                 </SelectContent>
@@ -382,7 +383,7 @@ export default function LancamentoManualPage() {
               <div className="space-y-2">
                 <Label><LocalizedText source={"Produto padrão"} /></Label>
                 <Select value={produtoPadraoId} onValueChange={applyGlobalProduct} disabled={cicloFechado}>
-                  <SelectTrigger><SelectValue placeholder="Selecione produto..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={uiText("Selecione produto...")} /></SelectTrigger>
                   <SelectContent>
                     {produtos.map(p => (
                       <SelectItem key={p.id} value={p.id}>
@@ -470,7 +471,7 @@ export default function LancamentoManualPage() {
                       </TableCell>
                       <TableCell>
                         <Select value={r.produto_id} onValueChange={v => updateRow(idx, "produto_id", v)} disabled={cicloFechado}>
-                          <SelectTrigger className="w-36"><SelectValue placeholder="Produto..." /></SelectTrigger>
+                          <SelectTrigger className="w-36"><SelectValue placeholder={uiText("Produto...")} /></SelectTrigger>
                           <SelectContent>
                             {produtos.map(p => (
                               <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>

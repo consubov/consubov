@@ -1,8 +1,10 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
+import { PARTIAL_PROFILE_MESSAGE, ProfileProvisioningError, provisionProfileUser } from "@/lib/profileProvisioning";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -36,13 +38,16 @@ interface CapatazForm {
   nome: string;
   email: string;
   telefone: string;
+  senha: string;
+  confirmarSenha: string;
   retiro_ids: string[];
   ativo: boolean;
 }
 
-const emptyForm: CapatazForm = { nome: "", email: "", telefone: "", retiro_ids: [], ativo: true };
+const emptyForm: CapatazForm = { nome: "", email: "", telefone: "", senha: "", confirmarSenha: "", retiro_ids: [], ativo: true };
 
 export default function CapatazesPage() {
+  const uiText = useStaticUiText();
   const [capatazes, setCapatazes] = useState<Capataz[]>([]);
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [vinculos, setVinculos] = useState<Record<string, string[]>>({});
@@ -51,6 +56,10 @@ export default function CapatazesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CapatazForm>(emptyForm);
+  const [passwordTarget, setPasswordTarget] = useState<Capataz | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -98,6 +107,7 @@ export default function CapatazesPage() {
       nome: c.nome,
       email: c.email,
       telefone: c.telefone || "",
+      senha: "", confirmarSenha: "",
       retiro_ids: ids,
       ativo: c.ativo ?? true,
     });
@@ -124,14 +134,19 @@ export default function CapatazesPage() {
 
   async function handleSave() {
     if (!form.nome.trim() || !form.email.trim()) {
-      toast.error("Nome e email são obrigatórios");
+      toast.error(uiText("Nome e email são obrigatórios"));
       return;
     }
     if (form.retiro_ids.length === 0) {
-      toast.error("Selecione pelo menos um retiro");
+      toast.error(uiText("Selecione pelo menos um retiro"));
+      return;
+    }
+    if (!editingId && (form.senha.length < 12 || form.senha !== form.confirmarSenha)) {
+      toast.error(uiText("Defina uma senha de pelo menos 12 caracteres e confirme-a."));
       return;
     }
     setSaving(true);
+    let accountCreated = false;
 
     try {
       if (editingId) {
@@ -146,88 +161,82 @@ export default function CapatazesPage() {
           ativo: form.ativo,
         }).eq("id", editingId);
         if (error) throw error;
-        toast.success("Capataz atualizado!");
+        toast.success(uiText("Capataz atualizado!"));
       } else {
-        const res = await supabase.functions.invoke("create-user", {
-          body: { email: form.email, password: "Consubov@2025" },
+        const userId = await provisionProfileUser({
+          email: form.email,
+          senha: form.senha,
+          role: "usuario",
         });
-        if (res.error) {
-          console.error("Erro ao criar usuário:", res.error);
-          toast.error("Erro ao criar usuário: " + (res.error.message || JSON.stringify(res.error)));
-          setSaving(false);
-          return;
-        }
-        const responseData = res.data;
-        if (responseData?.error) {
-          console.error("Erro ao criar usuário:", responseData.error);
-          toast.error("Erro ao criar usuário: " + responseData.error);
-          setSaving(false);
-          return;
-        }
-
-        const userId = responseData?.user?.id;
+        accountCreated = true;
         const { data: novo, error } = await supabase.from("capatazes").insert({
           nome: form.nome,
-          email: form.email,
+          email: form.email.trim().toLowerCase(),
           telefone: form.telefone || null,
           retiro_id: form.retiro_ids[0],
-          user_id: userId || null,
+          user_id: userId,
           ativo: form.ativo,
         }).select("id").single();
-        if (error) {
-          console.error("Erro ao salvar capataz:", error);
-          toast.error("Erro ao salvar: " + error.message);
-          setSaving(false);
-          return;
-        }
-
+        if (error || !novo?.id) throw new Error("profile_insert_failed");
         await salvarVinculos(novo.id, form.retiro_ids, form.retiro_ids[0]);
-        toast.success("Capataz criado! Senha padrão: Consubov@2025");
+        toast.success(uiText("Capataz criado! A senha foi definida no cadastro."));
       }
       setDialogOpen(false);
       fetchData();
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Erro ao salvar");
+    } catch (err: unknown) {
+      toast.error(accountCreated
+        ? PARTIAL_PROFILE_MESSAGE
+        : err instanceof ProfileProvisioningError ? err.message : "Não foi possível salvar capataz.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Excluir este capataz?")) return;
+    if (!confirm(uiText("Excluir este capataz?"))) return;
     await supabase.from("capatazes_retiros").delete().eq("capataz_id", id);
     const { error } = await supabase.from("capatazes").delete().eq("id", id);
     if (error) {
-      toast.error("Erro ao excluir: " + error.message);
+      toast.error(uiText("Erro ao excluir: ") + error.message);
     } else {
-      toast.success("Capataz excluído");
+      toast.success(uiText("Capataz excluído"));
       fetchData();
     }
   }
 
-  async function handleResetPassword(c: Capataz) {
+  function handleResetPassword(c: Capataz) {
     if (!c.user_id) {
-      toast.error("Este capataz não possui usuário vinculado no Auth");
+      toast.error(uiText("Este capataz não possui usuário vinculado no Auth"));
       return;
     }
-    if (!confirm(`Redefinir a senha de ${c.nome} para "Consubov@2025"?`)) return;
+    setPasswordTarget(c);
+    setNewPassword("");
+    setConfirmPassword("");
+  }
 
+  async function confirmResetPassword() {
+    if (!passwordTarget?.user_id) return;
+    if (newPassword.length < 12 || newPassword !== confirmPassword) {
+      toast.error(uiText("Defina uma senha de pelo menos 12 caracteres e confirme-a."));
+      return;
+    }
+    setResetting(true);
     try {
       const res = await supabase.functions.invoke("reset-password", {
-        body: { user_id: c.user_id, password: "Consubov@2025" },
+        body: { user_id: passwordTarget.user_id, password: newPassword },
       });
-      if (res.error) {
-        toast.error("Erro ao redefinir senha: " + (res.error.message || JSON.stringify(res.error)));
+      if (res.error || res.data?.success !== true) {
+        toast.error(uiText("Não foi possível redefinir a senha. Verifique sua sessão e permissões."));
         return;
       }
-      const responseData = res.data;
-      if (responseData?.error) {
-        toast.error("Erro: " + responseData.error);
-        return;
-      }
-      toast.success(`Senha de ${c.nome} redefinida para Consubov@2025`);
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao redefinir senha");
+      toast.success(uiText("Senha redefinida. Entregue a nova senha somente pelo canal privado autorizado."));
+      setPasswordTarget(null);
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch {
+      toast.error(uiText("Não foi possível redefinir a senha."));
+    } finally {
+      setResetting(false);
     }
   }
 
@@ -284,19 +293,19 @@ export default function CapatazesPage() {
                   <TableCell>{nomesRetiros(c)}</TableCell>
                   <TableCell>
                     <Badge variant={c.ativo ? "default" : "secondary"}>
-                      {c.ativo ? "Ativo" : "Inativo"}
+                      {uiText(c.ativo ? "Ativo" : "Inativo")}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <ForcarSyncButton targetUserId={c.user_id} targetName={c.nome} />
-                      <Button size="icon" variant="ghost" onClick={() => openEdit(c)} title="Editar">
+                      <Button size="icon" variant="ghost" onClick={() => openEdit(c)} title={uiText("Editar")}>
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleResetPassword(c)} title="Redefinir Senha">
+                      <Button size="icon" variant="ghost" onClick={() => handleResetPassword(c)} title={uiText("Redefinir Senha")}>
                         <KeyRound className="w-4 h-4 text-amber-600" />
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDelete(c.id)} title="Excluir">
+                      <Button size="icon" variant="ghost" onClick={() => handleDelete(c.id)} title={uiText("Excluir")}>
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
                     </div>
@@ -308,35 +317,85 @@ export default function CapatazesPage() {
         </Table>
       </div>
 
+      <Dialog open={!!passwordTarget} onOpenChange={(open) => {
+        if (!open && !resetting) {
+          setPasswordTarget(null);
+          setNewPassword("");
+          setConfirmPassword("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Redefinir senha do capataz</DialogTitle>
+            <DialogDescription>
+              Defina uma nova senha exclusiva. Não reutilize senhas de outros perfis.
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label htmlFor="capataz-reset-senha">Nova senha *</Label>
+            <PasswordInput id="capataz-reset-senha" autoComplete="new-password"
+              value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="capataz-reset-confirmar">Confirmar senha *</Label>
+            <PasswordInput id="capataz-reset-confirmar" autoComplete="new-password"
+              value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+            <p className="mt-1 text-xs text-muted-foreground">Mínimo 12 caracteres.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={resetting} onClick={() => setPasswordTarget(null)}>Cancelar</Button>
+            <Button onClick={confirmResetPassword} disabled={resetting}>Redefinir senha</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Capataz" : "Novo Capataz"}</DialogTitle>
+            <DialogTitle>{uiText(editingId ? "Editar Capataz" : "Novo Capataz")}</DialogTitle>
             <DialogDescription>
-              {editingId ? "Atualize os dados do capataz." : "Preencha os dados. Senha padrão: Consubov@2025"}
+              {editingId ? "Atualize os dados do capataz." : "Preencha os dados e defina uma senha exclusiva."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label><LocalizedText source={"Nome *"} /></Label>
-              <Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} />
+              <Label htmlFor="capataz-nome"><LocalizedText source={"Nome *"} /></Label>
+              <Input id="capataz-nome" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} />
             </div>
             <div>
-              <Label>Email *</Label>
-              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} disabled={!!editingId} />
+              <Label htmlFor="capataz-email">Email *</Label>
+              <Input id="capataz-email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} disabled={!!editingId} />
             </div>
             <div>
-              <Label><LocalizedText source={"Telefone"} /></Label>
-              <Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} />
+              <Label htmlFor="capataz-telefone"><LocalizedText source={"Telefone"} /></Label>
+              <Input id="capataz-telefone" value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} />
             </div>
+            {!editingId && (
+              <>
+                <div>
+                  <Label htmlFor="capataz-password">Senha de acesso *</Label>
+                  <PasswordInput id="capataz-password" autoComplete="new-password"
+                    value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} />
+                </div>
+                <div>
+                  <Label htmlFor="capataz-confirm-password">Confirmar senha *</Label>
+                  <PasswordInput id="capataz-confirm-password" autoComplete="new-password"
+                    value={form.confirmarSenha}
+                    onChange={e => setForm(f => ({ ...f, confirmarSenha: e.target.value }))} />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Mínimo 12 caracteres. Não compartilhe a senha entre perfis.
+                  </p>
+                </div>
+              </>
+            )}
             <div>
               <FazendasMultiSelect
                 fazendas={retiros}
                 selected={form.retiro_ids}
                 onChange={(ids) => setForm(f => ({ ...f, retiro_ids: ids }))}
-                label="Retiros *"
-                searchPlaceholder="Pesquisar retiro..."
-                emptyMessage="Nenhum retiro disponível."
+                label={uiText("Retiros *")}
+                searchPlaceholder={uiText("Pesquisar retiro...")}
+                emptyMessage={uiText("Nenhum retiro disponível.")}
               />
             </div>
             <div className="flex items-center gap-2">

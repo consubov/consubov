@@ -1,8 +1,9 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { PARTIAL_PROFILE_MESSAGE, ProfileProvisioningError, provisionProfileUser } from "@/lib/profileProvisioning";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -12,6 +13,7 @@ import { toast } from "sonner";
 import { Loader2, Stethoscope, CheckCircle2 } from "lucide-react";
 
 export default function AdminSyncVetOnboardingPage() {
+  const uiText = useStaticUiText();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
@@ -42,88 +44,37 @@ export default function AdminSyncVetOnboardingPage() {
         .eq("ativo", true)
         .maybeSingle();
       if (data) {
-        toast.info("Você já possui empresa SyncVet");
+        toast.info(uiText("Você já possui empresa SyncVet"));
         navigate("/syncvet", { replace: true });
         return;
       }
       setChecking(false);
     })();
-  }, [user, navigate]);
-
-  function parseInvokeError(err: unknown): string {
-    if (err && typeof err === "object" && "context" in err) {
-      const ctx = (err as { context?: Response }).context;
-      if (ctx) {
-        // best-effort parse handled by caller; fall through to message
-      }
-    }
-    return err instanceof Error ? err.message : "Erro desconhecido";
-  }
+  }, [user, navigate, uiText]);
 
   async function handleSubmit() {
     if (!user) return;
 
-    if (!nomeEmpresa.trim()) { toast.error("Informe o nome da empresa"); return; }
-    if (!nomeVet.trim()) { toast.error("Informe o nome do veterinário responsável"); return; }
+    if (!nomeEmpresa.trim()) { toast.error(uiText("Informe o nome da empresa")); return; }
+    if (!nomeVet.trim()) { toast.error(uiText("Informe o nome do veterinário responsável")); return; }
     if (!emailVet.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVet.trim())) {
-      toast.error("Informe um e-mail válido para o veterinário");
+      toast.error(uiText("Informe um e-mail válido para o veterinário"));
       return;
     }
-    if (senha.length < 6) { toast.error("A senha deve ter no mínimo 6 caracteres"); return; }
-    if (senha !== confirmarSenha) { toast.error("As senhas não coincidem"); return; }
+    if (senha.length < 12) { toast.error(uiText("A senha deve ter no mínimo 12 caracteres")); return; }
+    if (senha !== confirmarSenha) { toast.error(uiText("As senhas não coincidem")); return; }
 
     setSaving(true);
+    let accountCreated = false;
     try {
       // 1) Cria a conta de autenticação do veterinário via edge function
       //    (usa service role — não afeta a sessão atual do admin do Consubov).
-      const { data: created, error: fnErr } = await supabase.functions.invoke("create-user", {
-        body: {
-          email: emailVet.trim().toLowerCase(),
-          senha,
-          role: "usuario",
-        },
+      const newUserId = await provisionProfileUser({
+        email: emailVet,
+        senha,
+        role: "usuario",
       });
-
-      if (fnErr) {
-        // tenta extrair mensagem estruturada
-        let msg = fnErr instanceof Error ? fnErr.message : "Falha ao criar conta de acesso";
-        const ctx = (fnErr as { context?: Response }).context;
-        if (ctx) {
-          try {
-            const payload = await ctx.clone().json();
-            msg = payload?.error || payload?.message || msg;
-          } catch { /* ignore */ }
-        }
-        if (/already|registrado|exists/i.test(msg)) {
-          toast.error("Este e-mail já está cadastrado. Use outro e-mail para o veterinário.");
-        } else if (/password|senha/i.test(msg)) {
-          toast.error(`Senha inválida: ${msg}`);
-        } else {
-          toast.error(`Erro ao criar conta de acesso: ${msg}`);
-        }
-        setSaving(false);
-        return;
-      }
-
-      if (created?.error || created?.success === false) {
-        const msg = created?.error || created?.message || "Erro ao criar conta de acesso";
-        if (/already|registrado|exists/i.test(msg)) {
-          toast.error("Este e-mail já está cadastrado. Use outro e-mail para o veterinário.");
-        } else if (/password|senha/i.test(msg)) {
-          toast.error(`Senha inválida: ${msg}`);
-        } else {
-          toast.error(msg);
-        }
-        setSaving(false);
-        return;
-      }
-
-      const newUserId: string | undefined = created?.user?.id;
-      if (!newUserId) {
-        toast.error("Conta criada mas ID não retornado. Tente novamente.");
-        setSaving(false);
-        return;
-      }
+      accountCreated = true;
 
       // 2) Cria a empresa
       const { data: emp, error: e1 } = await (supabase as any)
@@ -139,8 +90,7 @@ export default function AdminSyncVetOnboardingPage() {
         .select("id")
         .single();
       if (e1) {
-        toast.error(`Erro ao criar empresa: ${e1.message}`);
-        setSaving(false);
+        toast.error(PARTIAL_PROFILE_MESSAGE);
         return;
       }
 
@@ -156,15 +106,15 @@ export default function AdminSyncVetOnboardingPage() {
           ativo: true,
         });
       if (e2) {
-        toast.error(`Erro ao vincular veterinário à empresa: ${e2.message}`);
-        setSaving(false);
+        toast.error(PARTIAL_PROFILE_MESSAGE);
         return;
       }
 
-      toast.success("Empresa SyncVet criada com sucesso!");
+      toast.success(uiText("Empresa SyncVet criada com sucesso!"));
       setDone(true);
-    } catch (err) {
-      toast.error(parseInvokeError(err));
+    } catch (err: unknown) {
+      toast.error(accountCreated ? PARTIAL_PROFILE_MESSAGE
+        : err instanceof ProfileProvisioningError ? err.message : "Não foi possível concluir o cadastro.");
     } finally {
       setSaving(false);
     }
@@ -217,7 +167,7 @@ export default function AdminSyncVetOnboardingPage() {
         <div className="text-sm font-semibold text-primary"><LocalizedText source={"Dados da empresa"} /></div>
         <div>
           <Label className="text-xs"><LocalizedText source={"Nome da empresa *"} /></Label>
-          <Input value={nomeEmpresa} onChange={(e) => setNomeEmpresa(e.target.value)} placeholder="Ex: Clínica Veterinária ABC" />
+          <Input value={nomeEmpresa} onChange={(e) => setNomeEmpresa(e.target.value)} placeholder={uiText("Ex: Clínica Veterinária ABC")} />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div>
@@ -258,11 +208,11 @@ export default function AdminSyncVetOnboardingPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div>
             <Label className="text-xs"><LocalizedText source={"Senha *"} /></Label>
-            <PasswordInput value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" />
+            <PasswordInput value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 12 caracteres" />
           </div>
           <div>
             <Label className="text-xs"><LocalizedText source={"Confirmar senha *"} /></Label>
-            <PasswordInput value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} placeholder="Repita a senha" />
+            <PasswordInput value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} placeholder={uiText("Repita a senha")} />
           </div>
         </div>
       </Card>

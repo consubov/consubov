@@ -1,4 +1,6 @@
 import type jsPDF from "jspdf";
+import type { SiteLanguage } from "@/lib/siteLanguage";
+import { translatePdfLabel } from "@/lib/pdfUiLabels";
 
 const GREEN_DARK = "#14432B";
 const GOLD = "#C9A84C";
@@ -44,13 +46,14 @@ function drawYGrid(doc: jsPDF, chartX: number, chartY: number, chartW: number, c
   }
 }
 
-function drawLegend(doc: jsPDF, pageW: number, chartY: number, chartH: number, kind: SampleChartKind) {
+function drawLegend(doc: jsPDF, pageW: number, chartY: number, chartH: number, kind: SampleChartKind, language: SiteLanguage) {
+  const tr = (source: string) => translatePdfLabel(language, source);
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   const centerLabel =
     kind === "pie" || kind === "radar" ? "Distribuição das notas (1 a 5)" : "Amostra (nº sequencial)";
-  doc.text(centerLabel, pageW / 2, chartY + chartH + 12, { align: "center" });
+  doc.text(tr(centerLabel), pageW / 2, chartY + chartH + 12, { align: "center" });
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
@@ -59,7 +62,7 @@ function drawLegend(doc: jsPDF, pageW: number, chartY: number, chartH: number, k
     kind === "pie" || kind === "radar"
       ? "Cada segmento/vértice mostra quantas amostras receberam a nota indicada."
       : "Cada ponto/barra representa uma amostra individual, na ordem de lançamento.";
-  doc.text(hint, pageW / 2, chartY + chartH + 20, { align: "center" });
+  doc.text(tr(hint), pageW / 2, chartY + chartH + 20, { align: "center" });
 }
 
 function drawLinesChart(doc: jsPDF, chartX: number, chartY: number, chartW: number, chartH: number, values: number[]) {
@@ -207,7 +210,9 @@ function drawRadarChart(doc: jsPDF, pageW: number, chartY: number, chartH: numbe
 
 export function drawSampleLineChartPage(
   doc: jsPDF, fazendaNome: string, title: string, samples: number[], kind: SampleChartKind = "lines",
+  language: SiteLanguage = "pt-BR",
 ): boolean {
+  const tr = (source: string) => translatePdfLabel(language, source);
   const filtered = samples.filter(n => Number.isFinite(n) && n > 0);
   if (filtered.length === 0) return false;
 
@@ -217,12 +222,12 @@ export function drawSampleLineChartPage(
   doc.setTextColor(GREEN_DARK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text(title, 15, 26);
+  doc.text(tr(title), 15, 26);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
-  doc.text(`Total de amostras: ${filtered.length}`, 15, 32);
+  doc.text(`${tr("Total de amostras:")} ${filtered.length}`, 15, 32);
 
   const chartX = 25;
   const chartY = 45;
@@ -234,7 +239,7 @@ export function drawSampleLineChartPage(
   else if (kind === "radar") drawRadarChart(doc, pageW, chartY, chartH, filtered);
   else drawLinesChart(doc, chartX, chartY, chartW, chartH, filtered);
 
-  drawLegend(doc, pageW, chartY, chartH, kind);
+  drawLegend(doc, pageW, chartY, chartH, kind, language);
   return true;
 }
 
@@ -247,7 +252,7 @@ export function drawAllSampleChartPages(
   fazendaNome: string,
   series: SampleSeries,
   kinds?: SampleChartTypes,
-  options?: { skipFezes?: boolean },
+  options?: { skipFezes?: boolean; language?: SiteLanguage },
 ) {
   const specs: [string, number[], SampleChartKind][] = [
     ...(options?.skipFezes ? [] : ([["Escore de Fezes — Amostras Individuais", series.fezes || [], kinds?.fezes || "lines"]] as [string, number[], SampleChartKind][])),
@@ -257,7 +262,7 @@ export function drawAllSampleChartPages(
   for (const [title, samples, kind] of specs) {
     if ((samples || []).filter(n => Number.isFinite(n) && n > 0).length === 0) continue;
     doc.addPage();
-    drawSampleLineChartPage(doc, fazendaNome, title, samples, kind);
+    drawSampleLineChartPage(doc, fazendaNome, title, samples, kind, options?.language);
   }
 }
 
@@ -270,11 +275,13 @@ export function drawFezesCategoriaChartPages(
   fazendaNome: string,
   groups: { categoria: string; samples: number[] }[],
   kind: SampleChartKind = "lines",
+  language: SiteLanguage = "pt-BR",
 ) {
+  const tr = (source: string) => translatePdfLabel(language, source);
   for (const g of groups) {
     if ((g.samples || []).filter(n => Number.isFinite(n) && n > 0).length === 0) continue;
     doc.addPage();
-    drawSampleLineChartPage(doc, fazendaNome, `Escore de Fezes - Amostras / ${g.categoria}`, g.samples, kind);
+    drawSampleLineChartPage(doc, fazendaNome, `${tr("Escore de Fezes - Amostras / ")}${g.categoria}`, g.samples, kind, language);
   }
 }
 
@@ -293,7 +300,9 @@ export function drawDualLineChartPage(
   serieB: { name: string; values: number[] },
   axisLabel = "Pasto",
   legenda?: { letra: string; nome: string }[],
+  language: SiteLanguage = "pt-BR",
 ): boolean {
+  const tr = (source: string) => translatePdfLabel(language, source);
 
   const n = Math.min(labels.length, serieA.values.length, serieB.values.length);
   if (n < 2) return false;
@@ -304,7 +313,7 @@ export function drawDualLineChartPage(
   doc.setTextColor(GREEN_DARK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text(title, 15, 26);
+  doc.text(tr(title), 15, 26);
 
   const chartX = 30;
   const chartY = 45;
@@ -329,7 +338,7 @@ export function drawDualLineChartPage(
     const tickVal = (maxY * i) / 5;
     const tickTxt = maxY >= 10
       ? String(Math.round(tickVal))
-      : (Number.isInteger(Number(tickVal.toFixed(1))) ? String(Number(tickVal.toFixed(1))) : tickVal.toFixed(1).replace(".", ","));
+      : (Number.isInteger(Number(tickVal.toFixed(1))) ? String(Number(tickVal.toFixed(1))) : tickVal.toLocaleString(language, { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
     doc.text(tickTxt, chartX - 4, gy + 1, { align: "right" });
   }
 
@@ -337,7 +346,7 @@ export function drawDualLineChartPage(
   const py = (v: number) => chartY + chartH - (chartH * Math.max(0, v)) / maxY;
 
   const fmt = (v: number) =>
-    Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    Number(v).toLocaleString(language, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
   // Desenha as linhas primeiro; os rótulos vêm DEPOIS (ficam na frente).
   const drawLine = (values: number[], color: string) => {
@@ -416,7 +425,7 @@ export function drawDualLineChartPage(
 
   doc.setFontSize(7);
   doc.setTextColor(INK_SOFT);
-  doc.text("Valores em g/cab/dia por pasto avaliado.", pageW / 2, legY + 7, { align: "center" });
+  doc.text(tr("Valores em g/cab/dia por pasto avaliado."), pageW / 2, legY + 7, { align: "center" });
 
   // Tabela de referência letra -> pasto
   const ref = (legenda || []).filter(r => r && r.letra);
@@ -425,7 +434,7 @@ export function drawDualLineChartPage(
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(GREEN_DARK);
-    doc.text("Referência dos Pastos", 15, ty);
+    doc.text(tr("Referência dos Pastos"), 15, ty);
     ty += 5;
 
     // Acima de 16 pastos, usa três colunas para limitar o crescimento vertical.
@@ -480,14 +489,16 @@ export interface CurralFezesInput {
   samples: number[];
 }
 
-const fmt1 = (v: number) =>
-  Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const fmt1 = (v: number, language: SiteLanguage = "pt-BR") =>
+  Number(v).toLocaleString(language, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 export function drawCurralFezesDistribuicaoPage(
   doc: jsPDF,
   fazendaNome: string,
   currais: CurralFezesInput[],
+  language: SiteLanguage = "pt-BR",
 ): boolean {
+  const tr = (source: string) => translatePdfLabel(language, source);
   const rows = currais
     .map(c => {
       const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
@@ -512,12 +523,12 @@ export function drawCurralFezesDistribuicaoPage(
   doc.setTextColor(GREEN_DARK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("Média do escore de fezes por curral", 15, 26);
+  doc.text(tr("Média do escore de fezes por curral"), 15, 26);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
   doc.text(
-    `Média do escore de fezes (${escoresAtivos.join(", ")}) em cada curral`,
+    `${tr("Média do escore de fezes (")}${escoresAtivos.join(", ")}${tr(") em cada curral")}`,
     15,
     31.5,
   );
@@ -543,7 +554,7 @@ export function drawCurralFezesDistribuicaoPage(
   for (let i = 0; i <= TICKS; i++) {
     const gy = chartY + chartH - (chartH * i) / TICKS;
     doc.line(chartX, gy, chartX + chartW, gy);
-    doc.text(fmt1(minY + ((maxY - minY) * i) / TICKS), chartX - 3, gy + 1, { align: "right" });
+    doc.text(fmt1(minY + ((maxY - minY) * i) / TICKS, language), chartX - 3, gy + 1, { align: "right" });
   }
 
   const n = rows.length;
@@ -558,7 +569,7 @@ export function drawCurralFezesDistribuicaoPage(
 
   const valFont = n > 10 ? 5.5 : 6.5;
   for (let i = 0; i < n; i++) {
-    const t = fmt1(rows[i].media);
+    const t = fmt1(rows[i].media, language);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(valFont);
     const w = doc.getTextWidth(t) + 2;
@@ -574,18 +585,18 @@ export function drawCurralFezesDistribuicaoPage(
   doc.setTextColor(INK);
   for (let i = 0; i < n; i++) doc.text(rows[i].label, px(i), chartY + chartH + 5, { align: "center" });
   doc.setFontSize(8);
-  doc.text("Curral", pageW / 2, chartY + chartH + 12, { align: "center" });
+  doc.text(tr("Curral"), pageW / 2, chartY + chartH + 12, { align: "center" });
 
   // ---------- Gráfico 2: barras empilhadas horizontais ----------
   let y = chartY + chartH + 22;
   doc.setTextColor(GREEN_DARK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
-  doc.text("Distribuição do escore de fezes por curral", 15, y);
+  doc.text(tr("Distribuição do escore de fezes por curral"), 15, y);
   y += 6;
 
   // legenda no topo
-  const legendItems: [string, string][] = escoresAtivos.map(k => [`Escore ${k}`, ESC_COLORS[k]]);
+  const legendItems: [string, string][] = escoresAtivos.map(k => [`${tr("Escore ")}${k}`, ESC_COLORS[k]]);
   let lx = 15;
   legendItems.forEach(([label, color]) => {
     doc.setFillColor(color);
@@ -647,7 +658,7 @@ export function drawCurralFezesDistribuicaoPage(
 
   doc.setFillColor("#FAF8F2");
   doc.rect(15, y, pageW - 30, rowH, "F");
-  cell("Escore", 15 + firstColW / 2, y + 4, true, GREEN_DARK);
+  cell(tr("Escore"), 15 + firstColW / 2, y + 4, true, GREEN_DARK);
   headers.forEach((h, i) => cell(h, 15 + firstColW + colW * (i + 0.5), y + 4, true, GREEN_DARK));
   y += rowH;
 
@@ -666,7 +677,7 @@ export function drawCurralFezesDistribuicaoPage(
     doc.rect(15, y, pageW - 30, rowH, "F");
     doc.setFillColor(ESC_COLORS[k]);
     doc.rect(16, y + rowH / 2 - 1.5, 3, 3, "F");
-    cell(`Escore ${k}`, 15 + firstColW / 2 + 2, y + 4, false);
+    cell(`${tr("Escore ")}${k}`, 15 + firstColW / 2 + 2, y + 4, false);
     rows.forEach((r, i) => {
       const pct = r.total ? Math.round((r.counts[k] / r.total) * 100) : 0;
       cell(`${pct}% (${r.counts[k]})`, 15 + firstColW + colW * (i + 0.5), y + 4, false);
@@ -678,7 +689,7 @@ export function drawCurralFezesDistribuicaoPage(
 
   doc.setFillColor("#F0EDE2");
   doc.rect(15, y, pageW - 30, rowH, "F");
-  cell("Total de amostras", 15 + firstColW / 2, y + 4, true, GREEN_DARK);
+  cell(tr("Total de amostras"), 15 + firstColW / 2, y + 4, true, GREEN_DARK);
   rows.forEach((r, i) => cell(String(r.total), 15 + firstColW + colW * (i + 0.5), y + 4, true));
   cell(String(grandTotal), 15 + firstColW + colW * (rows.length + 0.5), y + 4, true, GREEN_DARK);
 

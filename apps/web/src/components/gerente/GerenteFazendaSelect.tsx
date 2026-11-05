@@ -1,3 +1,4 @@
+import { useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -84,18 +85,19 @@ export function useGerenteFazendaAtiva() {
 export function GerenteFazendaSelect({ fazendas, value, onChange, dirty = false }: {
   fazendas: FazendaOpcao[]; value: string; onChange: (id: string) => void; dirty?: boolean;
 }) {
+  const uiText = useStaticUiText();
   if (fazendas.length <= 1) return null;
   return (
     <Select
       value={value}
       onValueChange={(v) => {
         if (v === value) return;
-        if (dirty && !window.confirm("Descartar alterações não salvas?")) return;
+        if (dirty && !window.confirm(uiText("Descartar alterações não salvas?"))) return;
         onChange(v);
       }}
     >
-      <SelectTrigger className="h-9 w-full max-w-[190px]" aria-label="Selecionar fazenda">
-        <SelectValue placeholder="Fazenda" />
+      <SelectTrigger className="h-9 w-full max-w-[190px]" aria-label={uiText("Selecionar fazenda")}>
+        <SelectValue placeholder={uiText("Fazenda")} />
       </SelectTrigger>
       <SelectContent>
         {fazendas.map((f) => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}

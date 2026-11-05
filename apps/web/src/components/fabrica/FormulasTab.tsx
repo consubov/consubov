@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ interface Ingrediente {
 }
 
 export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
+  const uiText = useStaticUiText();
   const [items, setItems] = useState<Formula[]>([]);
   const [materias, setMaterias] = useState<MateriaPrima[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -98,10 +99,10 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
   const diff = pesoBatida > 0 ? ((totalIng - pesoBatida) / pesoBatida) * 100 : 0;
 
   async function handleSave() {
-    if (!form.nome.trim()) return toast.error("Nome é obrigatório");
-    if (!form.produto_id) return toast.error("Selecione o produto produzido");
+    if (!form.nome.trim()) return toast.error(uiText("Nome é obrigatório"));
+    if (!form.produto_id) return toast.error(uiText("Selecione o produto produzido"));
     const validIngs = ingredientes.filter(i => i.materia_prima_id && parseFloat(i.quantidade) > 0);
-    if (validIngs.length === 0) return toast.error("Adicione pelo menos um ingrediente");
+    if (validIngs.length === 0) return toast.error(uiText("Adicione pelo menos um ingrediente"));
 
     setSaving(true);
     try {
@@ -135,20 +136,20 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
       const { error: ingErr } = await supabase.from("formula_ingredientes").insert(rows);
       if (ingErr) throw ingErr;
 
-      toast.success(editingId ? "Fórmula atualizada!" : "Fórmula criada!");
+      toast.success(uiText(editingId ? "Fórmula atualizada!" : "Fórmula criada!"));
       setDialogOpen(false);
       load();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setSaving(false); }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Excluir esta fórmula? Os ingredientes vinculados também serão removidos.")) return;
+    if (!confirm(uiText("Excluir esta fórmula? Os ingredientes vinculados também serão removidos."))) return;
     await supabase.from("formula_ingredientes").delete().eq("formula_id", id);
     const { error } = await supabase.from("formulas_fabrica").delete().eq("id", id);
-    if (error) toast.error("Erro: " + error.message);
-    else { toast.success("Excluída"); load(); }
+    if (error) toast.error(uiText("Erro: ") + error.message);
+    else { toast.success(uiText("Excluída")); load(); }
   }
 
   const prodMap = Object.fromEntries(produtos.map(p => [p.id, p]));
@@ -176,7 +177,7 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
                   <TableHead><LocalizedText source={"Produto"} /></TableHead>
                   <TableHead><LocalizedText source={"Peso batida (kg)"} /></TableHead>
                   <TableHead><LocalizedText source={"Produção esperada (sc)"} /></TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead><LocalizedText source={"Status"} /></TableHead>
                   <TableHead className="w-24 text-right"><LocalizedText source={"Ações"} /></TableHead>
                 </TableRow>
               </TableHeader>
@@ -189,11 +190,11 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
                     <TableCell className="text-sm">{f.produto_id ? (prodMap[f.produto_id]?.nome ?? "—") : <span className="text-destructive text-xs"><LocalizedText source={"sem produto"} /></span>}</TableCell>
                     <TableCell>{f.peso_batida ?? "—"}</TableCell>
                     <TableCell>{f.producao_esperada ?? "—"}</TableCell>
-                    <TableCell><Badge variant={f.ativo ? "default" : "secondary"}>{f.ativo ? "Ativo" : "Inativo"}</Badge></TableCell>
+                    <TableCell><Badge variant={f.ativo ? "default" : "secondary"}>{uiText(f.ativo ? "Ativo" : "Inativo")}</Badge></TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(f)}><Pencil className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(f.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(f)} title={uiText("Editar")} aria-label={uiText("Editar")}><Pencil className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(f.id)} title={uiText("Excluir")} aria-label={uiText("Excluir")}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -207,7 +208,7 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Fórmula" : "Nova Fórmula"}</DialogTitle>
+            <DialogTitle>{uiText(editingId ? "Editar Fórmula" : "Nova Fórmula")}</DialogTitle>
             <DialogDescription><LocalizedText source={"Defina o produto produzido, os ingredientes e a produção esperada."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -216,7 +217,7 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
             <div>
               <Label><LocalizedText source={"Produto Produzido *"} /></Label>
               <Select value={form.produto_id} onValueChange={v => setForm(f => ({ ...f, produto_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione o produto que esta fórmula fabrica" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione o produto que esta fórmula fabrica")} /></SelectTrigger>
                 <SelectContent>
                   {produtos.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
                 </SelectContent>
@@ -244,16 +245,16 @@ export default function FormulasTab({ fabricaId }: { fabricaId: string }) {
                     <div key={idx} className="flex gap-2 items-start">
                       <div className="flex-1">
                         <Select value={ing.materia_prima_id} onValueChange={v => updateIng(idx, { materia_prima_id: v })}>
-                          <SelectTrigger><SelectValue placeholder="Matéria-prima" /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder={uiText("Matéria-prima")} /></SelectTrigger>
                           <SelectContent>
                             {materias.map(m => <SelectItem key={m.id} value={m.id}>{m.nome} ({m.unidade})</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="w-28">
-                        <Input type="number" step="0.01" placeholder="Qtd" value={ing.quantidade} onChange={e => updateIng(idx, { quantidade: e.target.value })} />
+                        <Input type="number" step="0.01" placeholder={uiText("Qtd")} value={ing.quantidade} onChange={e => updateIng(idx, { quantidade: e.target.value })} />
                       </div>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => removeIng(idx)}>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => removeIng(idx)} title={uiText("Remover ingrediente")} aria-label={uiText("Remover ingrediente")}>
                         <X className="w-4 h-4 text-destructive" />
                       </Button>
                     </div>

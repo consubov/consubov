@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ const emptyForm: Form = { nome: "", unidade: "kg", peso_por_saco: "", estoque_mi
 const UNIDADES = ["kg", "saco", "litro", "unidade", "tonelada"];
 
 export default function MateriasPrimasPage() {
+  const uiText = useStaticUiText();
   const [items, setItems] = useState<MateriaPrima[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -64,8 +65,8 @@ export default function MateriasPrimasPage() {
   }
 
   async function handleSave() {
-    if (!form.nome.trim()) return toast.error("Nome é obrigatório");
-    if (!form.unidade.trim()) return toast.error("Unidade é obrigatória");
+    if (!form.nome.trim()) return toast.error(uiText("Nome é obrigatório"));
+    if (!form.unidade.trim()) return toast.error(uiText("Unidade é obrigatória"));
     setSaving(true);
     try {
       const num = (v: string) => { const n = parseFloat(v); return isNaN(n) ? null : n; };
@@ -79,24 +80,24 @@ export default function MateriasPrimasPage() {
       if (editingId) {
         const { error } = await supabase.from("materias_primas").update(payload).eq("id", editingId);
         if (error) throw error;
-        toast.success("Matéria-prima atualizada!");
+        toast.success(uiText("Matéria-prima atualizada!"));
       } else {
         const { error } = await supabase.from("materias_primas").insert(payload as any);
         if (error) throw error;
-        toast.success("Matéria-prima criada!");
+        toast.success(uiText("Matéria-prima criada!"));
       }
       setDialogOpen(false);
       load();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setSaving(false); }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Excluir esta matéria-prima?")) return;
+    if (!confirm(uiText("Excluir esta matéria-prima?"))) return;
     const { error } = await supabase.from("materias_primas").delete().eq("id", id);
-    if (error) toast.error("Erro: " + error.message);
-    else { toast.success("Excluída"); load(); }
+    if (error) toast.error(uiText("Erro: ") + error.message);
+    else { toast.success(uiText("Excluída")); load(); }
   }
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
@@ -141,7 +142,7 @@ export default function MateriasPrimasPage() {
                       </span>
                     </TableCell>
                     <TableCell>{m.estoque_minimo ?? "—"}</TableCell>
-                    <TableCell><Badge variant={m.ativo ? "default" : "secondary"}>{m.ativo ? "Ativo" : "Inativo"}</Badge></TableCell>
+                    <TableCell><Badge variant={m.ativo ? "default" : "secondary"}>{uiText(m.ativo ? "Ativo" : "Inativo")}</Badge></TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => openEdit(m)}><Pencil className="w-4 h-4" /></Button>
@@ -159,7 +160,7 @@ export default function MateriasPrimasPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Matéria-Prima" : "Nova Matéria-Prima"}</DialogTitle>
+            <DialogTitle>{uiText(editingId ? "Editar Matéria-Prima" : "Nova Matéria-Prima")}</DialogTitle>
             <DialogDescription><LocalizedText source={"Estoque atual é atualizado automaticamente pelas entradas."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

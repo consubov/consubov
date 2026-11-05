@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { withReportExportDeadline, downloadGeneratedPdf } from "@/lib/reportPdfExport";
 import { useEffect, useState } from "react";
 import { useMaOffline } from "@/components/maisarrobas/ModoOfflinePanel";
@@ -57,6 +58,8 @@ const CATEGORIA_LABELS: Record<string, string> = {
 };
 
 export default function PesadorPesagemResumoPage() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   useMaOffline(); // re-renderiza quando o Modo Offline desliga sozinho
   const { pesagemId } = useParams<{ pesagemId: string }>();
   const navigate = useNavigate();
@@ -159,7 +162,7 @@ export default function PesadorPesagemResumoPage() {
   const animais = calcularAnimais(cfg, pesos);
   const tot = totalizar(animais);
   const brl = (n: number) =>
-    n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    n.toLocaleString(language, { style: "currency", currency: "BRL" });
 
   const showArroba = !semValores && (cfg.tipo_preco === "arroba" || cfg.tipo_preco === "misto");
 
@@ -193,7 +196,7 @@ export default function PesadorPesagemResumoPage() {
   const fmtHora = (iso: string) => {
     try { return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
   };
-  const dataLinha = finalizadaAt ? new Date(finalizadaAt).toLocaleDateString("pt-BR") : null;
+  const dataLinha = finalizadaAt ? new Date(finalizadaAt).toLocaleDateString(language) : null;
   const horarioLinha = (() => {
     if (!finalizadaAt) return null;
     const hFim = fmtHora(finalizadaAt);
@@ -240,6 +243,7 @@ export default function PesadorPesagemResumoPage() {
       }
 
       const blob = await withReportExportDeadline(gerarPesagemPdf({
+        language,
         header: {
           produtor: clienteNome,
           fazenda: clienteFazenda,
@@ -277,9 +281,9 @@ export default function PesadorPesagemResumoPage() {
       const url = pub.publicUrl;
       await maFrom("pesagens_compra").update({ pdf_url: url }).eq("id", pesagemId);
       setPdfUrl(url);
-      toast({ title: "PDF gerado com sucesso" });
+      toast({ title: uiText("PDF gerado com sucesso") });
     } catch {
-      toast({ title: "Erro ao gerar PDF", description: "Tente novamente.", variant: "destructive" });
+      toast({ title: uiText("Erro ao gerar PDF"), description: uiText("Tente novamente."), variant: "destructive" });
     } finally {
       setGenerating(false);
     }
@@ -287,8 +291,8 @@ export default function PesadorPesagemResumoPage() {
 
   async function handleShare() {
     if (!pdfUrl) return;
-    const title = "Relatório de Pesagem";
-    const text = `Pesagem — ${clienteNome}`;
+    const title = uiText("Relatório de Pesagem");
+    const text = `${uiText("Pesagem — ")}${clienteNome}`;
     const fileName = `pesagem-${(clienteNome || "relatorio").replace(/\s+/g, "_")}.pdf`;
     try {
       const resp = await fetch(pdfUrl);
@@ -306,7 +310,7 @@ export default function PesadorPesagemResumoPage() {
     try {
       await downloadPdfFromUrl(pdfUrl, fileName, { allowRemoteFallback: false });
     } catch {
-      toast({ title: "Não foi possível baixar o PDF", description: "Tente novamente.", variant: "destructive" });
+      toast({ title: "Não foi possível baixar o PDF", description: uiText("Tente novamente."), variant: "destructive" });
     }
   }
 
@@ -316,7 +320,7 @@ export default function PesadorPesagemResumoPage() {
     try {
       await downloadPdfFromUrl(pdfUrl, fileName, { allowRemoteFallback: false });
     } catch {
-      toast({ title: "Não foi possível baixar o PDF", description: "Tente novamente.", variant: "destructive" });
+      toast({ title: "Não foi possível baixar o PDF", description: uiText("Tente novamente."), variant: "destructive" });
     }
   }
 

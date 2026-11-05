@@ -1,5 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { translatePdfLabel } from "@/lib/pdfUiLabels";
+import type { SiteLanguage } from "@/lib/siteLanguage";
 
 export interface AnimalPesagem {
   id: string;
@@ -8,6 +10,8 @@ export interface AnimalPesagem {
 }
 
 export interface PesagemPdfData {
+  /** App display language; pt-BR is the compatible default. */
+  language?: SiteLanguage;
   pesagemId: string;
   fazendaNome: string;
   retiroNome: string;
@@ -37,6 +41,7 @@ function nowFormatted(): string {
 }
 
 export function gerarPdfPesagem(data: PesagemPdfData): { blob: Blob; fileName: string } {
+  const tr = (source: string) => translatePdfLabel(data.language ?? "pt-BR", source);
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -60,7 +65,7 @@ export function gerarPdfPesagem(data: PesagemPdfData): { blob: Blob; fileName: s
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(102, 102, 102);
-  doc.text(`Período: ${formatDate(data.dataPesagem)}`, margin, y);
+  doc.text(`${tr("Período:")} ${formatDate(data.dataPesagem)}`, margin, y);
 
   y += 3;
   doc.setDrawColor(27, 67, 50);
@@ -94,9 +99,9 @@ export function gerarPdfPesagem(data: PesagemPdfData): { blob: Blob; fileName: s
     for (let j = 0; j < 2 && i + j < labels.length; j++) {
       const item = labels[i + j];
       doc.setFont("helvetica", "bold");
-      doc.text(item.label, item.x, yLine);
+      doc.text(tr(item.label), item.x, yLine);
       doc.setFont("helvetica", "normal");
-      doc.text(item.value, item.x + doc.getTextWidth(item.label) + 2, yLine);
+      doc.text(item.value, item.x + doc.getTextWidth(tr(item.label)) + 2, yLine);
     }
     row++;
   }
@@ -124,7 +129,7 @@ export function gerarPdfPesagem(data: PesagemPdfData): { blob: Blob; fileName: s
     doc.setTextColor(107, 114, 128);
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
-    doc.text(summaryItems[i].label, bx + 4, by + 7);
+    doc.text(tr(summaryItems[i].label), bx + 4, by + 7);
     doc.setTextColor(27, 67, 50);
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
@@ -142,7 +147,7 @@ export function gerarPdfPesagem(data: PesagemPdfData): { blob: Blob; fileName: s
 
   autoTable(doc, {
     startY: y,
-    head: [["Nº Animal", "Peso (kg)", "Peso (@)"]],
+    head: [[tr("Nº Animal"), tr("Peso (kg)"), tr("Peso (@)")]],
     body: tableBody,
     margin: { left: margin, right: margin },
     headStyles: {
@@ -169,7 +174,7 @@ export function gerarPdfPesagem(data: PesagemPdfData): { blob: Blob; fileName: s
       doc.setFontSize(7);
       doc.setTextColor(150, 150, 150);
       doc.setFont("helvetica", "normal");
-      doc.text("Gerado por: Consubov", margin, pageHeight - 8);
+      doc.text(tr("Gerado por: Consubov"), margin, pageHeight - 8);
       doc.text(nowFormatted(), pageWidth - margin, pageHeight - 8, { align: "right" });
     },
   });

@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,6 +30,8 @@ interface Entrada {
 }
 
 export default function EntradaMateriasPrimasPage() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const { user } = useAuth();
   const [materias, setMaterias] = useState<Materia[]>([]);
   const [fabricas, setFabricas] = useState<Fabrica[]>([]);
@@ -70,10 +73,10 @@ export default function EntradaMateriasPrimasPage() {
   }
 
   async function handleSave() {
-    if (!materiaId) return toast.error("Selecione a matéria-prima");
-    if (!fabricaId) return toast.error("Selecione a fábrica");
+    if (!materiaId) return toast.error(uiText("Selecione a matéria-prima"));
+    if (!fabricaId) return toast.error(uiText("Selecione a fábrica"));
     const qtd = parseFloat(quantidade);
-    if (!qtd || qtd <= 0) return toast.error("Quantidade inválida");
+    if (!qtd || qtd <= 0) return toast.error(uiText("Quantidade inválida"));
 
     setSaving(true);
     try {
@@ -100,13 +103,13 @@ export default function EntradaMateriasPrimasPage() {
       });
       if (error) throw error;
 
-      toast.success("Entrada registrada! Estoque atualizado.");
+      toast.success(uiText("Entrada registrada! Estoque atualizado."));
       setMateriaId(""); setFabricaId(""); setQuantidade("");
       setDataEntrada(new Date().toISOString().slice(0, 10));
       setObservacao(""); setFoto(null);
       load();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setSaving(false); }
   }
 
@@ -127,7 +130,7 @@ export default function EntradaMateriasPrimasPage() {
             <div>
               <Label><LocalizedText source={"Matéria-Prima *"} /></Label>
               <Select value={materiaId} onValueChange={setMateriaId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione")} /></SelectTrigger>
                 <SelectContent>
                   {materias.map(m => <SelectItem key={m.id} value={m.id}>{m.nome} ({m.unidade})</SelectItem>)}
                 </SelectContent>
@@ -136,7 +139,7 @@ export default function EntradaMateriasPrimasPage() {
             <div>
               <Label><LocalizedText source={"Fábrica *"} /></Label>
               <Select value={fabricaId} onValueChange={setFabricaId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione")} /></SelectTrigger>
                 <SelectContent>
                   {fabricas.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
                 </SelectContent>
@@ -160,12 +163,12 @@ export default function EntradaMateriasPrimasPage() {
             <div className="mt-2 flex items-center gap-3">
               <label className="inline-flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer hover:bg-accent text-sm">
                 <Camera className="w-4 h-4" />
-                {foto ? "Trocar foto" : "Adicionar foto"}
+                {uiText(foto ? "Trocar foto" : "Adicionar foto")}
                 <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFoto} />
               </label>
               {foto && (
                 <div className="relative">
-                  <img src={foto} alt="preview" className="w-16 h-16 rounded object-cover border" />
+                  <img src={foto} alt={uiText("Prévia")} className="w-16 h-16 rounded object-cover border" />
                   <button type="button" onClick={() => setFoto(null)} className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-0.5">
                     <X className="w-3 h-3" />
                   </button>
@@ -200,7 +203,7 @@ export default function EntradaMateriasPrimasPage() {
                   <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6"><LocalizedText source={"Nenhuma entrada registrada"} /></TableCell></TableRow>
                 ) : entradas.map(e => (
                   <TableRow key={e.id}>
-                    <TableCell className="text-xs">{new Date(e.data_entrada).toLocaleDateString("pt-BR")}</TableCell>
+                    <TableCell className="text-xs">{new Date(e.data_entrada).toLocaleDateString(language)}</TableCell>
                     <TableCell>{mpMap[e.materia_prima_id] || "—"}</TableCell>
                     <TableCell>{fbMap[e.fabrica_id] || "—"}</TableCell>
                     <TableCell className="text-right font-medium">{e.quantidade}</TableCell>

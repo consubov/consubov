@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useDietaCategorias } from "@/hooks/useDietaCategorias";
@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { DIETA_CATEGORIAS_FIXAS } from "@/hooks/useDietaCategorias";
 
 export default function ConsultorConfiguracoesPage() {
+  const uiText = useStaticUiText();
   const { roleData } = useAuth();
   const consultorId = roleData?.consultorId ?? null;
   const { categorias, loading, criar, renomear, excluir } = useDietaCategorias(consultorId);
@@ -31,24 +32,24 @@ export default function ConsultorConfiguracoesPage() {
     setSalvando(true);
     const res = await criar(nome);
     setSalvando(false);
-    if (!res) return toast.error("Não foi possível criar a categoria.");
+    if (!res) return toast.error(uiText("Não foi possível criar a categoria."));
     setNova("");
-    toast.success("Categoria criada");
+    toast.success(uiText("Categoria criada"));
   }
 
   async function handleRenomear(id: string) {
     const ok = await renomear(id, editNome);
-    if (!ok) return toast.error("Não foi possível salvar.");
+    if (!ok) return toast.error(uiText("Não foi possível salvar."));
     setEditandoId(null);
-    toast.success("Categoria atualizada");
+    toast.success(uiText("Categoria atualizada"));
   }
 
   async function handleExcluir() {
     if (!excluirAlvo) return;
     const ok = await excluir(excluirAlvo.id);
     setExcluirAlvo(null);
-    if (!ok) return toast.error("Não foi possível excluir.");
-    toast.success("Categoria excluída");
+    if (!ok) return toast.error(uiText("Não foi possível excluir."));
+    toast.success(uiText("Categoria excluída"));
   }
 
   return (
@@ -83,10 +84,10 @@ export default function ConsultorConfiguracoesPage() {
                     {editandoId === cat.id ? (
                       <>
                         <Input value={editNome} onChange={e => setEditNome(e.target.value)} autoFocus />
-                        <Button size="icon" variant="ghost" onClick={() => void handleRenomear(cat.id)} aria-label="Salvar">
+                        <Button size="icon" variant="ghost" onClick={() => void handleRenomear(cat.id)} aria-label={uiText("Salvar")}>
                           <Check className="w-4 h-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => setEditandoId(null)} aria-label="Cancelar">
+                        <Button size="icon" variant="ghost" onClick={() => setEditandoId(null)} aria-label={uiText("Cancelar")}>
                           <X className="w-4 h-4" />
                         </Button>
                       </>
@@ -97,7 +98,7 @@ export default function ConsultorConfiguracoesPage() {
                           size="icon"
                           variant="ghost"
                           onClick={() => { setEditandoId(cat.id); setEditNome(cat.nome); }}
-                          aria-label={`Editar ${cat.nome}`}
+                          aria-label={`${uiText("Editar")} ${cat.nome}`}
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
@@ -106,7 +107,7 @@ export default function ConsultorConfiguracoesPage() {
                           variant="ghost"
                           className="text-destructive"
                           onClick={() => setExcluirAlvo({ id: cat.id, nome: cat.nome })}
-                          aria-label={`Excluir ${cat.nome}`}
+                          aria-label={`${uiText("Excluir")} ${cat.nome}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -122,7 +123,7 @@ export default function ConsultorConfiguracoesPage() {
             <Input
               value={nova}
               onChange={e => setNova(e.target.value)}
-              placeholder="Nova categoria de dieta"
+              placeholder={uiText("Nova categoria de dieta")}
             />
             <Button onClick={() => void handleCriar()} disabled={salvando || !nova.trim()}>
               {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}

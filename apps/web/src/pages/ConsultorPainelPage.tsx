@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +18,8 @@ const RED = "#B91C1C";
 const GRAY = "#94A3B8";
 
 export default function ConsultorPainelPage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState<Periodo>("30d");
@@ -169,10 +172,10 @@ export default function ConsultorPainelPage() {
         <div className="text-center py-10 text-muted-foreground"><LocalizedText source={"Carregando…"} /></div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
-          <MetricCard icon={<Landmark className="w-4 h-4" />} label="Fazendas" value={String(fazendas.length)} />
-          <MetricCard icon={<Calendar className="w-4 h-4" />} label="Visitas (semana)" value={String(visitasSemana)} />
-          <MetricCard icon={<Calendar className="w-4 h-4" />} label="Visitas (mês)" value={String(visitasMes)} />
-          <MetricCard icon={<Beef className="w-4 h-4" />} label="Animais avaliados" value={animaisAvaliados.toLocaleString("pt-BR")} />
+          <MetricCard icon={<Landmark className="w-4 h-4" />} label={uiText("Fazendas")} value={String(fazendas.length)} />
+          <MetricCard icon={<Calendar className="w-4 h-4" />} label={uiText("Visitas (semana)")} value={String(visitasSemana)} />
+          <MetricCard icon={<Calendar className="w-4 h-4" />} label={uiText("Visitas (mês)")} value={String(visitasMes)} />
+          <MetricCard icon={<Beef className="w-4 h-4" />} label={uiText("Animais avaliados")} value={animaisAvaliados.toLocaleString(language)} />
 
           <Card className="p-3 col-span-2">
             <div className="flex items-center gap-2 mb-2">

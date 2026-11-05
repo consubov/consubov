@@ -1,3 +1,4 @@
+import { useTranslation } from "@/hooks/useTranslation";
 import { LocalizedText } from "@/components/i18n/LocalizedText";
 import {
   CartesianGrid,
@@ -23,10 +24,10 @@ const VERDE = "#14432B";
 const OURO = "#A8871F";
 const OURO_LINHA = "#C9A84C";
 
-const fmt = (v: number) => Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+const fmt = (v: number, locale: string) => Number(v).toLocaleString(locale, { maximumFractionDigits: 1 });
 
 /** Rótulo com halo branco, centralizado no próprio ponto e empilhado (maior acima, menor abaixo). */
-function valueLabel(color: string, dados: any[], serie: "real" | "esperado") {
+function valueLabel(color: string, dados: any[], serie: "real" | "esperado", language: string) {
   return (props: any) => {
     const { x, y, value, index } = props;
     if (value == null || x == null || y == null) return null;
@@ -49,7 +50,7 @@ function valueLabel(color: string, dados: any[], serie: "real" | "esperado") {
         strokeLinejoin="round"
         style={{ pointerEvents: "none" }}
       >
-        {fmt(Number(value))}
+        {fmt(Number(value), language)}
       </text>
     );
   };
@@ -109,6 +110,7 @@ function AxisTick(props: any) {
  * Omitido inteiramente quando há menos de 2 pastos com ambos os valores.
  */
 export default function ConsumoPastoChart({ pontos }: { pontos: ConsumoPastoPonto[] }) {
+  const { language } = useTranslation();
   const dados = pontos
     .filter(p => p.real > 0 && p.esperado > 0)
     .map((p, i) => {
@@ -131,13 +133,13 @@ export default function ConsumoPastoChart({ pontos }: { pontos: ConsumoPastoPont
             <XAxis dataKey="eixo" interval={0} height={40} tickLine={false} tick={AxisTick} />
             <YAxis tick={{ fontSize: 11, fill: "#767066" }} />
             <Tooltip
-              formatter={(v: number, name: string) => [fmt(Number(v)), name]}
+              formatter={(v: number, name: string) => [fmt(Number(v), language), name]}
               labelFormatter={(l, p: any) => p?.[0]?.payload?.nome || String(l)}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Customized component={(p: any) => <LeaderLines {...p} dados={dados} />} />
             <Line type="monotone" dataKey="real" name="Consumo Real" stroke={VERDE} strokeWidth={2} dot={{ r: 3 }}>
-              <LabelList dataKey="real" content={valueLabel(VERDE, dados, "real")} />
+              <LabelList dataKey="real" content={valueLabel(VERDE, dados, "real", language)} />
             </Line>
             <Line
               type="monotone"
@@ -147,7 +149,7 @@ export default function ConsumoPastoChart({ pontos }: { pontos: ConsumoPastoPont
               strokeWidth={2}
               dot={{ r: 3 }}
             >
-              <LabelList dataKey="esperado" content={valueLabel(OURO, dados, "esperado")} />
+              <LabelList dataKey="esperado" content={valueLabel(OURO, dados, "esperado", language)} />
             </Line>
           </LineChart>
         </ResponsiveContainer>

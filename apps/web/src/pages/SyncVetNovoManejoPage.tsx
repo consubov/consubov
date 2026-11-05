@@ -1,3 +1,4 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +21,7 @@ type Semen = { id: string; touro: string; codigo: string | null };
 type Equipe = { id: string; nome: string };
 
 export default function SyncVetNovoManejoPage() {
+  const uiText = useStaticUiText();
   const { fazendaId } = useParams<{ fazendaId: string }>();
   const navigate = useNavigate();
 
@@ -98,8 +100,8 @@ export default function SyncVetNovoManejoPage() {
 
   async function handleIniciar() {
     if (!fazendaId) return;
-    if (!loteId) { toast.error("Selecione um lote"); return; }
-    if (!responsavelId) { toast.error("Selecione o responsável"); return; }
+    if (!loteId) { toast.error(uiText("Selecione um lote")); return; }
+    if (!responsavelId) { toast.error(uiText("Selecione o responsável")); return; }
 
     setSaving(true);
     try {
@@ -117,18 +119,18 @@ export default function SyncVetNovoManejoPage() {
       if (tipo === "iatf") {
         payload.fonte_protocolo = fonteProtocolo;
         if (fonteProtocolo === "veterinario") {
-          if (!protocoloId) { toast.error("Selecione o protocolo"); setSaving(false); return; }
+          if (!protocoloId) { toast.error(uiText("Selecione o protocolo")); setSaving(false); return; }
           payload.protocolo_id = protocoloId;
         } else {
-          if (!protocoloFazenda.trim()) { toast.error("Descreva o protocolo da fazenda"); setSaving(false); return; }
+          if (!protocoloFazenda.trim()) { toast.error(uiText("Descreva o protocolo da fazenda")); setSaving(false); return; }
           payload.observacoes = `Protocolo (fazenda): ${protocoloFazenda.trim()}`;
         }
         payload.fonte_semen = fonteSemen;
         if (fonteSemen === "veterinario") {
-          if (!semenId) { toast.error("Selecione o sêmen"); setSaving(false); return; }
+          if (!semenId) { toast.error(uiText("Selecione o sêmen")); setSaving(false); return; }
           payload.semen_id = semenId;
         } else {
-          if (!semenFazenda.trim()) { toast.error("Descreva o sêmen da fazenda"); setSaving(false); return; }
+          if (!semenFazenda.trim()) { toast.error(uiText("Descreva o sêmen da fazenda")); setSaving(false); return; }
           payload.semen_descricao_fazenda = semenFazenda.trim();
         }
       }
@@ -147,10 +149,10 @@ export default function SyncVetNovoManejoPage() {
 
 
 
-      toast.success("Manejo iniciado");
+      toast.success(uiText("Manejo iniciado"));
       navigate(`/syncvet/manejos/${novo.id}/executar`);
     } catch (e: any) {
-      toast.error(e?.message ?? "Erro ao iniciar manejo");
+      toast.error(e?.message ?? uiText("Erro ao iniciar manejo"));
     } finally {
       setSaving(false);
     }
@@ -171,13 +173,13 @@ export default function SyncVetNovoManejoPage() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-xl font-bold">Novo Manejo</h1>
+          <h1 className="text-xl font-bold"><LocalizedText source={"Novo Manejo"} /></h1>
           <p className="text-sm text-muted-foreground">{fazendaNome}</p>
         </div>
       </div>
 
       <Card className="p-4 space-y-3">
-        <Label className="text-xs">Tipo de manejo</Label>
+        <Label className="text-xs"><LocalizedText source={"Tipo de manejo"} /></Label>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {([
             { v: "dg_us", label: "DG/US", icon: ClipboardCheck },
@@ -193,7 +195,7 @@ export default function SyncVetNovoManejoPage() {
               }`}
             >
               <Icon className="w-4 h-4" />
-              {label}
+              {uiText(label)}
             </button>
           ))}
         </div>
@@ -201,32 +203,32 @@ export default function SyncVetNovoManejoPage() {
 
       <Card className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <Label className="text-xs">Lote *</Label>
+          <Label className="text-xs"><LocalizedText source={"Lote *"} /></Label>
           <Select value={loteId} onValueChange={setLoteId}>
-            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={uiText("Selecione")} /></SelectTrigger>
             <SelectContent>
               {lotes.map(l => <SelectItem key={l.id} value={l.id}>{l.nome}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
         <div>
-          <Label className="text-xs">Data</Label>
+          <Label className="text-xs"><LocalizedText source={"Data"} /></Label>
           <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
         </div>
         <div className="sm:col-span-2">
-          <Label className="text-xs">Responsável *</Label>
+          <Label className="text-xs"><LocalizedText source={"Responsável *"} /></Label>
           <Select value={responsavelId} onValueChange={setResponsavelId}>
-            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={uiText("Selecione")} /></SelectTrigger>
             <SelectContent>
               {equipe.map(e => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
         <div className="sm:col-span-2">
-          <Label className="text-xs">Código de Preço (Tabela de Preços)</Label>
+          <Label className="text-xs"><LocalizedText source={"Código de Preço (Tabela de Preços)"} /></Label>
           {precos.length > 0 ? (
             <Select value={codigoPreco} onValueChange={setCodigoPreco}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={uiText("Selecione")} /></SelectTrigger>
               <SelectContent>
                 {precos.map(p => (
                   <SelectItem key={p.tipo_servico} value={p.tipo_servico}>
@@ -239,11 +241,11 @@ export default function SyncVetNovoManejoPage() {
             <Input
               value={codigoPreco}
               onChange={(e) => setCodigoPreco(e.target.value)}
-              placeholder="Ex: DG/US"
+              placeholder={uiText("Ex: DG/US")}
             />
           )}
           <div className="text-[10px] text-muted-foreground mt-1">
-            Usado para buscar o valor na Tabela de Preços ao gerar o serviço.
+            <LocalizedText source={"Usado para buscar o valor na Tabela de Preços ao gerar o serviço."} />
           </div>
         </div>
       </Card>
@@ -251,53 +253,53 @@ export default function SyncVetNovoManejoPage() {
       {tipo === "iatf" && (
         <Card className="p-4 space-y-4">
           <div>
-            <Label className="text-xs">Protocolo</Label>
+            <Label className="text-xs"><LocalizedText source={"Protocolo"} /></Label>
             <RadioGroup value={fonteProtocolo} onValueChange={(v) => setFonteProtocolo(v as any)} className="flex gap-4 mt-1">
-              <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="veterinario" /> Do veterinário</label>
-              <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="fazenda" /> Fornecido pela fazenda</label>
+              <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="veterinario" /> <LocalizedText source={"Do veterinário"} /></label>
+              <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="fazenda" /> <LocalizedText source={"Fornecido pela fazenda"} /></label>
             </RadioGroup>
             {fonteProtocolo === "veterinario" ? (
               <Select value={protocoloId} onValueChange={setProtocoloId}>
-                <SelectTrigger className="mt-2"><SelectValue placeholder="Selecione o protocolo" /></SelectTrigger>
+                <SelectTrigger className="mt-2"><SelectValue placeholder={uiText("Selecione o protocolo")} /></SelectTrigger>
                 <SelectContent>
                   {protocolos.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             ) : (
-              <Input className="mt-2" value={protocoloFazenda} onChange={(e) => setProtocoloFazenda(e.target.value)} placeholder="Descreva o protocolo" />
+              <Input className="mt-2" value={protocoloFazenda} onChange={(e) => setProtocoloFazenda(e.target.value)} placeholder={uiText("Descreva o protocolo")} />
             )}
           </div>
 
           <div>
-            <Label className="text-xs">Sêmen</Label>
+            <Label className="text-xs"><LocalizedText source={"Sêmen"} /></Label>
             <RadioGroup value={fonteSemen} onValueChange={(v) => setFonteSemen(v as any)} className="flex gap-4 mt-1">
-              <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="veterinario" /> Do veterinário</label>
-              <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="fazenda" /> Fornecido pela fazenda</label>
+              <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="veterinario" /> <LocalizedText source={"Do veterinário"} /></label>
+              <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="fazenda" /> <LocalizedText source={"Fornecido pela fazenda"} /></label>
             </RadioGroup>
             {fonteSemen === "veterinario" ? (
               <Select value={semenId} onValueChange={setSemenId}>
-                <SelectTrigger className="mt-2"><SelectValue placeholder="Selecione o sêmen" /></SelectTrigger>
+                <SelectTrigger className="mt-2"><SelectValue placeholder={uiText("Selecione o sêmen")} /></SelectTrigger>
                 <SelectContent>
                   {semens.map(s => <SelectItem key={s.id} value={s.id}>{s.touro}{s.codigo ? ` (${s.codigo})` : ""}</SelectItem>)}
                 </SelectContent>
               </Select>
             ) : (
-              <Input className="mt-2" value={semenFazenda} onChange={(e) => setSemenFazenda(e.target.value)} placeholder="Descreva o sêmen" />
+              <Input className="mt-2" value={semenFazenda} onChange={(e) => setSemenFazenda(e.target.value)} placeholder={uiText("Descreva o sêmen")} />
             )}
           </div>
         </Card>
       )}
 
       <Card className="p-4">
-        <Label className="text-xs">Observações</Label>
+        <Label className="text-xs"><LocalizedText source={"Observações"} /></Label>
         <Textarea value={obs} onChange={(e) => setObs(e.target.value)} rows={3} />
       </Card>
 
       <div className="flex justify-end gap-2 sticky bottom-2">
-        <Button variant="ghost" onClick={() => navigate(`/syncvet/fazendas/${fazendaId}`)}>Cancelar</Button>
+        <Button variant="ghost" onClick={() => navigate(`/syncvet/fazendas/${fazendaId}`)}><LocalizedText source={"Cancelar"} /></Button>
         <Button onClick={handleIniciar} disabled={saving}>
           {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-          Iniciar Manejo
+          <LocalizedText source={"Iniciar Manejo"} />
         </Button>
       </div>
     </div>

@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,6 +50,8 @@ export default function FabricaVisitaView({
   visitaId, visita: initialVisita, fazenda,
 }: { visitaId: string; visita: Visita; fazenda: Fazenda | null }) {
   const navigate = useNavigate();
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const [visita, setVisita] = useState<Visita>(initialVisita);
   const [fazendaAtual, setFazendaAtual] = useState<Fazenda | null>(fazenda);
   const [consultor, setConsultor] = useState<Consultor | null>(null);
@@ -138,20 +141,20 @@ export default function FabricaVisitaView({
   const numeroMap = computeFabricaPhotoNumbering(topicos.map(t => ({ id: t.id, ordem: t.ordem, fotos: t.fotos })));
 
   async function gerarPdf() {
-    if (!fazendaAtual || !consultor) { toast.error("Dados insuficientes"); return; }
+    if (!fazendaAtual || !consultor) { toast.error(uiText("Dados insuficientes")); return; }
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      toast.error("Conecte à internet e sincronize antes de gerar o PDF.");
+      toast.error(uiText("Conecte à internet e sincronize antes de gerar o PDF."));
       return;
     }
     if (await hasPendingLocalChanges(visitaId)) {
-      const tSync = toast.loading("Sincronizando dados desta visita…");
+      const tSync = toast.loading(uiText("Sincronizando dados desta visita…"));
       const { syncVisitaWithRetries } = await import("@/lib/consultorOffline/snapshotStore");
       const result = await syncVisitaWithRetries(visitaId, { attempts: 3, totalTimeoutMs: 90000 });
       toast.dismiss(tSync);
       if (!result.ok) {
         setPendingThisVisit(true);
         const motivo = result.reason || "Ainda há itens pendentes.";
-        toast.error(`Não foi possível sincronizar. ${motivo}. Tentar novamente?`, {
+        toast.error(`${uiText("Não foi possível sincronizar. ")}${motivo}${uiText(". Tentar novamente?")}`, {
           action: { label: "Tentar novamente", onClick: () => void gerarPdf() },
         });
         return;
@@ -159,7 +162,7 @@ export default function FabricaVisitaView({
       setPendingThisVisit(false);
     }
     setGerandoPdf(true);
-    const t = toast.loading("Gerando PDF...");
+    const t = toast.loading(uiText("Gerando PDF..."));
     try {
       // Refetch fresh photos from Supabase (queued: URLs from local state won't resolve)
       const topicosFresh = await Promise.all(topicos.map(async t => {
@@ -173,6 +176,7 @@ export default function FabricaVisitaView({
         topicosFresh.map(t => ({ id: t.id, ordem: t.ordem, fotos: t.fotos }))
       );
       const { blob, fileName } = await generateFabricaPdf({
+        language,
         visitaId,
         fazenda: {
           nome_fazenda: fazendaAtual.nome_fazenda,
@@ -203,11 +207,11 @@ export default function FabricaVisitaView({
       }).eq("id", visitaId), "finalização da visita");
       if (error) throw error;
       toast.dismiss(t);
-      toast.success("PDF gerado e visita finalizada!");
+      toast.success(uiText("PDF gerado e visita finalizada!"));
       navigate("/consultor/historico");
     } catch (err: any) {
       toast.dismiss(t);
-      toast.error("Erro ao gerar PDF: " + getErrorMessage(err));
+      toast.error(uiText("Erro ao gerar PDF: ") + getErrorMessage(err));
     } finally { setGerandoPdf(false); }
   }
 
@@ -329,7 +333,7 @@ export default function FabricaVisitaView({
               setSalvandoOffline(true);
               try {
                 await offlineUpdate({ visitaId, table: "visitas_tecnicas", rowId: visitaId, patch: {} });
-                toast.success("Visita salva off-line. Sincronize quando tiver internet para gerar o PDF.");
+                toast.success(uiText("Visita salva off-line. Sincronize quando tiver internet para gerar o PDF."));
                 navigate("/consultor/historico");
               } finally { setSalvandoOffline(false); }
             }}
@@ -367,7 +371,7 @@ export default function FabricaVisitaView({
               onClick={async () => {
                 try {
                   if (navigator.share) await navigator.share({ title: "Visita técnica Consubov", url: visita.pdf_url! });
-                  else { await navigator.clipboard.writeText(visita.pdf_url!); toast.success("Link copiado!"); }
+                  else { await navigator.clipboard.writeText(visita.pdf_url!); toast.success(uiText("Link copiado!")); }
                 } catch { /* cancel */ }
               }}
             >

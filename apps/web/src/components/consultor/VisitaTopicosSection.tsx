@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { hasPendingLocalChanges, offlineUpdate, offlineUpsert, offlineDelete, loadSnapshot, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
@@ -61,6 +61,7 @@ interface Props {
 }
 
 export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange, numeroMap, zonas }: Props) {
+  const uiText = useStaticUiText();
   const allowedZonas: TopicoZona[] = zonas && zonas.length > 0 ? zonas : ["introducao", "desenvolvimento", "conclusao"];
   const [topicos, setTopicos] = useState<Topico[]>([]);
   const [loading, setLoading] = useState(true);
@@ -159,7 +160,7 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
         return { ...curr, topicos };
       },
     });
-    if (!res.ok && !res.queued) toast.error("Erro ao salvar tópico");
+    if (!res.ok && !res.queued) toast.error(uiText("Erro ao salvar tópico"));
   }
 
   async function addTopico(zona: TopicoZona) {
@@ -179,12 +180,12 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
         topicos: [...(curr.topicos || []), { id, ...p, fotos: [], signed: {} }],
       }),
     });
-    if (res.queued) toast.info("Tópico salvo off-line.");
+    if (res.queued) toast.info(uiText("Tópico salvo off-line."));
     setTopicos(prev => [...prev, { id, ...payload, fotos: [], signed: {} } as Topico]);
   }
 
   async function deleteTopico(t: Topico) {
-    if (!confirm("Remover este tópico?")) return;
+    if (!confirm(uiText("Remover este tópico?"))) return;
     onNotifyEdit?.();
     const deletedAt = new Date().toISOString();
 
@@ -234,7 +235,7 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
   }
 
   async function addFoto(t: Topico, file: File) {
-    if (t.fotos.length >= MAX_FOTOS) { toast.error("Máx. 5 fotos"); return; }
+    if (t.fotos.length >= MAX_FOTOS) { toast.error(uiText("Máx. 5 fotos")); return; }
     onNotifyEdit?.();
     setUploading(t.id);
     try {
@@ -260,10 +261,10 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
           : x),
       }));
       if (typeof navigator !== "undefined" && !navigator.onLine) {
-        toast.info("Foto salva off-line. Sincronize quando houver internet.");
+        toast.info(uiText("Foto salva off-line. Sincronize quando houver internet."));
       }
     } catch (err: any) {
-      toast.error("Erro ao preparar foto: " + (err?.message || ""));
+      toast.error(uiText("Erro ao preparar foto: ") + (err?.message || ""));
     } finally { setUploading(null); }
   }
 
@@ -301,7 +302,7 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
             className="text-[11px] uppercase tracking-wide font-bold px-1"
             style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}
           >
-            {ZONA_LABELS[g.zona]}
+            {uiText(ZONA_LABELS[g.zona])}
           </div>
           {g.items.length === 0 && (
             <div className="rounded-lg border-2 border-dashed p-3 text-center text-[11px] text-muted-foreground"
@@ -337,8 +338,8 @@ export default function VisitaTopicosSection({ visitaId, onNotifyEdit, onChange,
                 className="h-auto py-3 justify-start flex-col items-start"
                 onClick={() => addTopico(z)}
               >
-                <div className="font-semibold text-sm">{ZONA_LABELS[z]}</div>
-                <div className="text-[11px] text-muted-foreground font-normal text-left">{ZONA_HINTS[z]}</div>
+                <div className="font-semibold text-sm">{uiText(ZONA_LABELS[z])}</div>
+                <div className="text-[11px] text-muted-foreground font-normal text-left">{uiText(ZONA_HINTS[z])}</div>
               </Button>
             ))}
           </div>
@@ -361,13 +362,14 @@ function TopicoCard({
   onDelFoto: (t: Topico, f: TopicoFoto) => void;
   onMoveUp?: () => void; onMoveDown?: () => void; onDelete?: () => void;
 }) {
+  const uiText = useStaticUiText();
   const inputId = `topico-foto-${topico.id}`;
   return (
     <div className="rounded-lg border bg-card" style={{ borderColor: "#E7E3D6" }}>
       <div className="flex items-center gap-2 p-3 border-b" style={{ borderColor: "#E7E3D6" }}>
         <Input
           value={topico.titulo}
-          placeholder="Título do tópico"
+          placeholder={uiText("Título do tópico")}
           onChange={e => onUpdate(topico.id, { titulo: e.target.value })}
           onBlur={() => onSave(topico.id, { titulo: topico.titulo })}
           className="h-9 text-sm font-semibold flex-1"
@@ -391,13 +393,13 @@ function TopicoCard({
       <div className="p-3 space-y-3">
         <MentionTextarea
           fieldId={`topico:${topico.id}`}
-          label="Texto do tópico"
+          label={uiText("Texto do tópico")}
           value={topico.texto || ""}
           onChange={v => onUpdate(topico.id, { texto: v })}
           onCommit={v => onSave(topico.id, { texto: v })}
           rows={3}
           className="text-sm"
-          placeholder="Texto do tópico (opcional)"
+          placeholder={uiText("Texto do tópico (opcional)")}
         />
         <div>
           <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: "#767066" }}>

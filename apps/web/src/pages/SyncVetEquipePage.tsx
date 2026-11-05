@@ -1,7 +1,8 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { PARTIAL_PROFILE_MESSAGE, ProfileProvisioningError, provisionProfileUser } from "@/lib/profileProvisioning";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,7 @@ type Membro = {
 };
 
 export default function SyncVetEquipePage() {
+  const uiText = useStaticUiText();
   const { roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
   const [rows, setRows] = useState<Membro[]>([]);
@@ -47,6 +49,7 @@ export default function SyncVetEquipePage() {
   const [telefone, setTelefone] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
   const [saving, setSaving] = useState(false);
 
   async function load() {
@@ -66,31 +69,36 @@ export default function SyncVetEquipePage() {
 
   function openNew() {
     setEditing(null);
-    setNome(""); setPerfil("veterinario"); setTelefone(""); setEmail(""); setSenha("");
+    setNome(""); setPerfil("veterinario"); setTelefone(""); setEmail(""); setSenha(""); setConfirmarSenha("");
     setOpen(true);
   }
   function openEdit(m: Membro) {
     setEditing(m);
     setNome(m.nome); setPerfil(m.perfil); setTelefone(m.telefone ?? "");
-    setEmail(m.email ?? ""); setSenha("");
+    setEmail(m.email ?? ""); setSenha(""); setConfirmarSenha("");
     setOpen(true);
   }
 
   async function handleSave() {
     if (!empresaId) return;
-    if (!nome.trim()) { toast.error("Nome é obrigatório"); return; }
+    if (!nome.trim()) { toast.error(uiText("Nome é obrigatório")); return; }
 
     const emailNorm = email.trim().toLowerCase();
     const wantsAccess = !!emailNorm;
 
     if (wantsAccess && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) {
-      toast.error("Informe um e-mail válido"); return;
+      toast.error(uiText("Informe um e-mail válido")); return;
     }
-    if (!editing && wantsAccess && senha.length < 6) {
-      toast.error("A senha deve ter no mínimo 6 caracteres"); return;
+    if (!editing && wantsAccess && senha.length < 12) {
+      toast.error(uiText("A senha deve ter no mínimo 12 caracteres")); return;
     }
 
+    if (!editing && wantsAccess && senha !== confirmarSenha) {
+      toast.error(uiText("As senhas não coincidem"));
+      return;
+    }
     setSaving(true);
+    let accountCreated = false;
     try {
       if (editing) {
         const { error } = await supabase.from("syncvet_equipe").update({
@@ -100,18 +108,17 @@ export default function SyncVetEquipePage() {
           email: emailNorm || null,
         }).eq("id", editing.id);
         if (error) throw error;
-        toast.success("Membro atualizado");
+        toast.success(uiText("Membro atualizado"));
         setOpen(false); load();
       } else {
         let userId: string | null = null;
         if (wantsAccess) {
-          const { data, error } = await supabase.functions.invoke("create-user", {
-            body: { nome: nome.trim(), email: emailNorm, senha, role: "usuario" },
+          userId = await provisionProfileUser({
+            email: emailNorm,
+            senha,
+            role: "usuario",
           });
-          if (error) throw new Error(error.message || "Falha ao criar acesso");
-          if ((data as any)?.error) throw new Error((data as any).error);
-          userId = (data as any)?.user?.id ?? null;
-          if (!userId) throw new Error("Não foi possível criar o acesso do membro");
+          accountCreated = true;
         }
 
         const payload: any = {
@@ -125,18 +132,19 @@ export default function SyncVetEquipePage() {
         };
         const { error } = await supabase.from("syncvet_equipe").insert(payload);
         if (error) throw error;
-        toast.success(wantsAccess ? "Membro adicionado com acesso" : "Membro adicionado");
+        toast.success(uiText(wantsAccess ? "Membro adicionado com acesso" : "Membro adicionado"));
         setOpen(false); load();
       }
-    } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao salvar");
+    } catch (err: unknown) {
+      toast.error(accountCreated ? PARTIAL_PROFILE_MESSAGE
+        : err instanceof ProfileProvisioningError ? err.message : "Não foi possível salvar o membro.");
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(m: Membro) {
-    if (!confirm(`Remover ${m.nome}?`)) return;
+    if (!confirm(`${uiText("Remover ")}${m.nome}?`)) return;
     try {
       const { data, error } = await supabase.functions.invoke("syncvet-delete-equipe", {
         body: { equipe_id: m.id },
@@ -144,20 +152,20 @@ export default function SyncVetEquipePage() {
       if (error) throw new Error(error.message);
       if ((data as any)?.error) throw new Error((data as any).error);
       if ((data as any)?.deactivated) {
-        toast.success("Este membro tem histórico de manejos e não pode ser excluído — foi desativado em vez disso.");
+        toast.success(uiText("Este membro tem histórico de manejos e não pode ser excluído — foi desativado em vez disso."));
       } else {
-        toast.success("Removido");
+        toast.success(uiText("Removido"));
       }
       load();
     } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao remover");
+      toast.error(e?.message ?? uiText("Falha ao remover"));
     }
   }
 
   async function handleReactivate(m: Membro) {
     const { error } = await supabase.from("syncvet_equipe").update({ ativo: true }).eq("id", m.id);
     if (error) toast.error(error.message);
-    else { toast.success("Reativado"); load(); }
+    else { toast.success(uiText("Reativado")); load(); }
   }
 
   return (
@@ -204,7 +212,10 @@ export default function SyncVetEquipePage() {
                 {!editing && (
                   <div className="mt-2">
                     <Label className="text-xs"><LocalizedText source={"Senha"} />{" "}{email ? "*" : "(opcional)"}</Label>
-                    <Input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                    <Input type="password" autoComplete="new-password" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 12 caracteres" />
+                    <Label className="text-xs">Confirmar senha {email ? "*" : "(opcional)"}</Label>
+                    <Input type="password" autoComplete="new-password" value={confirmarSenha}
+                      onChange={(e) => setConfirmarSenha(e.target.value)} placeholder="Repita a senha" />
                   </div>
                 )}
               </div>

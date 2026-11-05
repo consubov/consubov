@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,6 +41,7 @@ const clienteSchema = z.object({
 });
 
 export default function PesadorClientesPage() {
+  const uiText = useStaticUiText();
   const { roleData } = useAuth();
   const pesadorId = roleData.roleId;
   const navigate = useNavigate();
@@ -69,7 +70,7 @@ export default function PesadorClientesPage() {
       .order("nome", { ascending: true });
     const pending = await getMaPendingRows("clientes_pesador");
     if (error && pending.length === 0) {
-      toast({ title: "Erro ao carregar clientes", description: error.message, variant: "destructive" });
+      toast({ title: uiText("Erro ao carregar clientes"), description: error.message, variant: "destructive" });
     }
     const merged = mergeMaRows((data ?? []) as Cliente[], pending as Cliente[])
       .filter((cliente) => cliente.pesador_id === pesadorId)
@@ -102,14 +103,14 @@ export default function PesadorClientesPage() {
 
   async function handleSave() {
     if (!pesadorId) {
-      toast({ title: "Perfil de pesador não encontrado", variant: "destructive" });
+      toast({ title: uiText("Perfil de pesador não encontrado"), variant: "destructive" });
       return;
     }
     const parsed = clienteSchema.safeParse(form);
     if (!parsed.success) {
       toast({
-        title: "Dados inválidos",
-        description: parsed.error.issues[0]?.message ?? "Verifique os campos.",
+        title: uiText("Dados inválidos"),
+        description: uiText(parsed.error.issues[0]?.message ?? "Verifique os campos."),
         variant: "destructive",
       });
       return;
@@ -131,17 +132,17 @@ export default function PesadorClientesPage() {
         .eq("pesador_id", pesadorId);
       setSaving(false);
       if (error) {
-        toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+        toast({ title: uiText("Erro ao salvar"), description: error.message, variant: "destructive" });
         return;
       }
-      toast({ title: "Cliente atualizado" });
+      toast({ title: uiText("Cliente atualizado") });
     } else {
       const id = crypto.randomUUID();
       const novo: Cliente = { id, ...payload, created_at: new Date().toISOString() };
       enqueueMa(id, { kind: "insert", table: "clientes_pesador", row: novo });
       setClientes((prev) => [...prev, novo].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
       setSaving(false);
-      toast({ title: "Cliente criado" });
+      toast({ title: uiText("Cliente criado") });
     }
     setModalOpen(false);
     if (editing) void loadClientes();
@@ -155,15 +156,15 @@ export default function PesadorClientesPage() {
       .eq("cliente_id", toDelete.id);
     if (cErr) {
       setDeleting(false);
-      toast({ title: "Erro ao verificar pesagens", description: cErr.message, variant: "destructive" });
+      toast({ title: uiText("Erro ao verificar pesagens"), description: cErr.message, variant: "destructive" });
       return;
     }
     if ((count ?? 0) > 0) {
       setDeleting(false);
       setToDelete(null);
       toast({
-        title: "Não é possível apagar",
-        description: "Cliente tem pesagens registradas, não pode ser apagado.",
+        title: uiText("Não é possível apagar"),
+        description: uiText("Cliente tem pesagens registradas, não pode ser apagado."),
         variant: "destructive",
       });
       return;
@@ -174,10 +175,10 @@ export default function PesadorClientesPage() {
       .eq("pesador_id", pesadorId);
     setDeleting(false);
     if (error) {
-      toast({ title: "Erro ao apagar", description: error.message, variant: "destructive" });
+      toast({ title: uiText("Erro ao apagar"), description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "Cliente apagado" });
+    toast({ title: uiText("Cliente apagado") });
     setToDelete(null);
     void loadClientes();
   }
@@ -193,7 +194,7 @@ export default function PesadorClientesPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground"><LocalizedText source={"Clientes"} /></h1>
           <p className="text-sm text-muted-foreground">
-            {clientes.length} <LocalizedText source={"cliente"} />{clientes.length === 1 ? "" : "s"} <LocalizedText source={"cadastrado"} />{clientes.length === 1 ? "" : "s"}
+            {clientes.length} {uiText(clientes.length === 1 ? "cliente cadastrado" : "clientes cadastrados")}
           </p>
         </div>
         <Button onClick={openNew} className="gap-1">
@@ -205,7 +206,7 @@ export default function PesadorClientesPage() {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nome do produtor..."
+          placeholder={uiText("Buscar por nome do produtor...")}
           className="pl-9"
         />
       </div>
@@ -216,9 +217,9 @@ export default function PesadorClientesPage() {
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
           <p className="text-sm text-muted-foreground">
-            {clientes.length === 0
+            {uiText(clientes.length === 0
               ? "Nenhum cliente cadastrado ainda."
-              : "Nenhum cliente encontrado para a busca."}
+              : "Nenhum cliente encontrado para a busca.")}
           </p>
         </div>
       ) : (
@@ -240,7 +241,7 @@ export default function PesadorClientesPage() {
                   variant="outline"
                   onClick={() => openEdit(c)}
                   className="h-8 w-8 p-0"
-                  aria-label="Editar"
+                  aria-label={uiText("Editar")}
                 >
                   <Pencil className="w-4 h-4" />
                 </Button>
@@ -249,7 +250,7 @@ export default function PesadorClientesPage() {
                   variant="outline"
                   onClick={() => setToDelete(c)}
                   className="h-8 w-8 p-0 text-destructive"
-                  aria-label="Apagar"
+                  aria-label={uiText("Apagar")}
                 >
                   <Trash2 className="w-4 h-4" />
                 </Button>
@@ -270,7 +271,7 @@ export default function PesadorClientesPage() {
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
+            <DialogTitle>{uiText(editing ? "Editar Cliente" : "Novo Cliente")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
@@ -315,7 +316,7 @@ export default function PesadorClientesPage() {
             <Button variant="outline" onClick={() => setModalOpen(false)} disabled={saving}>
               <LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : uiText("Salvar")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -334,7 +335,7 @@ export default function PesadorClientesPage() {
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Apagar"}
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : uiText("Apagar")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

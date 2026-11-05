@@ -1,3 +1,4 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +52,7 @@ function proximaLetra(pastos: VisitaPastoRow[]): string {
 }
 
 export default function VisitaTecnicaPage() {
+  const uiText = useStaticUiText();
   const { visitaId } = useParams<{ visitaId: string }>();
   const navigate = useNavigate();
   const [visita, setVisita] = useState<Visita | null>(null);
@@ -104,11 +106,11 @@ export default function VisitaTecnicaPage() {
 
       setPastos(prev => prev.filter(p => p.id !== alvo.id));
       setPastoExcluir(null);
-      toast.success(queued ? "Pasto excluído (será sincronizado)" : "Pasto excluído");
+      toast.success(uiText(queued ? "Pasto excluído (será sincronizado)" : "Pasto excluído"));
       await load();
     } catch (err) {
       console.error("[visita] excluir pasto", err);
-      toast.error("Não foi possível excluir o pasto.");
+      toast.error(uiText("Não foi possível excluir o pasto."));
     } finally {
       setExcluindoPasto(false);
     }
@@ -223,16 +225,16 @@ export default function VisitaTecnicaPage() {
         conclusao: conclusao.trim() || null,
         },
       });
-      toast.success(queued ? "Visita salva off-line." : "Visita finalizada!");
+      toast.success(uiText(queued ? "Visita salva off-line." : "Visita finalizada!"));
       setFinalizarOpen(false);
       load();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setFinalizando(false); }
   }
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
-  if (!visita) return <div className="text-center text-muted-foreground py-12">Visita não encontrada</div>;
+  if (!visita) return <div className="text-center text-muted-foreground py-12"><LocalizedText source={"Visita não encontrada"} /></div>;
 
   if (visita.tipo === "confinamento") {
     return <ConfinamentoVisitaView visitaId={visitaId!} visita={visita as any} fazenda={fazenda} />;
@@ -245,7 +247,7 @@ export default function VisitaTecnicaPage() {
   return (
     <div className="space-y-4">
       <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1 -ml-2">
-        <ArrowLeft className="w-4 h-4" /> Voltar
+        <ArrowLeft className="w-4 h-4" /> <LocalizedText source={"Voltar"} />
       </Button>
 
       <Card className="p-3 bg-primary/5 border-primary/20">
@@ -254,7 +256,7 @@ export default function VisitaTecnicaPage() {
             <div className="font-bold text-foreground truncate">{fazenda?.nome_fazenda || "—"}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
               <Clock className="w-3 h-3" />
-              Início: {format(new Date(visita.hora_inicio), "dd/MM 'às' HH:mm", { locale: ptBR })}
+              <LocalizedText source={"Início:"} /> {format(new Date(visita.hora_inicio), "dd/MM 'às' HH:mm", { locale: ptBR })}
               {visita.hora_fim && ` · Fim: ${format(new Date(visita.hora_fim), "HH:mm", { locale: ptBR })}`}
             </div>
           </div>
@@ -265,17 +267,17 @@ export default function VisitaTecnicaPage() {
       </Card>
 
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-foreground">Pastos avaliados ({pastos.length})</h2>
+        <h2 className="text-sm font-semibold text-foreground"><LocalizedText source={"Pastos avaliados ("} />{pastos.length})</h2>
         {!readOnly && (
           <Button size="sm" onClick={() => { setEditingPasto(null); setModalOpen(true); }} className="gap-1.5 bg-primary hover:bg-primary/90">
-            <Plus className="w-4 h-4" /> Pasto
+            <Plus className="w-4 h-4" /> <LocalizedText source={"Pasto"} />
           </Button>
         )}
       </div>
 
       {pastos.length === 0 ? (
         <Card className="p-6 text-center text-sm text-muted-foreground">
-          Nenhum pasto adicionado ainda.
+          <LocalizedText source={"Nenhum pasto adicionado ainda."} />
         </Card>
       ) : (
         <div className="space-y-2">
@@ -291,7 +293,7 @@ export default function VisitaTecnicaPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-foreground">
-                    Pasto {p.num_pasto || "—"} · {p.qtd_animais ?? "—"} animais
+                    <LocalizedText source={"Pasto"} /> {p.num_pasto || "—"} · {p.qtd_animais ?? "—"} <LocalizedText source={"animais"} />
                   </div>
                   <div className="text-xs text-muted-foreground truncate">
                     {p.tipo_produto || "—"}{p.consumo_kg_dia ? ` · ${p.consumo_kg_dia} kg/dia` : ""}
@@ -341,12 +343,12 @@ export default function VisitaTecnicaPage() {
             disabled={pastos.length === 0}
           >
             {visita.status === "revisao"
-              ? <><FileText className="w-4 h-4" /> Continuar Revisão / Gerar PDF</>
-              : <><FileCheck className="w-4 h-4" /> Revisar Visita</>}
+              ? <><FileText className="w-4 h-4" /> <LocalizedText source={"Continuar Revisão / Gerar PDF"} /></>
+              : <><FileCheck className="w-4 h-4" /> <LocalizedText source={"Revisar Visita"} /></>}
           </Button>
           {pastos.length === 0 && (
             <p className="text-xs text-center text-muted-foreground">
-              Adicione pelo menos um pasto para revisar
+              <LocalizedText source={"Adicione pelo menos um pasto para revisar"} />
             </p>
           )}
         </div>
@@ -356,7 +358,7 @@ export default function VisitaTecnicaPage() {
       {readOnly && visita.pdf_url && (
         <Card className="p-3 space-y-2">
           <div className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <FileText className="w-4 h-4 text-primary" /> Relatório em PDF disponível
+            <FileText className="w-4 h-4 text-primary" /> <LocalizedText source={"Relatório em PDF disponível"} />
           </div>
           <div className="flex gap-2">
             <Button
@@ -365,7 +367,7 @@ export default function VisitaTecnicaPage() {
               className="flex-1 gap-1.5"
               onClick={() => setPdfVisualizar({ url: visita.pdf_url!, nome: fazenda?.nome_fazenda || "visita" })}
             >
-              <FileText className="w-4 h-4" /> Ver / Baixar
+              <FileText className="w-4 h-4" /> <LocalizedText source={"Ver / Baixar"} />
             </Button>
             <Button
               size="sm"
@@ -376,12 +378,12 @@ export default function VisitaTecnicaPage() {
                     await navigator.share({ title: "Visita técnica Consubov", url: visita.pdf_url! });
                   } else {
                     await navigator.clipboard.writeText(visita.pdf_url!);
-                    toast.success("Link copiado!");
+                    toast.success(uiText("Link copiado!"));
                   }
                 } catch { /* cancel */ }
               }}
             >
-              <Share2 className="w-4 h-4" /> Enviar
+              <Share2 className="w-4 h-4" /> <LocalizedText source={"Enviar"} />
             </Button>
           </div>
         </Card>
@@ -392,13 +394,13 @@ export default function VisitaTecnicaPage() {
         <Card className="p-3 space-y-2">
           {visita.observacoes_gerais && (
             <div>
-              <div className="text-xs font-semibold text-muted-foreground">Observações gerais</div>
+              <div className="text-xs font-semibold text-muted-foreground"><LocalizedText source={"Observações gerais"} /></div>
               <div className="text-sm text-foreground whitespace-pre-wrap">{visita.observacoes_gerais}</div>
             </div>
           )}
           {visita.conclusao && (
             <div>
-              <div className="text-xs font-semibold text-muted-foreground">Conclusão</div>
+              <div className="text-xs font-semibold text-muted-foreground"><LocalizedText source={"Conclusão"} /></div>
               <div className="text-sm text-foreground whitespace-pre-wrap">{visita.conclusao}</div>
             </div>
           )}
@@ -418,18 +420,18 @@ export default function VisitaTecnicaPage() {
 
       <AlertDialog open={!!pastoExcluir} onOpenChange={(v) => { if (!v) setPastoExcluir(null); }}>
         <AlertDialogContent>
-          <AlertDialogTitle>Excluir pasto {pastoExcluir?.num_pasto || pastoExcluir?.letra}?</AlertDialogTitle>
+          <AlertDialogTitle><LocalizedText source={"Excluir pasto"} /> {pastoExcluir?.num_pasto || pastoExcluir?.letra}?</AlertDialogTitle>
           <AlertDialogDescription>
-            As informações e notas deste pasto serão removidas desta visita. Esta ação não pode ser desfeita.
+            <LocalizedText source={"As informações e notas deste pasto serão removidas desta visita. Esta ação não pode ser desfeita."} />
           </AlertDialogDescription>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={excluindoPasto}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={excluindoPasto}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => { e.preventDefault(); void handleExcluirPasto(); }}
               disabled={excluindoPasto}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {excluindoPasto ? <Loader2 className="w-4 h-4 animate-spin" /> : "Excluir"}
+              {excluindoPasto ? <Loader2 className="w-4 h-4 animate-spin" /> : uiText("Excluir")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -440,23 +442,23 @@ export default function VisitaTecnicaPage() {
       <Dialog open={finalizarOpen} onOpenChange={setFinalizarOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Finalizar Visita</DialogTitle>
-            <DialogDescription>Adicione as observações gerais e a conclusão da visita.</DialogDescription>
+            <DialogTitle><LocalizedText source={"Finalizar Visita"} /></DialogTitle>
+            <DialogDescription><LocalizedText source={"Adicione as observações gerais e a conclusão da visita."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Observações gerais</Label>
+              <Label><LocalizedText source={"Observações gerais"} /></Label>
               <Textarea rows={3} value={obsGerais} onChange={e => setObsGerais(e.target.value)} />
             </div>
             <div>
-              <Label>Conclusão</Label>
+              <Label><LocalizedText source={"Conclusão"} /></Label>
               <Textarea rows={3} value={conclusao} onChange={e => setConclusao(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setFinalizarOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setFinalizarOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
             <Button onClick={handleFinalizar} disabled={finalizando} className="bg-primary hover:bg-primary/90">
-              {finalizando && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Confirmar
+              {finalizando && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Confirmar"} />
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -464,7 +466,7 @@ export default function VisitaTecnicaPage() {
       <PdfViewerDialog
         url={pdfVisualizar?.url ?? null}
         fileName={pdfVisualizar ? `visita-${pdfVisualizar.nome}.pdf` : undefined}
-        title={pdfVisualizar ? `Relatório — ${pdfVisualizar.nome}` : undefined}
+        title={pdfVisualizar ? `${uiText("Relatório — ")}${pdfVisualizar.nome}` : undefined}
         onClose={() => setPdfVisualizar(null)}
       />
     </div>

@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +31,7 @@ interface Fabrica {
 const emptyForm = { nome: "", descricao: "", ativo: true };
 
 export default function FabricasPage() {
+  const uiText = useStaticUiText();
   const navigate = useNavigate();
   const [fabricas, setFabricas] = useState<Fabrica[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +53,7 @@ export default function FabricasPage() {
   function openNew() { setForm(emptyForm); setDialogOpen(true); }
 
   async function handleSave() {
-    if (!form.nome.trim()) { toast.error("Nome é obrigatório"); return; }
+    if (!form.nome.trim()) { toast.error(uiText("Nome é obrigatório")); return; }
     setSaving(true);
     try {
       const { data, error } = await supabase.from("fabricas").insert({
@@ -64,11 +65,11 @@ export default function FabricasPage() {
       if (data && !data.qr_code) {
         await supabase.from("fabricas").update({ qr_code: data.id }).eq("id", data.id);
       }
-      toast.success(`Fábrica criada: ${data?.codigo || ""}`);
+      toast.success(`${uiText("Fábrica criada: ")}${data?.codigo || ""}`);
       setDialogOpen(false);
       load();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setSaving(false); }
   }
 
@@ -83,11 +84,11 @@ export default function FabricasPage() {
       // Apaga a fábrica
       const { error } = await supabase.from("fabricas").delete().eq("id", fabricaId);
       if (error) throw error;
-      toast.success("Fábrica e operadores removidos.");
+      toast.success(uiText("Fábrica e operadores removidos."));
       setConfirmDel(null);
       load();
     } catch (err: any) {
-      toast.error("Erro ao excluir: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro ao excluir: ") + (err?.message || uiText("desconhecido")));
     } finally { setDeleting(false); }
   }
 
@@ -138,7 +139,7 @@ export default function FabricasPage() {
                 size="icon"
                 className="absolute bottom-2 right-2 h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                 onClick={(e) => { e.stopPropagation(); setConfirmDel(f); }}
-                title="Excluir fábrica"
+                title={uiText("Excluir fábrica")}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>

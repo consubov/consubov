@@ -1,6 +1,8 @@
 import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { translatePdfLabel } from "@/lib/pdfUiLabels";
+import type { SiteLanguage } from "@/lib/siteLanguage";
 import type { AnimalCalc, PesagemCompraCfg } from "./pesagemCompra";
 import { totalizar } from "./pesagemCompra";
 
@@ -27,6 +29,7 @@ export interface LeituraBalancaoPdf {
 }
 
 export interface PesagemPdfData {
+  language?: SiteLanguage;
   header: PesagemPdfHeader;
   cfg: PesagemCompraCfg;
   animais: AnimalCalc[];
@@ -39,24 +42,25 @@ export interface PesagemPdfData {
   leiturasBalancao?: LeituraBalancaoPdf[];
 }
 
-function fmtBRL(v: number) {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+function fmtBRLLocale(v: number, language: SiteLanguage) {
+  return v.toLocaleString(language, { style: "currency", currency: "BRL" });
 }
-function fmtNum(v: number, decimals = 2) {
-  return v.toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+function fmtNumLocale(v: number, decimals: number, language: SiteLanguage) {
+  return v.toLocaleString(language, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
-function fmtDate(iso: string) {
-  try { return new Date(iso).toLocaleDateString("pt-BR"); } catch { return iso; }
+function fmtDateLocale(iso: string, language: SiteLanguage) {
+  try { return new Date(iso).toLocaleDateString(language); } catch { return iso; }
 }
-function fmtHora(iso: string) {
+function fmtHoraLocale(iso: string, language: SiteLanguage) {
   try {
-    return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    return new Date(iso).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" });
   } catch { return ""; }
 }
-function fmtHorarioLinha(dataFim: string, dataInicio?: string | null): string | null {
-  const hFim = fmtHora(dataFim);
-  const hIni = dataInicio ? fmtHora(dataInicio) : "";
-  if (hIni && hFim) return `Início da pesagem: ${hIni}h - Término da pesagem: ${hFim}h`;
+function fmtHorarioLinha(dataFim: string, dataInicio?: string | null, language: SiteLanguage = "pt-BR"): string | null {
+  const tr = (source: string) => translatePdfLabel(language, source);
+  const hFim = fmtHoraLocale(dataFim, language);
+  const hIni = dataInicio ? fmtHoraLocale(dataInicio, language) : "";
+  if (hIni && hFim) return `${tr("Início da pesagem:")} ${hIni}h - ${tr("Término da pesagem:")} ${hFim}h`;
   return null;
 }
 
@@ -85,7 +89,9 @@ function drawFirstPageHeader(
   nomeEmpresa: string,
   pesadorNome: string | null,
   rightLogo: { dataUrl: string; w: number; h: number } | null,
+  language: SiteLanguage,
 ): number {
+  const tr = (source: string) => translatePdfLabel(language, source);
   const W = doc.internal.pageSize.getWidth();
   const topY = 12;
   const HEADER_H = 26; // block height reserved for text/logo
@@ -95,7 +101,7 @@ function drawFirstPageHeader(
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
-  doc.text(nomeEmpresa || "PESADOR", 15, topY + 7);
+  doc.text(nomeEmpresa || tr("PESADOR"), 15, topY + 7);
 
   let y = topY + 13;
   if (pesadorNome) {
@@ -108,7 +114,7 @@ function drawFirstPageHeader(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(INK_SOFT);
-  doc.text("RELATÓRIO DE PESAGEM", 15, y);
+  doc.text(tr("RELATÓRIO DE PESAGEM"), 15, y);
 
   // Right logo — vertically centered inside HEADER_H
   if (rightLogo) {
@@ -141,7 +147,8 @@ const CATEGORIA_LABELS_PDF: Record<string, string> = {
   aleatoria: "Aleatória",
 };
 
-function drawFooter(doc: jsPDF) {
+function drawFooter(doc: jsPDF, language: SiteLanguage) {
+  const tr = (source: string) => translatePdfLabel(language, source);
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const total = doc.getNumberOfPages();
@@ -150,7 +157,7 @@ function drawFooter(doc: jsPDF) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor("#000000");
-    doc.text(`Página ${p} de ${total}`, W - 15, H - 8, { align: "right" });
+    doc.text(`${tr("Página")} ${p}${tr(" de ")}${total}`, W - 15, H - 8, { align: "right" });
     doc.text("consubov.com.br", 15, H - 8);
     doc.text("Mais Arrobas", 15, H - 12);
   }
@@ -266,22 +273,27 @@ function renderChartToDataUrl(pesos: number[]): string | null {
 }
 
 export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
+  const language = data.language ?? "pt-BR";
+  const fmtBRL = (v: number) => fmtBRLLocale(v, language);
+  const fmtNum = (v: number, decimals = 2) => fmtNumLocale(v, decimals, language);
+  const fmtDate = (iso: string) => fmtDateLocale(iso, language);
+  const tr = (source: string) => translatePdfLabel(language, source);
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
 
   const rightLogo = data.pesadorLogoUrl ? await urlToJpeg(data.pesadorLogoUrl) : null;
-  const nomeEmpresa = data.pesadorNomeEmpresa || "PESADOR";
+  const nomeEmpresa = data.pesadorNomeEmpresa || tr("PESADOR");
   const pesadorNome = data.pesadorNome ?? null;
 
   // ===== PAGE 1: header + info + weights grid + chart =====
-  let y = drawFirstPageHeader(doc, nomeEmpresa, pesadorNome, rightLogo);
+  let y = drawFirstPageHeader(doc, nomeEmpresa, pesadorNome, rightLogo, language);
 
   // Info block
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
-  doc.text("Informações da pesagem", 15, y);
+  doc.text(tr("Informações da pesagem"), 15, y);
   y += 6;
 
   const cfg = data.cfg;
@@ -289,17 +301,17 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   const rendimentoLabel =
     cfg.modo_percentual === "fixo" && cfg.percentual_fixo != null
       ? `${fmtNum(cfg.percentual_fixo, 1)}%`
-      : "Variável por animal";
+      : tr("Variável por animal");
 
   const infoRows: [string, string][] = [];
   infoRows.push(["Produtor:", data.header.produtor || "—"]);
   if (data.header.fazenda) infoRows.push(["Fazenda:", data.header.fazenda]);
   if (data.header.cidade) infoRows.push(["Cidade:", data.header.cidade]);
-  const catLabel = cfg.tipo_preco === "misto" ? "Aleatória (mista)" : data.header.categoriaLabel;
+  const catLabel = cfg.tipo_preco === "misto" ? tr("Aleatória (mista)") : data.header.categoriaLabel;
   infoRows.push(["Categoria:", catLabel]);
 
   if (semValores) {
-    infoRows.push(["Tipo:", "Pesagem de rotina (sem valores)"]);
+    infoRows.push(["Tipo:", tr("Pesagem de rotina (sem valores)")]);
     if (data.rendimentoEstimado != null) {
       infoRows.push(["Rendimento estimado:", `${fmtNum(data.rendimentoEstimado, 1)}%`]);
     }
@@ -311,18 +323,18 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   } else if (cfg.tipo_preco === "fixo_animal") {
     infoRows.push(["Preço fixo por animal:", fmtBRL(cfg.preco_valor)]);
   } else if (cfg.tipo_preco === "misto") {
-    infoRows.push(["Forma de pagamento:", "Mista (@ / kg / Fixo por animal)"]);
+    infoRows.push(["Forma de pagamento:", tr("Mista (@ / kg / Fixo por animal)")]);
   }
   infoRows.push(["Data:", fmtDate(data.header.data)]);
-  const horarioLinha = fmtHorarioLinha(data.header.data, data.header.dataInicio);
+  const horarioLinha = fmtHorarioLinha(data.header.data, data.header.dataInicio, language);
   if (horarioLinha) infoRows.push(["", horarioLinha]);
 
   doc.setFontSize(10);
   for (const [label, value] of infoRows) {
     doc.setFont("helvetica", "bold");
     doc.setTextColor(INK);
-    if (label) doc.text(label, 15, y);
-    const labelW = label ? doc.getTextWidth(label) : 0;
+    if (label) doc.text(tr(label), 15, y);
+    const labelW = label ? doc.getTextWidth(tr(label)) : 0;
     const valueX = label ? 15 + labelW + 2 : 15;
     doc.setFont("helvetica", "normal");
     doc.setTextColor(INK);
@@ -375,7 +387,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(INK);
-    doc.text("Pesos registrados (peso vivo):", 15, y);
+    doc.text(tr("Pesos registrados (peso vivo):"), 15, y);
     y += LIST_TITLE_H;
 
     doc.setFont("helvetica", "normal");
@@ -388,7 +400,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
       const tipoInd = (mapped?.tipo_preco ?? a.tipo_preco_individual ?? "kg");
       const parts: string[] = [`${i + 1} - ${fmtNum(a.peso_kg, 0)} kg`, catLabel];
       if (tipoInd === "arroba" && a.percentual_individual != null) {
-        parts.push(`Rend. ${fmtNum(a.percentual_individual, 0)}%`);
+        parts.push(`${tr("Rend. ")}${fmtNum(a.percentual_individual, 0)}%`);
       }
       parts.push(fmtBRL(a.valor));
       doc.text(parts.join(" — "), 15, y);
@@ -421,7 +433,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(INK);
-    doc.text("Pesos registrados (peso vivo):", 15, y);
+    doc.text(tr("Pesos registrados (peso vivo):"), 15, y);
     y += LIST_TITLE_H;
 
     const { cols, rowH, fontSize } = chosen;
@@ -450,7 +462,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(INK);
-    doc.text(`Gráfico de Pesos (1 a ${pesosArr.length})`, 15, y);
+    doc.text(`${tr("Gráfico de Pesos (1 a ")}${pesosArr.length})`, 15, y);
     y += 2;
     const imgW = W - 30;
     const imgH = Math.min(chartH, imgW * (600 / 1400));
@@ -464,7 +476,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
-  doc.text("Totais do Lote", 15, 20);
+  doc.text(tr("Totais do Lote"), 15, 20);
 
   const tipo = cfg.tipo_preco;
   const body: [string, string][] = [];
@@ -473,7 +485,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
   body.push(["Peso médio", `${fmtNum(tot.mediaPeso, 2)} kg`]);
 
   if (semValores) {
-    body.push(["Tipo", "Pesagem de rotina (sem valores)"]);
+    body.push(["Tipo", tr("Pesagem de rotina (sem valores)")]);
     if (data.rendimentoEstimado != null) {
       const arrobasEst = Math.floor((tot.totalPeso * data.rendimentoEstimado / 100 / 15) * 100) / 100;
       const mediaArrobaEst = tot.totalAnimais > 0
@@ -501,7 +513,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
 
   autoTable(doc, {
     startY: 28,
-    body,
+    body: body.map(([key, value]) => [tr(key), value]),
     theme: "grid",
     styles: { fontSize: 10, cellPadding: 3, textColor: INK, lineColor: LINE },
     columnStyles: {
@@ -519,7 +531,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
       doc.setFont("helvetica", "italic");
       doc.setFontSize(9);
       doc.text(
-        "@ estimadas: valor informativo, sem finalidade comercial.",
+        tr("@ estimadas: valor informativo, sem finalidade comercial."),
         15,
         finalY + 10
       );
@@ -530,7 +542,7 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
     doc.setTextColor(255);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text("Valor total a pagar", 22, finalY + 17);
+    doc.text(tr("Valor total a pagar"), 22, finalY + 17);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.text(fmtBRL(data.valorTotalOverride ?? tot.totalValor), 22, finalY + 26);
@@ -542,10 +554,10 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
     doc.setTextColor(INK);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text("Leituras em Balanção", 15, 20);
+    doc.text(tr("Leituras em Balanção"), 15, 20);
     autoTable(doc, {
       startY: 26,
-      head: [["Ordem", "Peso total (kg)", "Qtd animais", "Peso individual (kg)"]],
+      head: [["Ordem", "Peso total (kg)", "Qtd animais", "Peso individual (kg)"].map(tr)],
       body: data.leiturasBalancao.map((l) => [
         `#${l.ordem}`,
         fmtNum(l.peso_total, 2),
@@ -559,6 +571,6 @@ export async function gerarPesagemPdf(data: PesagemPdfData): Promise<Blob> {
     });
   }
 
-  drawFooter(doc);
+  drawFooter(doc, language);
   return doc.output("blob");
 }

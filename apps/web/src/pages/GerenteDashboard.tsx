@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { resolveGerenteAccessScope, gerenteBlockingReadError, type GerenteFazenda } from "@/lib/gerenteAccessScope";
 import { fetchGerenteFazendas } from "@/features/painel/repositories/gerenteFazendasRepository";
 import { useGerenteTemFabrica } from "@/hooks/useGerenteTemFabrica";
@@ -127,8 +127,9 @@ function writeGerenteFiltros(v: GerenteFiltrosSalvos) {
 }
 
 export default function GerenteDashboard() {
+  const uiText = useStaticUiText();
   const { signOut, user, roleData } = useAuth();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const temFabrica = useGerenteTemFabrica() === true;
   const nomeGerentePdf = useNomeUsuario(["gerentes"], "");
   const navigate = useNavigate();
@@ -295,16 +296,17 @@ export default function GerenteDashboard() {
         retiroNome: retiro.nome,
         sinceIso: null,
         responsavelNome: retiro.capataz || gerenteNome,
+        language,
       });
       if (result.empty) {
-        toast.info("Sem salgas recentes para gerar PDF.");
+        toast.info(uiText("Sem salgas recentes para gerar PDF."));
       } else {
         downloadBlob(result.blob, result.fileName);
-        toast.success("PDF baixado");
+        toast.success(uiText("PDF baixado"));
       }
     } catch (e) {
       console.error(e);
-      toast.error("Falha ao gerar PDF");
+      toast.error(uiText("Falha ao gerar PDF"));
     } finally {
       setPdfLoadingByRetiro((m) => ({ ...m, [retiro.id!]: false }));
     }
@@ -318,12 +320,12 @@ export default function GerenteDashboard() {
 
   const handleOpenRetiro = (retiroId?: string) => {
     if (!user) {
-      toast.error("Sua sessão expirou. Faça login novamente.");
+      toast.error(uiText("Sua sessão expirou. Faça login novamente."));
       return;
     }
 
     if (!retiroId) {
-      toast.error("Retiro inválido.");
+      toast.error(uiText("Retiro inválido."));
       return;
     }
 
@@ -572,8 +574,8 @@ export default function GerenteDashboard() {
             <div className="min-w-0 flex-1">
               {fazendasVinculadas.length > 1 && (
                 <Select value={activeFazendaId} onValueChange={setFazendaSelecionadaId}>
-                  <SelectTrigger className="h-9 w-full max-w-[190px]" aria-label="Selecionar fazenda">
-                    <SelectValue placeholder="Fazenda" />
+                  <SelectTrigger className="h-9 w-full max-w-[190px]" aria-label={uiText("Selecionar fazenda")}>
+                    <SelectValue placeholder={uiText("Fazenda")} />
                   </SelectTrigger>
                   <SelectContent>
                     {fazendasVinculadas.map(fazenda => (
@@ -585,8 +587,8 @@ export default function GerenteDashboard() {
             </div>
             {retirosComDados.length > 1 && (
               <Select value={painelRetiroId} onValueChange={setPainelRetiroId}>
-                <SelectTrigger className={GERENTE_FILTER_BOX} aria-label="Selecionar retiro">
-                  <SelectValue placeholder="Retiro" />
+                <SelectTrigger className={GERENTE_FILTER_BOX} aria-label={uiText("Selecionar retiro")}>
+                  <SelectValue placeholder={uiText("Retiro")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos"><LocalizedText source={"Todos os retiros"} /></SelectItem>
@@ -598,8 +600,8 @@ export default function GerenteDashboard() {
             )}
             {produtoFiltro.produtos.length > 0 && (
               <Select value={painelProdutoId} onValueChange={setPainelProdutoId}>
-                <SelectTrigger className={GERENTE_FILTER_BOX} aria-label="Selecionar produto">
-                  <SelectValue placeholder="Produto" />
+                <SelectTrigger className={GERENTE_FILTER_BOX} aria-label={uiText("Selecionar produto")}>
+                  <SelectValue placeholder={uiText("Produto")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos"><LocalizedText source={"Todos os produtos"} /></SelectItem>
@@ -1000,11 +1002,13 @@ function ObservacaoCard({ obs, retiros, onResolve, resolved }: {
   obs: Observacao; retiros: RetiroComDados[];
   onResolve?: () => void; resolved?: boolean;
 }) {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const [fotoOpen, setFotoOpen] = useState(false);
   const retiro = retiros.find(r => r.id === obs.retiro_id);
   const pasto = retiro?.pastos.find(p => p.id === obs.pasto_id);
   const dataStr = obs.criado_em
-    ? new Date(obs.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+    ? new Date(obs.criado_em).toLocaleString(language, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
     : "";
 
   return (
@@ -1050,7 +1054,7 @@ function ObservacaoCard({ obs, retiros, onResolve, resolved }: {
       {/* Full photo modal */}
       <Dialog open={fotoOpen} onOpenChange={setFotoOpen}>
         <DialogContent className="max-w-sm p-2">
-          {obs.foto_url && <img src={obs.foto_url} alt="Observação" className="w-full rounded-lg" />}
+          {obs.foto_url && <img src={obs.foto_url} alt={uiText("Observação")} className="w-full rounded-lg" />}
         </DialogContent>
       </Dialog>
     </>

@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { maFrom, maGetUser } from "@/lib/maOffline";
@@ -77,6 +78,8 @@ type PesagemRow = {
 type CategoriaMap = Record<string, { tipo_preco: any; preco_valor: number }>;
 
 export default function PesadorDashboard() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const [loading, setLoading] = useState(true);
   const [nomePesador, setNomePesador] = useState<string>("");
   const [nomeEmpresa, setNomeEmpresa] = useState<string>("");
@@ -276,8 +279,8 @@ export default function PesadorDashboard() {
     setAppliedMonth(selMonth);
   }
 
-  const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  const fmtNum = (n: number, d = 2) => n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const brl = (n: number) => n.toLocaleString(language, { style: "currency", currency: "BRL" });
+  const fmtNum = (n: number, d = 2) => n.toLocaleString(language, { minimumFractionDigits: d, maximumFractionDigits: d });
 
   if (loading) {
     return (
@@ -304,10 +307,10 @@ export default function PesadorDashboard() {
       <ModoOfflinePanel perfil="pesador" />
 
       <div className="grid grid-cols-2 gap-3">
-        <KpiCard icon={<Scale className="w-4 h-4" />} label="Animais pesados no ano" value={stats.animaisAno.toString()} />
-        <KpiCard icon={<CalendarDays className="w-4 h-4" />} label="Animais pesados no mês" value={stats.animaisMes.toString()} />
-        <KpiCard icon={<Users className="w-4 h-4" />} label="Clientes cadastrados" value={totalClientes.toString()} />
-        <KpiCard icon={<DollarSign className="w-4 h-4" />} label="Valor pago no mês" value={brl(stats.valorMes)} />
+        <KpiCard icon={<Scale className="w-4 h-4" />} label={uiText("Animais pesados no ano")} value={stats.animaisAno.toString()} />
+        <KpiCard icon={<CalendarDays className="w-4 h-4" />} label={uiText("Animais pesados no mês")} value={stats.animaisMes.toString()} />
+        <KpiCard icon={<Users className="w-4 h-4" />} label={uiText("Clientes cadastrados")} value={totalClientes.toString()} />
+        <KpiCard icon={<DollarSign className="w-4 h-4" />} label={uiText("Valor pago no mês")} value={brl(stats.valorMes)} />
       </div>
 
       {/* Seção Financeiro */}
@@ -345,9 +348,9 @@ export default function PesadorDashboard() {
         <Button className="w-full" onClick={aplicarFiltro}><LocalizedText source={"Filtrar"} /></Button>
 
         <div className="grid grid-cols-3 gap-2">
-          <ResumoCard label="Total (R$)" value={brl(financeiro.totalValor)} />
-          <ResumoCard label="Animais" value={financeiro.totalAnimais.toString()} />
-          <ResumoCard label="Arrobas" value={fmtNum(financeiro.totalArrobas, 2)} />
+          <ResumoCard label={uiText("Total (R$)")} value={brl(financeiro.totalValor)} />
+          <ResumoCard label={uiText("Animais")} value={financeiro.totalAnimais.toString()} />
+          <ResumoCard label={uiText("Arrobas")} value={fmtNum(financeiro.totalArrobas, 2)} />
         </div>
 
         <div className="rounded-lg border bg-card p-3">

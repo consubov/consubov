@@ -1,3 +1,4 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +18,7 @@ const OPCOES = [
 ];
 
 export default function SyncVetPreferenciasPage() {
+  const uiText = useStaticUiText();
   const { user, roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
   const fullAccess = isSyncvetFullAccess(roleData.syncvetPerfil);
@@ -46,7 +48,7 @@ export default function SyncVetPreferenciasPage() {
       setSelected(new Set((prefs || []).map(p => p.horas_antes as number)));
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao carregar preferências");
+      toast.error(uiText("Erro ao carregar preferências"));
     } finally {
       setLoading(false);
     }
@@ -63,7 +65,7 @@ export default function SyncVetPreferenciasPage() {
   }
 
   async function save() {
-    if (!equipeId) { toast.error("Perfil de equipe não encontrado"); return; }
+    if (!equipeId) { toast.error(uiText("Perfil de equipe não encontrado")); return; }
     setSaving(true);
     try {
       const { error: delErr } = await supabase
@@ -78,10 +80,10 @@ export default function SyncVetPreferenciasPage() {
           .insert(rows);
         if (insErr) throw insErr;
       }
-      toast.success("Preferências salvas");
+      toast.success(uiText("Preferências salvas"));
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao salvar preferências");
+      toast.error(uiText("Erro ao salvar preferências"));
     } finally {
       setSaving(false);
     }
@@ -90,7 +92,7 @@ export default function SyncVetPreferenciasPage() {
   return (
     <div className="space-y-4 max-w-lg">
       <h1 className="text-lg font-bold text-primary">
-        {fullAccess ? "Configurações & Financeiro" : "Configurações"}
+        {fullAccess ? uiText("Configurações & Financeiro") : uiText("Configurações")}
       </h1>
 
       {fullAccess && (
@@ -109,8 +111,8 @@ export default function SyncVetPreferenciasPage() {
                   <it.icon className="w-5 h-5 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold">{it.label}</div>
-                  <div className="text-xs text-muted-foreground">{it.desc}</div>
+                  <div className="text-sm font-semibold">{uiText(it.label)}</div>
+                  <div className="text-xs text-muted-foreground">{uiText(it.desc)}</div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </Card>
@@ -120,13 +122,12 @@ export default function SyncVetPreferenciasPage() {
       )}
 
       <h2 className="text-base font-bold text-primary flex items-center gap-2 pt-2">
-        <Bell className="w-4 h-4" /> Notificações de Manejo
+        <Bell className="w-4 h-4" /> <LocalizedText source={"Notificações de Manejo"} />
       </h2>
 
       <Card className="p-4 space-y-3">
         <p className="text-sm text-muted-foreground">
-          Com quanto tempo de antecedência você quer ser avisado dos manejos programados?
-          Você pode selecionar mais de uma opção.
+          <LocalizedText source={"Com quanto tempo de antecedência você quer ser avisado dos manejos programados? Você pode selecionar mais de uma opção."} />
         </p>
 
         {loading ? (
@@ -135,7 +136,7 @@ export default function SyncVetPreferenciasPage() {
           </div>
         ) : !equipeId ? (
           <div className="text-sm text-muted-foreground italic">
-            Seu usuário ainda não está vinculado a uma equipe syncvet.
+            <LocalizedText source={"Seu usuário ainda não está vinculado a uma equipe syncvet."} />
           </div>
         ) : (
           <div className="space-y-2">
@@ -147,7 +148,7 @@ export default function SyncVetPreferenciasPage() {
                   className="flex items-center gap-3 rounded-md border border-border p-3 cursor-pointer hover:bg-muted/40"
                 >
                   <Checkbox checked={checked} onCheckedChange={() => toggle(op.horas)} />
-                  <span className="text-sm">{op.label}</span>
+                  <span className="text-sm">{uiText(op.label)}</span>
                 </label>
               );
             })}
@@ -156,7 +157,7 @@ export default function SyncVetPreferenciasPage() {
 
         <div className="flex justify-end pt-2">
           <Button onClick={save} disabled={saving || loading || !equipeId}>
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : uiText("Salvar")}
           </Button>
         </div>
       </Card>

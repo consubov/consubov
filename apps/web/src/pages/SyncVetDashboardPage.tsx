@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,11 +43,13 @@ function lastOfMonthISO() {
   const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
   return last.toISOString().slice(0, 10);
 }
-function fmtBRL(v: number) {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+function fmtBRL(v: number, language: "pt-BR" | "en-US") {
+  return v.toLocaleString(language, { style: "currency", currency: "BRL" });
 }
 
 export default function SyncVetDashboardPage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const { roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
 
@@ -233,7 +236,7 @@ export default function SyncVetDashboardPage() {
         <Card className="p-3 col-span-2 sm:col-span-3 bg-primary/5 border-primary/30">
           <div className="flex items-center gap-2 text-muted-foreground text-[11px]">
             <TrendingUp className="w-3.5 h-3.5" /> <LocalizedText source={"Receita do mês (serviços pagos)"} /></div>
-          <div className="text-2xl font-bold text-primary mt-1">{fmtBRL(kpis?.receitaMes ?? 0)}</div>
+          <div className="text-2xl font-bold text-primary mt-1">{fmtBRL(kpis?.receitaMes ?? 0, language)}</div>
         </Card>
       </div>
 
@@ -243,21 +246,21 @@ export default function SyncVetDashboardPage() {
         <Card className="p-3 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <Select value={fFaz} onValueChange={setFFaz}>
-              <SelectTrigger><SelectValue placeholder="Fazenda" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={uiText("Fazenda")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all"><LocalizedText source={"Todas as fazendas"} /></SelectItem>
                 {fazendas.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={fVet} onValueChange={setFVet}>
-              <SelectTrigger><SelectValue placeholder="Veterinário" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={uiText("Veterinário")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all"><LocalizedText source={"Todos os veterinários"} /></SelectItem>
                 {equipe.map(e => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={fProt} onValueChange={setFProt}>
-              <SelectTrigger><SelectValue placeholder="Protocolo" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={uiText("Protocolo")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all"><LocalizedText source={"Todos os protocolos"} /></SelectItem>
                 {protocolos.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}

@@ -1,7 +1,9 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { ProfileProvisioningError, PARTIAL_PROFILE_MESSAGE, provisionProfileUser } from "@/lib/profileProvisioning";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +59,7 @@ interface Entrada {
 const UNIDADES = ["kg", "saco", "litro", "unidade", "tonelada"];
 
 export default function FabricaDetailPage() {
+  const uiText = useStaticUiText();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [fabrica, setFabrica] = useState<Fabrica | null>(null);
@@ -93,7 +96,7 @@ export default function FabricaDetailPage() {
           <h1 className="text-xl font-bold text-foreground leading-tight">{fabrica.nome}</h1>
           <p className="text-xs font-mono text-muted-foreground">{fabrica.codigo}</p>
         </div>
-        <Badge className="ml-2" variant={fabrica.ativo ? "default" : "secondary"}>{fabrica.ativo ? "Ativo" : "Inativo"}</Badge>
+        <Badge className="ml-2" variant={fabrica.ativo ? "default" : "secondary"}>{uiText(fabrica.ativo ? "Ativo" : "Inativo")}</Badge>
       </div>
 
       <Tabs defaultValue="info" className="w-full">
@@ -138,6 +141,7 @@ export default function FabricaDetailPage() {
 /* -------------------- INFO TAB -------------------- */
 
 function InfoTab({ fabrica, onSaved }: { fabrica: Fabrica; onSaved: () => void }) {
+  const uiText = useStaticUiText();
   const [editOpen, setEditOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [destOpen, setDestOpen] = useState(false);
@@ -181,9 +185,9 @@ function InfoTab({ fabrica, onSaved }: { fabrica: Fabrica; onSaved: () => void }
         const { error } = await supabase.from("fabrica_destinos").insert(rows);
         if (error) throw error;
       }
-      toast.success("Destinos salvos!");
+      toast.success(uiText("Destinos salvos!"));
       setDestOpen(false);
-    } catch (err: any) { toast.error("Erro: " + err.message); }
+    } catch (err: any) { toast.error(uiText("Erro: ") + err.message); }
     finally { setSaving(false); }
   }
 
@@ -194,7 +198,7 @@ function InfoTab({ fabrica, onSaved }: { fabrica: Fabrica; onSaved: () => void }
   }
 
   async function handleSave() {
-    if (!form.nome.trim()) { toast.error("Nome é obrigatório"); return; }
+    if (!form.nome.trim()) { toast.error(uiText("Nome é obrigatório")); return; }
     setSaving(true);
     try {
       const { error } = await supabase.from("fabricas").update({
@@ -203,18 +207,18 @@ function InfoTab({ fabrica, onSaved }: { fabrica: Fabrica; onSaved: () => void }
         ativo: form.ativo,
       }).eq("id", fabrica.id);
       if (error) throw error;
-      toast.success("Atualizada!");
+      toast.success(uiText("Atualizada!"));
       setEditOpen(false);
       onSaved();
-    } catch (err: any) { toast.error("Erro: " + err.message); }
+    } catch (err: any) { toast.error(uiText("Erro: ") + err.message); }
     finally { setSaving(false); }
   }
 
   async function handleDelete() {
-    if (!confirm("Excluir esta fábrica?")) return;
+    if (!confirm(uiText("Excluir esta fábrica?"))) return;
     const { error } = await supabase.from("fabricas").delete().eq("id", fabrica.id);
-    if (error) toast.error("Erro: " + error.message);
-    else { toast.success("Excluída"); window.location.href = "/admin/fabricas"; }
+    if (error) toast.error(uiText("Erro: ") + error.message);
+    else { toast.success(uiText("Excluída")); window.location.href = "/admin/fabricas"; }
   }
 
   function downloadQrSvg() {
@@ -236,13 +240,13 @@ function InfoTab({ fabrica, onSaved }: { fabrica: Fabrica; onSaved: () => void }
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pageW = pdf.internal.pageSize.getWidth();
       pdf.setFont("helvetica", "bold"); pdf.setFontSize(20);
-      pdf.text(`Fábrica — ${fabrica.nome}`, pageW / 2, 30, { align: "center" });
+      pdf.text(`${uiText("Fábrica — ")}${fabrica.nome}`, pageW / 2, 30, { align: "center" });
       pdf.setFont("helvetica", "normal"); pdf.setFontSize(14);
-      pdf.text(`Código: ${fabrica.codigo || ""}`, pageW / 2, 42, { align: "center" });
+      pdf.text(`${uiText("Código: ")}${fabrica.codigo || ""}`, pageW / 2, 42, { align: "center" });
       const size = 130;
       pdf.addImage(dataUrl, "PNG", (pageW - size) / 2, 60, size, size);
       pdf.save(`${fabrica.codigo || "fabrica"}.pdf`);
-    } catch { toast.error("Erro ao gerar PDF"); }
+    } catch { toast.error(uiText("Erro ao gerar PDF")); }
   }
 
   return (
@@ -344,11 +348,12 @@ function InfoTab({ fabrica, onSaved }: { fabrica: Fabrica; onSaved: () => void }
 /* -------------------- OPERADORES TAB -------------------- */
 
 function OperadoresTab({ fabricaId }: { fabricaId: string }) {
+  const uiText = useStaticUiText();
   const [items, setItems] = useState<Operador[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ nome: "", email: "", telefone: "", senha: "", ativo: true });
+  const [form, setForm] = useState({ nome: "", email: "", telefone: "", senha: "", confirmarSenha: "", ativo: true });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { load(); }, [fabricaId]);
@@ -362,57 +367,60 @@ function OperadoresTab({ fabricaId }: { fabricaId: string }) {
 
   function openNew() {
     setEditingId(null);
-    setForm({ nome: "", email: "", telefone: "", senha: "", ativo: true });
+    setForm({ nome: "", email: "", telefone: "", senha: "", confirmarSenha: "", ativo: true });
     setDialogOpen(true);
   }
   function openEdit(o: Operador) {
     setEditingId(o.id);
-    setForm({ nome: o.nome, email: o.email || "", telefone: o.telefone || "", senha: "", ativo: o.ativo ?? true });
+    setForm({ nome: o.nome, email: o.email || "", telefone: o.telefone || "", senha: "", confirmarSenha: "", ativo: o.ativo ?? true });
     setDialogOpen(true);
   }
 
   async function handleSave() {
-    if (!form.nome.trim()) return toast.error("Nome é obrigatório");
+    if (!form.nome.trim()) return toast.error(uiText("Nome é obrigatório"));
     if (!editingId) {
-      if (!form.email.trim()) return toast.error("Email é obrigatório");
-      if (form.senha.length < 6) return toast.error("Senha mínima 6 caracteres");
+      if (!form.email.trim()) return toast.error(uiText("Email é obrigatório"));
+      if (form.senha.length < 12) return toast.error(uiText("Senha mínima 12 caracteres"));
+      if (form.senha !== form.confirmarSenha) return toast.error(uiText("As senhas não coincidem"));
     }
     setSaving(true);
+    let accountCreated = false;
     try {
       if (editingId) {
         const { error } = await supabase.from("operadores_fabrica").update({
           nome: form.nome.trim(), telefone: form.telefone.trim() || null, ativo: form.ativo,
         }).eq("id", editingId);
         if (error) throw error;
-        toast.success("Atualizado!");
+        toast.success(uiText("Atualizado!"));
       } else {
-        const res = await supabase.functions.invoke("create-user", {
-          body: { email: form.email.trim(), password: form.senha, role: "usuario" },
+        const userId = await provisionProfileUser({
+          email: form.email,
+          senha: form.senha,
+          role: "usuario",
         });
-        if (res.error) throw new Error(res.error.message || "Falha ao criar usuário");
-        const respData: any = res.data;
-        if (respData?.error) throw new Error(respData.error);
-        const userId = respData?.user?.id;
-        if (!userId) throw new Error("ID do usuário não retornado");
+        accountCreated = true;
+
         const { error } = await supabase.from("operadores_fabrica").insert({
           nome: form.nome.trim(), email: form.email.trim(),
           telefone: form.telefone.trim() || null,
           fabrica_id: fabricaId, user_id: userId, ativo: form.ativo,
         });
         if (error) throw error;
-        toast.success("Operador criado!");
+        toast.success(uiText("Operador criado!"));
       }
       setDialogOpen(false);
       load();
-    } catch (err: any) { toast.error("Erro: " + (err?.message || "desconhecido")); }
-    finally { setSaving(false); }
+    } catch (err: unknown) {
+      toast.error(accountCreated ? PARTIAL_PROFILE_MESSAGE
+        : err instanceof ProfileProvisioningError ? err.message : "Não foi possível salvar operador.");
+    } finally { setSaving(false); }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Excluir este operador?")) return;
+    if (!confirm(uiText("Excluir este operador?"))) return;
     const { error } = await supabase.from("operadores_fabrica").delete().eq("id", id);
-    if (error) toast.error("Erro: " + error.message);
-    else { toast.success("Excluído"); load(); }
+    if (error) toast.error(uiText("Erro: ") + error.message);
+    else { toast.success(uiText("Excluído")); load(); }
   }
 
   return (
@@ -431,7 +439,7 @@ function OperadoresTab({ fabricaId }: { fabricaId: string }) {
               <TableHeader>
                 <TableRow>
                   <TableHead><LocalizedText source={"Nome"} /></TableHead><TableHead>Email</TableHead><TableHead><LocalizedText source={"Telefone"} /></TableHead>
-                  <TableHead>Status</TableHead><TableHead className="w-24 text-right"><LocalizedText source={"Ações"} /></TableHead>
+                  <TableHead><LocalizedText source={"Status"} /></TableHead><TableHead className="w-24 text-right"><LocalizedText source={"Ações"} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -442,7 +450,7 @@ function OperadoresTab({ fabricaId }: { fabricaId: string }) {
                     <TableCell className="font-medium">{o.nome}</TableCell>
                     <TableCell>{o.email || "—"}</TableCell>
                     <TableCell>{o.telefone || "—"}</TableCell>
-                    <TableCell><Badge variant={o.ativo ? "default" : "secondary"}>{o.ativo ? "Ativo" : "Inativo"}</Badge></TableCell>
+                    <TableCell><Badge variant={o.ativo ? "default" : "secondary"}>{uiText(o.ativo ? "Ativo" : "Inativo")}</Badge></TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => openEdit(o)}><Pencil className="w-4 h-4" /></Button>
@@ -460,14 +468,17 @@ function OperadoresTab({ fabricaId }: { fabricaId: string }) {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Operador" : "Novo Operador"}</DialogTitle>
+            <DialogTitle>{uiText(editingId ? "Editar Operador" : "Novo Operador")}</DialogTitle>
             <DialogDescription><LocalizedText source={"Vinculado automaticamente a esta fábrica."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div><Label><LocalizedText source={"Nome *"} /></Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
             <div><Label>Email {editingId ? "" : "*"}</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} disabled={!!editingId} /></div>
             {!editingId && (
-              <div><Label><LocalizedText source={"Senha *"} /></Label><Input type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} placeholder="Mínimo 6 caracteres" /></div>
+              <>
+              <div><Label><LocalizedText source={"Senha *"} /></Label><Input type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} placeholder="Mínimo 12 caracteres" /></div>
+              <div><Label>Confirmar senha *</Label><Input type="password" autoComplete="new-password" value={form.confirmarSenha} onChange={e => setForm(f => ({ ...f, confirmarSenha: e.target.value }))} placeholder="Repita a senha" /></div>
+              </>
             )}
             <div><Label><LocalizedText source={"Telefone"} /></Label><Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} /></div>
             <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={v => setForm(f => ({ ...f, ativo: v }))} /><Label><LocalizedText source={"Ativo"} /></Label></div>
@@ -486,6 +497,7 @@ function OperadoresTab({ fabricaId }: { fabricaId: string }) {
 /* -------------------- MATÉRIAS-PRIMAS TAB -------------------- */
 
 function MateriasTab({ fabricaId }: { fabricaId: string }) {
+  const uiText = useStaticUiText();
   const [items, setItems] = useState<MateriaPrima[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -519,7 +531,7 @@ function MateriasTab({ fabricaId }: { fabricaId: string }) {
   }
 
   async function handleSave() {
-    if (!form.nome.trim()) return toast.error("Nome é obrigatório");
+    if (!form.nome.trim()) return toast.error(uiText("Nome é obrigatório"));
     setSaving(true);
     try {
       const num = (v: string) => { const n = parseFloat(v); return isNaN(n) ? null : n; };
@@ -534,23 +546,23 @@ function MateriasTab({ fabricaId }: { fabricaId: string }) {
       if (editingId) {
         const { error } = await supabase.from("materias_primas").update(payload).eq("id", editingId);
         if (error) throw error;
-        toast.success("Atualizada!");
+        toast.success(uiText("Atualizada!"));
       } else {
         const { error } = await supabase.from("materias_primas").insert(payload);
         if (error) throw error;
-        toast.success("Criada!");
+        toast.success(uiText("Criada!"));
       }
       setDialogOpen(false);
       load();
-    } catch (err: any) { toast.error("Erro: " + (err?.message || "desconhecido")); }
+    } catch (err: any) { toast.error(uiText("Erro: ") + (err?.message || "desconhecido")); }
     finally { setSaving(false); }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Excluir esta matéria-prima?")) return;
+    if (!confirm(uiText("Excluir esta matéria-prima?"))) return;
     const { error } = await supabase.from("materias_primas").delete().eq("id", id);
-    if (error) toast.error("Erro: " + error.message);
-    else { toast.success("Excluída"); load(); }
+    if (error) toast.error(uiText("Erro: ") + error.message);
+    else { toast.success(uiText("Excluída")); load(); }
   }
 
   return (
@@ -570,7 +582,7 @@ function MateriasTab({ fabricaId }: { fabricaId: string }) {
                 <TableRow>
                   <TableHead><LocalizedText source={"Nome"} /></TableHead><TableHead><LocalizedText source={"Unidade"} /></TableHead><TableHead><LocalizedText source={"Peso/saco"} /></TableHead>
                   <TableHead><LocalizedText source={"Estoque"} /></TableHead><TableHead><LocalizedText source={"Mín."} /></TableHead>
-                  <TableHead>Status</TableHead><TableHead className="w-24 text-right"><LocalizedText source={"Ações"} /></TableHead>
+                  <TableHead><LocalizedText source={"Status"} /></TableHead><TableHead className="w-24 text-right"><LocalizedText source={"Ações"} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -590,7 +602,7 @@ function MateriasTab({ fabricaId }: { fabricaId: string }) {
                         </span>
                       </TableCell>
                       <TableCell>{m.estoque_minimo ?? "—"}</TableCell>
-                      <TableCell><Badge variant={m.ativo ? "default" : "secondary"}>{m.ativo ? "Ativo" : "Inativo"}</Badge></TableCell>
+                      <TableCell><Badge variant={m.ativo ? "default" : "secondary"}>{uiText(m.ativo ? "Ativo" : "Inativo")}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="icon" onClick={() => openEdit(m)}><Pencil className="w-4 h-4" /></Button>
@@ -609,7 +621,7 @@ function MateriasTab({ fabricaId }: { fabricaId: string }) {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Matéria-Prima" : "Nova Matéria-Prima"}</DialogTitle>
+            <DialogTitle>{uiText(editingId ? "Editar Matéria-Prima" : "Nova Matéria-Prima")}</DialogTitle>
             <DialogDescription><LocalizedText source={"Vinculada automaticamente a esta fábrica. Estoque atualiza pelas entradas."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -643,6 +655,8 @@ function MateriasTab({ fabricaId }: { fabricaId: string }) {
 /* -------------------- ENTRADAS TAB -------------------- */
 
 function EntradasTab({ fabricaId }: { fabricaId: string }) {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const { user } = useAuth();
   const [materias, setMaterias] = useState<MateriaPrima[]>([]);
   const [entradas, setEntradas] = useState<Entrada[]>([]);
@@ -690,10 +704,10 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Excluir esta entrada? O estoque será ajustado automaticamente.")) return;
+    if (!confirm(uiText("Excluir esta entrada? O estoque será ajustado automaticamente."))) return;
     const { error } = await supabase.from("entradas_materias_primas").delete().eq("id", id);
-    if (error) return toast.error("Erro: " + error.message);
-    toast.success("Entrada removida. Estoque ajustado.");
+    if (error) return toast.error(uiText("Erro: ") + error.message);
+    toast.success(uiText("Entrada removida. Estoque ajustado."));
     load();
   }
 
@@ -710,9 +724,9 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
   }
 
   async function handleSave() {
-    if (!materiaId) return toast.error("Selecione a matéria-prima");
+    if (!materiaId) return toast.error(uiText("Selecione a matéria-prima"));
     const qtd = parseFloat(quantidade);
-    if (!qtd || qtd <= 0) return toast.error("Quantidade inválida");
+    if (!qtd || qtd <= 0) return toast.error(uiText("Quantidade inválida"));
     setSaving(true);
     try {
       let fotoUrl: string | null = null;
@@ -736,7 +750,7 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
         if (fotoUrl) patch.foto_url = fotoUrl;
         const { error } = await supabase.from("entradas_materias_primas").update(patch).eq("id", editingId);
         if (error) throw error;
-        toast.success("Entrada atualizada! Estoque ajustado.");
+        toast.success(uiText("Entrada atualizada! Estoque ajustado."));
       } else {
         const { error } = await supabase.from("entradas_materias_primas").insert({
           materia_prima_id: materiaId,
@@ -748,12 +762,12 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
           registrado_por: user?.id ?? null,
         });
         if (error) throw error;
-        toast.success("Entrada registrada! Estoque atualizado.");
+        toast.success(uiText("Entrada registrada! Estoque atualizado."));
       }
       setDialogOpen(false);
       load();
 
-    } catch (err: any) { toast.error("Erro: " + (err?.message || "desconhecido")); }
+    } catch (err: any) { toast.error(uiText("Erro: ") + (err?.message || "desconhecido")); }
     finally { setSaving(false); }
   }
 
@@ -786,16 +800,16 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
                   <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6"><LocalizedText source={"Nenhuma entrada registrada."} /></TableCell></TableRow>
                 ) : entradas.map(e => (
                   <TableRow key={e.id}>
-                    <TableCell className="text-xs">{new Date(e.data_entrada).toLocaleDateString("pt-BR")}</TableCell>
+                    <TableCell className="text-xs">{new Date(e.data_entrada).toLocaleDateString(language)}</TableCell>
                     <TableCell>{mpMap[e.materia_prima_id] || "—"}</TableCell>
                     <TableCell className="text-right font-medium">{e.quantidade}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{e.observacao || "—"}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(e)} title="Editar quantidade">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(e)} title={uiText("Editar quantidade")}>
                           <Pencil className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(e.id)} title="Excluir entrada">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(e.id)} title={uiText("Excluir entrada")}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -811,15 +825,15 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar entrada" : "Nova entrada"}</DialogTitle>
-            <DialogDescription>{editingId ? "Alterar a quantidade ajusta o estoque automaticamente." : "Vinculada automaticamente a esta fábrica."}</DialogDescription>
+            <DialogTitle>{uiText(editingId ? "Editar entrada" : "Nova entrada")}</DialogTitle>
+            <DialogDescription>{uiText(editingId ? "Alterar a quantidade ajusta o estoque automaticamente." : "Vinculada automaticamente a esta fábrica.")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
               <Label><LocalizedText source={"Matéria-Prima *"} /></Label>
 
               <Select value={materiaId} onValueChange={setMateriaId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione")} /></SelectTrigger>
                 <SelectContent>
                   {materias.map(m => <SelectItem key={m.id} value={m.id}>{m.nome} ({m.unidade})</SelectItem>)}
                 </SelectContent>
@@ -840,7 +854,7 @@ function EntradasTab({ fabricaId }: { fabricaId: string }) {
                 </label>
                 {foto && (
                   <div className="relative">
-                    <img src={foto} alt="preview" className="w-16 h-16 rounded object-cover border" />
+                    <img src={foto} alt={uiText("Prévia")} className="w-16 h-16 rounded object-cover border" />
                     <button type="button" onClick={() => setFoto(null)} className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-0.5">
                       <X className="w-3 h-3" />
                     </button>

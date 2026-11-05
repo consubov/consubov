@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +45,7 @@ interface Props {
 }
 
 export default function AdminListSection({ refreshKey }: Props) {
+  const uiText = useStaticUiText();
   const { user } = useAuth();
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,9 +82,9 @@ export default function AdminListSection({ refreshKey }: Props) {
       .update({ ativo: newAtivo })
       .eq("id", admin.id);
     if (error) {
-      toast.error("Erro ao atualizar: " + error.message);
+      toast.error(uiText("Erro ao atualizar: ") + error.message);
     } else {
-      toast.success(newAtivo ? "Administrador reativado" : "Administrador desativado");
+      toast.success(uiText(newAtivo ? "Administrador reativado" : "Administrador desativado"));
       loadAdmins();
     }
   };
@@ -114,11 +115,11 @@ export default function AdminListSection({ refreshKey }: Props) {
   const handleSaveEdit = async () => {
     if (!editAdmin) return;
     if (!editNome.trim() || !editEmail.trim()) {
-      toast.error("Nome e e-mail são obrigatórios");
+      toast.error(uiText("Nome e e-mail são obrigatórios"));
       return;
     }
     if (editSenha && editSenha.length < 6) {
-      toast.error("A senha deve ter no mínimo 6 caracteres");
+      toast.error(uiText("A senha deve ter no mínimo 6 caracteres"));
       return;
     }
 
@@ -148,11 +149,11 @@ export default function AdminListSection({ refreshKey }: Props) {
         return;
       }
 
-      toast.success("Administrador atualizado com sucesso");
+      toast.success(uiText("Administrador atualizado com sucesso"));
       setEditAdmin(null);
       loadAdmins();
     } catch (err: any) {
-      toast.error("Erro inesperado: " + err.message);
+      toast.error(uiText("Erro inesperado: ") + err.message);
     } finally {
       setSaving(false);
     }
@@ -183,11 +184,11 @@ export default function AdminListSection({ refreshKey }: Props) {
         return;
       }
 
-      toast.success("Administrador excluído com sucesso");
+      toast.success(uiText("Administrador excluído com sucesso"));
       setDeleteAdmin(null);
       loadAdmins();
     } catch (err: any) {
-      toast.error("Erro inesperado: " + err.message);
+      toast.error(uiText("Erro inesperado: ") + err.message);
     } finally {
       setDeleting(false);
     }
@@ -252,7 +253,7 @@ export default function AdminListSection({ refreshKey }: Props) {
                       variant="ghost"
                       onClick={() => handleEdit(a)}
                       className="h-8 w-8"
-                      title="Editar"
+                      title={uiText("Editar")}
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
@@ -261,7 +262,7 @@ export default function AdminListSection({ refreshKey }: Props) {
                       variant="ghost"
                       onClick={() => handleToggleAtivo(a)}
                       className="h-8 w-8"
-                      title={a.ativo ? "Desativar" : "Reativar"}
+                      title={uiText(a.ativo ? "Desativar" : "Reativar")}
                     >
                       {a.ativo ? (
                         <UserX className="w-4 h-4 text-destructive" />
@@ -275,7 +276,7 @@ export default function AdminListSection({ refreshKey }: Props) {
                         variant="ghost"
                         onClick={() => setDeleteAdmin(a)}
                         className="h-8 w-8"
-                        title="Excluir"
+                        title={uiText("Excluir")}
                       >
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
@@ -329,7 +330,7 @@ export default function AdminListSection({ refreshKey }: Props) {
               <PasswordInput
                 value={editSenha}
                 onChange={(e) => setEditSenha(e.target.value)}
-                placeholder="Deixe vazio para manter a atual"
+                placeholder={uiText("Deixe vazio para manter a atual")}
               />
             </div>
           </div>

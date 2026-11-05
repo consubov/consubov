@@ -230,14 +230,23 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
     await waitForVideoReadyState(video, VIDEO_CURRENT_DATA_READY);
   }, []);
 
-  const startNativeDetector = useCallback((video: HTMLVideoElement) => {
-    const detector = new window.BarcodeDetector!({ formats: ["qr_code"] });
+  const startNativeDetector = useCallback((video: HTMLVideoElement, onUnavailable: () => void) => {
+    let detector: InstanceType<NonNullable<Window["BarcodeDetector"]>>;
+    try {
+      detector = new window.BarcodeDetector!({ formats: ["qr_code"] });
+    } catch {
+      // Some Android browsers expose BarcodeDetector but cannot construct a QR reader.
+      onUnavailable();
+      return;
+    }
 
+    let consecutiveErrors = 0;
     const scanFrame = async () => {
       if (!activeRef.current) return;
 
       try {
         const codes = await detector.detect(video);
+        consecutiveErrors = 0;
         const qrValue = codes.find((code) => code.rawValue)?.rawValue;
 
         if (qrValue) {
@@ -246,7 +255,11 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
           return;
         }
       } catch {
-        // mantém a varredura ativa mesmo se o detector falhar em um frame específico
+        // A faulty native detector must not leave the camera scanning forever.
+        if (++consecutiveErrors >= 3) {
+          if (activeRef.current) onUnavailable();
+          return;
+        }
       }
 
       if (activeRef.current) {
@@ -273,6 +286,10 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
       }
     });
 
+    if (!activeRef.current) {
+      controls.stop();
+      return;
+    }
     scannerControlsRef.current = controls;
   }, [onScan, stopScanner]);
 
@@ -296,9 +313,18 @@ export default function QrScanner({ onScan, onManualSelect, onBack }: QrScannerP
 
       await attachStreamToVideo(video, stream);
 
-      // Try native BarcodeDetector first (works offline)
+      // Native decode is preferred; ZXing is the offline fallback when it fails.
+      const fallBackToZxing = () => {
+        if (!activeRef.current) return;
+        void startZxingDetector(video).catch((fallbackError) => {
+          if (!activeRef.current) return;
+          stopScanner();
+          setFailCount((count) => count + 1);
+          setError(getCameraErrorMessage(fallbackError));
+        });
+      };
       if (window.BarcodeDetector) {
-        startNativeDetector(video);
+        startNativeDetector(video, fallBackToZxing);
       } else {
         await startZxingDetector(video);
       }

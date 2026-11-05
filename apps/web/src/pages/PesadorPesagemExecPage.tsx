@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMaOffline } from "@/components/maisarrobas/ModoOfflinePanel";
 import { useCriticalOperation } from "@/lib/criticalOperations";
@@ -93,6 +94,8 @@ function Chip({
 }
 
 export default function PesadorPesagemExecPage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const { pesagemId } = useParams<{ pesagemId: string }>();
   const navigate = useNavigate();
   const syncSnap = useMaisArrobasSync();
@@ -530,7 +533,7 @@ export default function PesadorPesagemExecPage() {
       categorias_map: pesagem.tipo_preco === "misto" ? categoriasMapLocal : null,
     } as any, pesos as any));
     const mediaArrobaLocal = semValores ? Math.floor((totLocal.mediaPeso / 30) * 100) / 100 : totLocal.mediaArrobaPorAnimal;
-    const fmtBR = (n: number, d = 2) => n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+    const fmtBR = (n: number, d = 2) => n.toLocaleString(language, { minimumFractionDigits: d, maximumFractionDigits: d });
     return (
       <div className="space-y-4 pb-28">
         <div className="rounded-lg border bg-card p-4 space-y-3 text-center">
@@ -618,7 +621,7 @@ export default function PesadorPesagemExecPage() {
             ref={inputRef}
             type="number"
             inputMode="decimal"
-            placeholder="Peso total da leitura (kg)"
+            placeholder={uiText("Peso total da leitura (kg)")}
             value={current}
             onChange={(e) => setCurrent(e.target.value)}
             onKeyDown={(e) => {
@@ -663,7 +666,7 @@ export default function PesadorPesagemExecPage() {
       ) : subStep === "categoria" ? (
         <div className="space-y-3">
           <div className="text-sm font-medium">
-            Animal {animalNum} <LocalizedText source={"— Categoria ("} />{pendingPeso} kg)
+            <LocalizedText source={"Animal"} />{" "}{animalNum} <LocalizedText source={"— Categoria ("} />{pendingPeso} kg)
           </div>
           <div className="flex flex-wrap gap-2">
             {categoriasLote.map((c) => (
@@ -734,7 +737,7 @@ export default function PesadorPesagemExecPage() {
                     {p.ordem}
                     {(syncSnap.pendingRefIds.has(p.id) ||
                       (p.leitura_balancao_id && syncSnap.pendingRefIds.has(p.leitura_balancao_id))) && (
-                      <CloudOff className="w-3 h-3 text-muted-foreground" aria-label="Pendente de envio" />
+                      <CloudOff className="w-3 h-3 text-muted-foreground" aria-label={uiText("Pendente de envio")} />
                     )}
                   </span>
                   <span>

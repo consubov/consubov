@@ -289,6 +289,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [roleResolved, setRoleResolved] = useState(false);
   const initializedRef = useRef(false);
+  // Cada sessão inicia uma geração distinta para descartar respostas atrasadas.
+  const roleLoadIdRef = useRef(0);
   // true enquanto a detecção de perfil falhou por erro de consulta (sem cache).
   const roleUnresolvedRef = useRef(false);
   // true só quando o usuário tocou em "Sair".
@@ -299,6 +301,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function loadRole(currentSession: Session | null) {
       if (cancelled) return;
+      const loadId = ++roleLoadIdRef.current;
+      const isCurrentLoad = () => !cancelled && roleLoadIdRef.current === loadId;
+      // A sessão mudou: a ausência de role NÃO é um perfil resolvido.
+      // Impede que rotas exibam "Usuário sem perfil configurado" durante o login.
+      roleUnresolvedRef.current = false;
+      setLoading(true);
+      setRoleResolved(false);
+      setRoleData(emptyRoleData);
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
 
@@ -313,20 +323,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const cachedCapatazRole = getCachedCapatazRole(currentSession.user.id);
 
-        if (cachedCapatazRole && !cancelled) {
+        if (cachedCapatazRole && isCurrentLoad()) {
           setRoleData(cachedCapatazRole);
           if (typeof navigator !== "undefined" && !navigator.onLine) {
+            setRoleResolved(true);
             setLoading(false);
           }
         }
 
         try {
           const { roleData: detectedRole, queryFailed } = await detectRole(currentSession.user.id);
+          // Pode ter ocorrido SIGNED_IN de outra conta enquanto a RPC estava pendente.
+          if (!isCurrentLoad()) return;
 
           if (detectedRole.role) {
             // Perfil encontrado.
             cacheCapatazRole(currentSession.user.id, detectedRole);
-            if (!cancelled) {
+            if (isCurrentLoad()) {
               roleUnresolvedRef.current = false;
               setRoleData(detectedRole);
               setRoleResolved(true);
@@ -334,7 +347,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           } else if (!queryFailed) {
             // Consultamos com sucesso as 9 tabelas e realmente não há perfil.
-            if (!cancelled) {
+            if (isCurrentLoad()) {
               roleUnresolvedRef.current = false;
               setRoleData(emptyRoleData);
               setRoleResolved(true);
@@ -343,7 +356,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else if (cachedCapatazRole) {
             // Falha de consulta (rede/401/RLS) — usa o cache mesmo online.
             console.warn("[useAuth] detectRole falhou; usando role em cache.");
-            if (!cancelled) {
+            if (isCurrentLoad()) {
               roleUnresolvedRef.current = false;
               setRoleData(cachedCapatazRole);
               setRoleResolved(true);
@@ -352,20 +365,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else {
             // Falha de consulta e sem cache: NÃO declarar "sem perfil".
             console.warn("[useAuth] detectRole falhou e não há cache; mantendo loading.");
-            if (!cancelled) {
+            if (isCurrentLoad()) {
               roleUnresolvedRef.current = true;
               setRoleData(emptyRoleData);
               setRoleResolved(false);
               setLoading(true);
               // Continua tentando em background até conseguir consultar.
               window.setTimeout(() => {
-                if (!cancelled && roleUnresolvedRef.current) void loadRole(currentSession);
+                if (isCurrentLoad() && roleUnresolvedRef.current) void loadRole(currentSession);
               }, 8000);
             }
           }
         } catch (e) {
+          if (!isCurrentLoad()) return;
           console.error("Error detecting role:", e);
-          if (!cancelled) {
+          if (isCurrentLoad()) {
             if (cachedCapatazRole) {
               roleUnresolvedRef.current = false;
               setRoleData(cachedCapatazRole);
@@ -376,7 +390,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setRoleResolved(false);
               setLoading(true);
               window.setTimeout(() => {
-                if (!cancelled && roleUnresolvedRef.current) void loadRole(currentSession);
+                if (isCurrentLoad() && roleUnresolvedRef.current) void loadRole(currentSession);
               }, 8000);
             }
           }
@@ -388,7 +402,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearCachedCapatazRole();
         // A cópia de segurança do login só é apagada no "Sair" explícito.
       }
-      if (!cancelled) setLoading(false);
+      if (isCurrentLoad()) setLoading(false);
 
     }
 
@@ -516,6 +530,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+      roleLoadIdRef.current += 1;
       subscription.unsubscribe();
       clearTimeout(timeout);
     };

@@ -1,3 +1,7 @@
+import { createContext, useContext } from "react";
+import type { SiteLanguage } from "@/lib/siteLanguage";
+import { translatePdfLabel } from "@/lib/pdfUiLabels";
+import { translateStaticUiText } from "@/components/i18n/LocalizedText";
 import {
   Document, Page, Text, View, StyleSheet,
 } from "@react-pdf/renderer";
@@ -112,17 +116,24 @@ function fmtBRL(n: number) {
   return `R$ ${n.toFixed(2).replace(".", ",")}`;
 }
 
+const PdfLocaleContext = createContext<SiteLanguage>("pt-BR");
+function PdfCopy({ text }: { text: string }) {
+  const language = useContext(PdfLocaleContext);
+  const pdfLabel = translatePdfLabel(language, text);
+  return pdfLabel === text ? translateStaticUiText(language, text) : pdfLabel;
+}
+
 // ---------- Components ----------
 function Header({ data }: { data: PainelPDFData }) {
   return (
     <View style={s.header}>
       <View>
-        <Text style={s.headerTitle}>CONSUBOV — Painel de Inteligência Nutricional</Text>
+        <Text style={s.headerTitle}><PdfCopy text={"CONSUBOV — Painel de Inteligência Nutricional"} /></Text>
         <Text style={s.headerSub}>{data.fazendaNome} · {data.periodo}</Text>
       </View>
       <View style={{ textAlign: "right" }}>
-        <Text style={s.headerSub}>Gerado em: {data.dataGeracao}</Text>
-        <Text style={s.headerSub}>Relatório automático</Text>
+        <Text style={s.headerSub}><PdfCopy text={"Gerado em:"} /> {data.dataGeracao}</Text>
+        <Text style={s.headerSub}><PdfCopy text={"Relatório automático"} /></Text>
       </View>
     </View>
   );
@@ -133,7 +144,7 @@ function Filtros({ filtros }: { filtros: PainelPDFData["filtros"] }) {
   return (
     <View style={s.filterRow}>
       {filtros.map((f, i) => (
-        <Text key={i} style={s.filterChip}>{f.label}: {f.valor}</Text>
+        <Text key={i} style={s.filterChip}><PdfCopy text={f.label} />: {f.valor}</Text>
       ))}
     </View>
   );
@@ -142,51 +153,51 @@ function Filtros({ filtros }: { filtros: PainelPDFData["filtros"] }) {
 function KPIs({ data }: { data: PainelPDFData }) {
   return (
     <View>
-      <Text style={s.sectionTitle}>RESUMO GERAL</Text>
+      <Text style={s.sectionTitle}><PdfCopy text={"RESUMO GERAL"} /></Text>
       <View style={s.kpiRow}>
         <View style={s.kpiCard}>
-          <Text style={s.kpiLabel}>Consumo Real Médio</Text>
+          <Text style={s.kpiLabel}><PdfCopy text={"Consumo Real Médio"} /></Text>
           <Text style={s.kpiValue}>{fmtNum(data.consumoMedioReal, 1)}</Text>
-          <Text style={s.kpiUnit}>g/cab/dia</Text>
+          <Text style={s.kpiUnit}><PdfCopy text={"g/cab/dia"} /></Text>
         </View>
         <View style={s.kpiCard}>
-          <Text style={s.kpiLabel}>Consumo Esperado</Text>
+          <Text style={s.kpiLabel}><PdfCopy text={"Consumo Esperado"} /></Text>
           <Text style={s.kpiValue}>{data.consumoEsperado > 0 ? fmtNum(data.consumoEsperado, 1) : "—"}</Text>
-          <Text style={s.kpiUnit}>g/cab/dia</Text>
+          <Text style={s.kpiUnit}><PdfCopy text={"g/cab/dia"} /></Text>
         </View>
         <View style={s.kpiCard}>
-          <Text style={s.kpiLabel}>Desvio</Text>
+          <Text style={s.kpiLabel}><PdfCopy text={"Desvio"} /></Text>
           <Text style={s.kpiValue}>
             {data.consumoEsperado > 0 ? `${data.desvioPercent > 0 ? "+" : ""}${fmtNum(data.desvioPercent, 1)}%` : "—"}
           </Text>
-          <Text style={s.kpiUnit}>vs esperado</Text>
+          <Text style={s.kpiUnit}><PdfCopy text={"vs esperado"} /></Text>
         </View>
         <View style={s.kpiCard}>
-          <Text style={s.kpiLabel}>Intervalo Médio</Text>
+          <Text style={s.kpiLabel}><PdfCopy text={"Intervalo Médio"} /></Text>
           <Text style={s.kpiValue}>{data.intervaloMedio > 0 ? fmtNum(data.intervaloMedio, 1) : "—"}</Text>
-          <Text style={s.kpiUnit}>dias entre salgas</Text>
+          <Text style={s.kpiUnit}><PdfCopy text={"dias entre salgas"} /></Text>
         </View>
       </View>
       {(data.painelConsumoReal != null || data.painelConsumoGlobal != null ||
         data.painelEficiencia != null || data.painelPesoMedio != null) && (
         <View style={s.kpiRow}>
           <View style={s.kpiCard}>
-            <Text style={s.kpiLabel}>Consumo Real</Text>
+            <Text style={s.kpiLabel}><PdfCopy text={"Consumo Real"} /></Text>
             <Text style={s.kpiValue}>{data.painelConsumoReal ? fmtNum(data.painelConsumoReal, 1) : "—"}</Text>
-            <Text style={s.kpiUnit}>g/cab/dia</Text>
+            <Text style={s.kpiUnit}><PdfCopy text={"g/cab/dia"} /></Text>
           </View>
           <View style={s.kpiCard}>
-            <Text style={s.kpiLabel}>Consumo Global</Text>
+            <Text style={s.kpiLabel}><PdfCopy text={"Consumo Global"} /></Text>
             <Text style={s.kpiValue}>{data.painelConsumoGlobal ? fmtNum(data.painelConsumoGlobal, 1) : "—"}</Text>
-            <Text style={s.kpiUnit}>g/cab/dia</Text>
+            <Text style={s.kpiUnit}><PdfCopy text={"g/cab/dia"} /></Text>
           </View>
           <View style={s.kpiCard}>
-            <Text style={s.kpiLabel}>Eficiência</Text>
+            <Text style={s.kpiLabel}><PdfCopy text={"Eficiência"} /></Text>
             <Text style={s.kpiValue}>{data.painelEficiencia ? `${fmtNum(data.painelEficiencia, 1)}%` : "—"}</Text>
-            <Text style={s.kpiUnit}>ponderada por cab-dias</Text>
+            <Text style={s.kpiUnit}><PdfCopy text={"ponderada por cab-dias"} /></Text>
           </View>
           <View style={s.kpiCard}>
-            <Text style={s.kpiLabel}>Peso Médio</Text>
+            <Text style={s.kpiLabel}><PdfCopy text={"Peso Médio"} /></Text>
             <Text style={s.kpiValue}>{data.painelPesoMedio ? fmtNum(data.painelPesoMedio, 1) : "—"}</Text>
             <Text style={s.kpiUnit}>kg</Text>
           </View>
@@ -218,7 +229,7 @@ function MetricasCategoria({ metricas }: { metricas: CatMetricsPDF[] }) {
 
   return (
     <View>
-      <Text style={s.sectionTitle}>MÉTRICAS POR CATEGORIA ANIMAL</Text>
+      <Text style={s.sectionTitle}><PdfCopy text={"MÉTRICAS POR CATEGORIA ANIMAL"} /></Text>
 
       {/* Cards */}
       <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
@@ -227,26 +238,26 @@ function MetricasCategoria({ metricas }: { metricas: CatMetricsPDF[] }) {
             <Text style={s.catTitle}>{m.categoria}</Text>
             <View style={{ flexDirection: "row", alignItems: "baseline", gap: 2 }}>
               <Text style={s.catValue}>{fmtNum(m.consumoMedio, 1)}</Text>
-              <Text style={s.catUnit}>g/cab/dia</Text>
+              <Text style={s.catUnit}><PdfCopy text={"g/cab/dia"} /></Text>
             </View>
             <View style={s.catRow}>
-              <Text style={s.catLabel}>Animais</Text>
+              <Text style={s.catLabel}><PdfCopy text={"Animais"} /></Text>
               <Text style={s.catData}>{fmtNum(m.totalAnimais)}</Text>
             </View>
             <View style={s.catRow}>
-              <Text style={s.catLabel}>Sacos</Text>
+              <Text style={s.catLabel}><PdfCopy text={"Sacos"} /></Text>
               <Text style={s.catData}>{fmtNum(m.totalSacos)}</Text>
             </View>
             <View style={s.catRow}>
-              <Text style={s.catLabel}>R$/cab/mês</Text>
+              <Text style={s.catLabel}><PdfCopy text={"R$/cab/mês"} /></Text>
               <Text style={s.catData}>{fmtBRL(m.custoMedio)}</Text>
             </View>
             <View style={s.catRow}>
-              <Text style={s.catLabel}>R$/kg ganho</Text>
+              <Text style={s.catLabel}><PdfCopy text={"R$/kg ganho"} /></Text>
               <Text style={s.catData}>{m.custoPorKgGanho > 0 ? fmtBRL(m.custoPorKgGanho) : "—"}</Text>
             </View>
             <View style={s.catRow}>
-              <Text style={s.catLabel}>GMD</Text>
+              <Text style={s.catLabel}><PdfCopy text={"GMD"} /></Text>
               <Text style={s.catData}>{m.gmd > 0 ? `${fmtNum(m.gmd, 3)} kg/dia` : "—"}</Text>
             </View>
           </View>
@@ -254,7 +265,7 @@ function MetricasCategoria({ metricas }: { metricas: CatMetricsPDF[] }) {
       </View>
 
       {/* Simple bar chart representation */}
-      <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: green, marginBottom: 2 }}>Consumo por Categoria (g/cab/dia)</Text>
+      <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: green, marginBottom: 2 }}><PdfCopy text={"Consumo por Categoria (g/cab/dia)"} /></Text>
       <View style={s.barRow}>
         {metricas.map(m => {
           const height = maxConsumo > 0 ? Math.max(4, (m.consumoMedio / maxConsumo) * 70) : 4;
@@ -271,19 +282,19 @@ function MetricasCategoria({ metricas }: { metricas: CatMetricsPDF[] }) {
       {/* Table */}
       <View style={s.table}>
         <View style={s.tableHeader}>
-          <Text style={[s.tableHeaderCell, { width: "16%" }]}>Categoria</Text>
-          <Text style={[s.tableHeaderCell, { width: "12%" }]}>Animais</Text>
-          <Text style={[s.tableHeaderCell, { width: "16%" }]}>Consumo Médio</Text>
-          <Text style={[s.tableHeaderCell, { width: "16%" }]}>Custo Total</Text>
-          <Text style={[s.tableHeaderCell, { width: "14%" }]}>Custo/Animal</Text>
-          <Text style={[s.tableHeaderCell, { width: "14%" }]}>Custo/kg</Text>
-          <Text style={[s.tableHeaderCell, { width: "12%" }]}>GMD</Text>
+          <Text style={[s.tableHeaderCell, { width: "16%" }]}><PdfCopy text={"Categoria"} /></Text>
+          <Text style={[s.tableHeaderCell, { width: "12%" }]}><PdfCopy text={"Animais"} /></Text>
+          <Text style={[s.tableHeaderCell, { width: "16%" }]}><PdfCopy text={"Consumo Médio"} /></Text>
+          <Text style={[s.tableHeaderCell, { width: "16%" }]}><PdfCopy text={"Custo Total"} /></Text>
+          <Text style={[s.tableHeaderCell, { width: "14%" }]}><PdfCopy text={"Custo/Animal"} /></Text>
+          <Text style={[s.tableHeaderCell, { width: "14%" }]}><PdfCopy text={"Custo/kg"} /></Text>
+          <Text style={[s.tableHeaderCell, { width: "12%" }]}><PdfCopy text={"GMD"} /></Text>
         </View>
         {metricas.map((m, i) => (
           <View key={m.categoria} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
             <Text style={[s.tableCell, { width: "16%", fontFamily: "Helvetica-Bold" }]}>{m.categoria}</Text>
             <Text style={[s.tableCell, { width: "12%" }]}>{fmtNum(m.totalAnimais)}</Text>
-            <Text style={[s.tableCell, { width: "16%" }]}>{fmtNum(m.consumoMedio, 1)} g/cab/dia</Text>
+            <Text style={[s.tableCell, { width: "16%" }]}>{fmtNum(m.consumoMedio, 1)} <PdfCopy text={"g/cab/dia"} /></Text>
             <Text style={[s.tableCell, { width: "16%" }]}>{fmtBRL(m.custoTotal)}</Text>
             <Text style={[s.tableCell, { width: "14%" }]}>{fmtBRL(m.custoMedio)}</Text>
             <Text style={[s.tableCell, { width: "14%" }]}>{m.custoPorKgGanho > 0 ? fmtBRL(m.custoPorKgGanho) : "—"}</Text>
@@ -299,7 +310,7 @@ function Tendencia({ tendencia }: { tendencia: TendenciaPDF[] }) {
   if (tendencia.length === 0) return null;
   return (
     <View>
-      <Text style={s.sectionTitle}>TENDÊNCIA DE CONSUMO</Text>
+      <Text style={s.sectionTitle}><PdfCopy text={"TENDÊNCIA DE CONSUMO"} /></Text>
       <View style={s.trendRow}>
         {tendencia.map((t, i) => (
           <View key={i} style={s.trendCell}>
@@ -325,19 +336,19 @@ function Ranking({ ranking }: { ranking: RankingFazendaPDF[] }) {
   ];
   return (
     <View>
-      <Text style={s.sectionTitle}>RANKING DE EFICIÊNCIA POR FAZENDA</Text>
+      <Text style={s.sectionTitle}><PdfCopy text={"RANKING DE EFICIÊNCIA POR FAZENDA"} /></Text>
       <View style={s.table}>
         <View style={s.tableHeader}>
-          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}>{c.label}</Text>)}
+          {cols.map(c => <Text key={c.label} style={[s.tableHeaderCell, { width: c.width }]}><PdfCopy text={c.label} /></Text>)}
         </View>
         {ranking.map((f, i) => (
           <View key={f.nome} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
             <Text style={[s.tableCell, { width: cols[0].width, fontFamily: "Helvetica-Bold" }]}>{i + 1}º</Text>
             <Text style={[s.tableCell, { width: cols[1].width }]}>{f.nome}</Text>
             <Text style={[s.tableCell, { width: cols[2].width }]}>{f.estado}</Text>
-            <Text style={[s.tableCell, { width: cols[3].width }]}>{fmtNum(f.consumoMedio, 1)} g/cab/dia</Text>
+            <Text style={[s.tableCell, { width: cols[3].width }]}>{fmtNum(f.consumoMedio, 1)} <PdfCopy text={"g/cab/dia"} /></Text>
             <Text style={[s.tableCell, { width: cols[4].width }]}>{fmtNum(f.desvio, 0)}%</Text>
-            <Text style={[s.tableCell, { width: cols[5].width }]}>{fmtNum(f.intervaloMedio, 1)} dias</Text>
+            <Text style={[s.tableCell, { width: cols[5].width }]}>{fmtNum(f.intervaloMedio, 1)} <PdfCopy text={"dias"} /></Text>
             <Text style={[s.tableCell, { width: cols[6].width }]}>{f.lancamentos}</Text>
           </View>
         ))}
@@ -347,17 +358,19 @@ function Ranking({ ranking }: { ranking: RankingFazendaPDF[] }) {
 }
 
 function Footer() {
+  const language = useContext(PdfLocaleContext);
   return (
     <View style={s.footer} fixed>
-      <Text>CONSUBOV — Painel de Inteligência Nutricional</Text>
-      <Text render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
+      <Text><PdfCopy text={"CONSUBOV — Painel de Inteligência Nutricional"} /></Text>
+      <Text render={({ pageNumber, totalPages }) => `${translatePdfLabel(language, "Página")} ${pageNumber}${translatePdfLabel(language, " de ")}${totalPages}`} />
     </View>
   );
 }
 
 // ---------- Main Document ----------
-export default function PainelInteligenciaPDF({ data }: { data: PainelPDFData }) {
+export default function PainelInteligenciaPDF({ data, language = "pt-BR" }: { data: PainelPDFData; language?: SiteLanguage }) {
   return (
+    <PdfLocaleContext.Provider value={language}>
     <Document>
       <Page size="A4" style={s.page} wrap>
         <Header data={data} />
@@ -370,5 +383,6 @@ export default function PainelInteligenciaPDF({ data }: { data: PainelPDFData })
         <Footer />
       </Page>
     </Document>
+    </PdfLocaleContext.Provider>
   );
 }

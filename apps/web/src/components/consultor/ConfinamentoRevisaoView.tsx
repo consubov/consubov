@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,6 +57,8 @@ async function signPath(path: string): Promise<string> {
 }
 
 export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string }) {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const navigate = useNavigate();
   const [visita, setVisita] = useState<Visita | null>(null);
   const [fazenda, setFazenda] = useState<any>(null);
@@ -221,7 +224,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         currais: (curr.currais || []).map((c: any) => c.id === curralId ? { ...c, ...patch } : c),
       }),
     });
-    if (!res.ok && !res.queued) toast.error("Erro ao salvar");
+    if (!res.ok && !res.queued) toast.error(uiText("Erro ao salvar"));
   }
 
   async function addSample(curralId: string, tipo: ScoreKey, nota: number) {
@@ -239,7 +242,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
           : c),
       }),
     });
-    if (!res.ok && !res.queued) { toast.error("Erro ao adicionar amostra"); return; }
+    if (!res.ok && !res.queued) { toast.error(uiText("Erro ao adicionar amostra")); return; }
     setCurrais(prev => prev.map(c => c.id === curralId
       ? { ...c, samples: { ...c.samples, [tipo]: [...c.samples[tipo], { id, nota }] } }
       : c));
@@ -273,7 +276,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       rowId: visitaId,
       patch: patch as any,
     });
-    if (!res.ok && !res.queued) toast.error("Erro ao salvar");
+    if (!res.ok && !res.queued) toast.error(uiText("Erro ao salvar"));
   }
 
   async function upsertFabrica(patch: { organizacao_fabrica_nota?: number | null; organizacao_insumos_nota?: number | null }) {
@@ -294,13 +297,13 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       onConflict: "visita_id",
       applyToSnapshot: (curr, payload) => ({ ...curr, avaliacao_fabrica_visita: { id: rowId, ...payload } }),
     });
-    if (!res.ok && !res.queued) toast.error("Erro ao salvar avaliação da fábrica");
+    if (!res.ok && !res.queued) toast.error(uiText("Erro ao salvar avaliação da fábrica"));
   }
 
   async function addFoto(curralId: string, file: File) {
     await notifyEdit();
     const c = currais.find(x => x.id === curralId); if (!c) return;
-    if (c.fotos.length >= MAX_FOTOS) { toast.error(`Máx. ${MAX_FOTOS} fotos`); return; }
+    if (c.fotos.length >= MAX_FOTOS) { toast.error(`${uiText("Máx. ")}${MAX_FOTOS} ${uiText("fotos")}`); return; }
     const usadas = new Set(c.fotos.map(f => f.ordem));
     let ordem = 1;
     while (usadas.has(ordem) && ordem <= MAX_FOTOS) ordem++;
@@ -324,9 +327,9 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
             })()
           : x),
       }));
-      toast.info("Foto salva off-line. Sincronize quando houver internet.");
+      toast.info(uiText("Foto salva off-line. Sincronize quando houver internet."));
     } catch (err: any) {
-      toast.error("Erro ao preparar foto: " + (err?.message || ""));
+      toast.error(uiText("Erro ao preparar foto: ") + (err?.message || ""));
     }
   }
 
@@ -375,7 +378,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
     setConfirmando(true);
     try {
       await autosaveVisita({ observacoes_gerais: obsGerais, conclusao, status: "revisao" as any });
-      toast.success("Visita revisada.");
+      toast.success(uiText("Visita revisada."));
       await load(true);
     } finally { setConfirmando(false); }
   }
@@ -383,18 +386,18 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
   async function gerarPdf() {
     if (!visita || !fazenda || !consultor) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      toast.error("Conecte à internet e sincronize antes de gerar o PDF.");
+      toast.error(uiText("Conecte à internet e sincronize antes de gerar o PDF."));
       return;
     }
     if (await hasPendingLocalChanges(visita.id)) {
-      const tSync = toast.loading("Sincronizando dados desta visita…");
+      const tSync = toast.loading(uiText("Sincronizando dados desta visita…"));
       const { syncVisitaWithRetries } = await import("@/lib/consultorOffline/snapshotStore");
       const result = await syncVisitaWithRetries(visita.id, { attempts: 3, totalTimeoutMs: 90000 });
       toast.dismiss(tSync);
       if (!result.ok) {
         setPendingThisVisit(true);
         const motivo = result.reason || "Ainda há itens pendentes.";
-        toast.error(`Não foi possível sincronizar. ${motivo}. Tentar novamente?`, {
+        toast.error(`${uiText("Não foi possível sincronizar. ")}${motivo}${uiText(". Tentar novamente?")}`, {
           action: { label: "Tentar novamente", onClick: () => void gerarPdf() },
         });
         return;
@@ -402,7 +405,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       setPendingThisVisit(false);
     }
     setGerandoPdf(true);
-    const t = toast.loading("Gerando PDF...");
+    const t = toast.loading(uiText("Gerando PDF..."));
     try {
       const saveRes = await offlineUpdate({
         visitaId: visita.id,
@@ -480,6 +483,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       }
       const indicadoresData = await fetchIndicadoresParaPdf(visita.id);
       const { blob, fileName } = await generateConfinamentoPdf({
+        language,
         visitaId: visita.id,
         fazenda: {
           nome_fazenda: fazenda.nome_fazenda,
@@ -544,11 +548,11 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
       }).eq("id", visita.id), "finalização da visita");
       if (error) throw error;
       toast.dismiss(t);
-      toast.success("PDF gerado e visita finalizada!");
+      toast.success(uiText("PDF gerado e visita finalizada!"));
       navigate("/consultor/historico");
     } catch (err: any) {
       toast.dismiss(t);
-      toast.error("Erro ao gerar PDF: " + getErrorMessage(err));
+      toast.error(uiText("Erro ao gerar PDF: ") + getErrorMessage(err));
     } finally { setGerandoPdf(false); }
   }
 
@@ -563,7 +567,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         });
       } else {
         await navigator.clipboard.writeText(visita.pdf_url);
-        toast.success("Link copiado!");
+        toast.success(uiText("Link copiado!"));
       }
     } catch { /* cancel */ }
   }
@@ -610,8 +614,8 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         <div className="text-[11px] uppercase tracking-wide font-bold" style={{ color: "#14432B", fontFamily: "'Manrope', sans-serif" }}>
           <LocalizedText source={"Avaliação da Fábrica (única na visita)"} /></div>
         <div className="grid grid-cols-2 gap-2">
-          <ScoreBlock label="Org. Fábrica" value={fabricaNota ?? undefined} onChange={n => upsertFabrica({ organizacao_fabrica_nota: n })} disabled={readOnly} />
-          <ScoreBlock label="Org. Insumos" value={insumosNota ?? undefined} onChange={n => upsertFabrica({ organizacao_insumos_nota: n })} disabled={readOnly} />
+          <ScoreBlock label={uiText("Org. Fábrica")} value={fabricaNota ?? undefined} onChange={n => upsertFabrica({ organizacao_fabrica_nota: n })} disabled={readOnly} />
+          <ScoreBlock label={uiText("Org. Insumos")} value={insumosNota ?? undefined} onChange={n => upsertFabrica({ organizacao_insumos_nota: n })} disabled={readOnly} />
         </div>
       </div>
 
@@ -637,7 +641,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
               </div>
               <div className="flex-1">
                 <FieldInline
-                  label="Nº Curral"
+                  label={uiText("Nº Curral")}
                   value={c.num_curral}
                   onSave={v => {
                     if (!v.trim()) return;
@@ -651,19 +655,19 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
 
             <div className="p-3 space-y-4">
               <ScoreSamplesInput
-                label="Fezes" samples={c.samples.fezes}
+                label={uiText("Fezes")} samples={c.samples.fezes}
                 onAdd={n => addSample(c.id, "fezes", n)}
                 onRemove={i => removeSample(c.id, "fezes", i)}
                 disabled={readOnly}
               />
               <ScoreSamplesInput
-                label="Escore Corporal" samples={c.samples.corporal}
+                label={uiText("Escore Corporal")} samples={c.samples.corporal}
                 onAdd={n => addSample(c.id, "corporal", n)}
                 onRemove={i => removeSample(c.id, "corporal", i)}
                 disabled={readOnly}
               />
               <ScoreSamplesInput
-                label="Bebedouro" samples={c.samples.bebedouro}
+                label={uiText("Bebedouro")} samples={c.samples.bebedouro}
                 onAdd={n => addSample(c.id, "bebedouro", n)}
                 onRemove={i => removeSample(c.id, "bebedouro", i)}
                 disabled={readOnly}
@@ -695,7 +699,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
         <Input
           value={tituloEncerramento}
           onChange={e => setTituloEncerramento(e.target.value)}
-          placeholder="Observações e Recomendações"
+          placeholder={uiText("Observações e Recomendações")}
         />
       </div>
 
@@ -804,7 +808,7 @@ export default function ConfinamentoRevisaoView({ visitaId }: { visitaId: string
                 setSalvandoOffline(true);
                 try {
                   await autosaveVisita({ observacoes_gerais: obsGerais, conclusao } as any);
-                  toast.success("Visita salva off-line. Sincronize quando tiver internet para gerar o PDF.");
+                  toast.success(uiText("Visita salva off-line. Sincronize quando tiver internet para gerar o PDF."));
                   navigate("/consultor/historico");
                 } finally { setSalvandoOffline(false); }
               }}

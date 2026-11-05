@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -28,6 +28,7 @@ interface Props {
 }
 
 export default function VisitaDateTimeEditor({ horaInicio, horaFim, onChange, disabled }: Props) {
+  const uiText = useStaticUiText();
   const [ini, setIni] = useState(isoToLocalInput(horaInicio));
   const [fim, setFim] = useState(isoToLocalInput(horaFim));
   useEffect(() => { setIni(isoToLocalInput(horaInicio)); }, [horaInicio]);
@@ -39,7 +40,7 @@ export default function VisitaDateTimeEditor({ horaInicio, horaFim, onChange, di
     if (fim) {
       const isoFim = localInputToIso(fim);
       if (isoFim && new Date(isoFim) < new Date(iso)) {
-        toast.error("Término não pode ser anterior ao início.");
+        toast.error(uiText("Término não pode ser anterior ao início."));
         setIni(isoToLocalInput(horaInicio));
         return;
       }
@@ -50,7 +51,7 @@ export default function VisitaDateTimeEditor({ horaInicio, horaFim, onChange, di
     const iso = fim ? localInputToIso(fim) : null;
     if (fim && !iso) return;
     if (iso && new Date(iso) < new Date(horaInicio)) {
-      toast.error("Término não pode ser anterior ao início.");
+      toast.error(uiText("Término não pode ser anterior ao início."));
       setFim(isoToLocalInput(horaFim));
       return;
     }

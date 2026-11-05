@@ -1,3 +1,4 @@
+import { useTranslation } from "@/hooks/useTranslation";
 import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -46,6 +47,7 @@ function formatEventoResumo(ev: any): string {
 }
 
 export default function HistoricoLoteModal({ open, onClose, pastoId, pastoNome }: Props) {
+  const { language } = useTranslation();
   const [refreshKey, setRefreshKey] = useState(0);
   const [latestPesagemId, setLatestPesagemId] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -131,7 +133,7 @@ export default function HistoricoLoteModal({ open, onClose, pastoId, pastoNome }
               {eventos.map((ev) => {
                 const cfg = tipoConfig[ev.tipo] || tipoConfig.observacao;
                 const Icon = cfg.icon;
-                const dataStr = new Date(ev.data_evento).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+                const dataStr = new Date(ev.data_evento).toLocaleDateString(language, { day: "2-digit", month: "2-digit" });
                 const resumo = formatEventoResumo(ev);
                 const isLatestPesagem = ev.id === latestPesagemEventId && latestPesagemId;
 

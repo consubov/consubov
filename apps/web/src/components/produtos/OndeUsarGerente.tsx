@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ const cor = (i: number) => (i < 0 ? "hsl(var(--muted-foreground))" : `hsl(var(--
 interface Props { fazendaId: string; retiroInicial?: string | null; onDirtyChange?: (d: boolean) => void }
 
 export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChange }: Props) {
+  const uiText = useStaticUiText();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [disponiveis, setDisponiveis] = useState<string[]>([]);
   const [retiros, setRetiros] = useState<RetiroRow[]>([]);
@@ -169,11 +170,11 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
         const { error } = await supabase.from("pastos").update({ produto_id: null }).in("id", Array.from(conf)).in("retiro_id", retiros.map((r) => r.id));
         if (error) throw new Error(`pastos seguindo o retiro: ${error.message}`);
       }
-      toast.success("Alterações salvas!");
+      toast.success(uiText("Alterações salvas!"));
       setConfirmOpen(false);
       await load();
     } catch (err: any) {
-      toast.error(`Erro ao salvar: ${err?.message || "erro desconhecido"}`);
+      toast.error(`${uiText("Erro ao salvar: ")}${err?.message || uiText("erro desconhecido")}`);
     } finally {
       setSaving(false);
     }
@@ -213,7 +214,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
         </Select>
         <div className="relative w-44 shrink-0">
           <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar pasto" className="pl-8" />
+          <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder={uiText("Buscar pasto")} className="pl-8" />
         </div>
       </div>
 
@@ -259,7 +260,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
                   <Select value={rp ?? ""} onValueChange={(v) => setRetPend((prev) => ({ ...prev, [r.id]: v }))}>
                     <SelectTrigger className="h-8 text-xs flex-1 min-w-0">
                       <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0 mr-1.5" style={{ backgroundColor: corDe(rp) }} />
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue placeholder={uiText("Selecione")} />
                     </SelectTrigger>
                     <SelectContent>
                       {produtosDisp.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
@@ -308,7 +309,7 @@ export default function OndeUsarGerente({ fazendaId, retiroInicial, onDirtyChang
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium shrink-0">{sel.size} {sel.size === 1 ? "pasto selecionado" : "pastos selecionados"}</span>
               <Select value={loteProduto} onValueChange={setLoteProduto}>
-                <SelectTrigger className="h-8 text-xs flex-1 min-w-0"><SelectValue placeholder="Aplicar…" /></SelectTrigger>
+                <SelectTrigger className="h-8 text-xs flex-1 min-w-0"><SelectValue placeholder={uiText("Aplicar…")} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={SEGUIR}><LocalizedText source={"Seguir o retiro"} /></SelectItem>
                   {produtosDisp.map((x) => <SelectItem key={x.id} value={x.id}>{x.nome}</SelectItem>)}

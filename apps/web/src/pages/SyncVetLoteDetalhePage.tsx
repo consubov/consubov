@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +22,7 @@ type Animal = {
 };
 
 export default function SyncVetLoteDetalhePage() {
+  const uiText = useStaticUiText();
   const { fazendaId, loteId } = useParams<{ fazendaId: string; loteId: string }>();
   const navigate = useNavigate();
   const [loteNome, setLoteNome] = useState("");
@@ -67,15 +68,15 @@ export default function SyncVetLoteDetalhePage() {
       idade: idade ? Number(idade) : null,
     } as any);
     if (error) toast.error(error.message);
-    else { toast.success("Animal cadastrado"); setOpen(false); load(); }
+    else { toast.success(uiText("Animal cadastrado")); setOpen(false); load(); }
     setSaving(false);
   }
 
   async function handleDelete(a: Animal) {
-    if (!confirm(`Remover animal ${a.brinco || a.numero || ""}?`)) return;
+    if (!confirm(`${uiText("Remover animal ")}${a.brinco || a.numero || ""}?`)) return;
     const { error } = await supabase.from("syncvet_animais").delete().eq("id", a.id);
     if (error) toast.error(error.message);
-    else { toast.success("Removido"); load(); }
+    else { toast.success(uiText("Removido")); load(); }
   }
 
   return (

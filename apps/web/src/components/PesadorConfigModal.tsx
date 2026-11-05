@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +20,7 @@ function uploadErrorDescription(error: unknown): string | undefined {
 }
 
 export default function PesadorConfigModal({ open, onOpenChange }: Props) {
+  const uiText = useStaticUiText();
   const { user } = useAuth();
   const dialogOpener = useRef<HTMLElement | null>(null);
   const [loading, setLoading] = useState(false);
@@ -125,7 +126,7 @@ export default function PesadorConfigModal({ open, onOpenChange }: Props) {
                   {logoUrl ? "Substituir" : "Enviar"}
                 </Button>
                 {logoUrl && (
-                  <Button aria-label="Remover logo" variant="ghost" size="sm" onClick={handleRemove} disabled={saving}>
+                  <Button aria-label={uiText("Remover logo")} variant="ghost" size="sm" onClick={handleRemove} disabled={saving}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 )}

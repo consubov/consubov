@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,16 +22,18 @@ type Servico = {
 };
 type Fazenda = { id: string; nome: string; modelo_cobranca: "protocolo_completo" | "mao_obra_km"; proprietario: string | null; municipio: string | null; estado: string | null };
 
-function fmtDate(iso: string | null) {
+function fmtDate(iso: string | null, locale: string) {
   if (!iso) return "-";
   const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
+  return locale === "en-US" ? `${m}/${d}/${y}` : `${d}/${m}/${y}`;
 }
-function fmtBRL(n: number) {
-  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+function fmtBRL(n: number, locale: string) {
+  return n.toLocaleString(locale, { style: "currency", currency: "BRL" });
 }
 
 export default function SyncVetContasPage() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const { user, roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
   const navigate = useNavigate();
@@ -102,7 +105,7 @@ export default function SyncVetContasPage() {
   async function marcarPago(id: string) {
     const { error } = await supabase.from("syncvet_servicos").update({ status: "pago" }).eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success("Marcado como pago");
+    toast.success(uiText("Marcado como pago"));
     setServicos(prev => prev.map(s => s.id === id ? { ...s, status: "pago" as Status } : s));
   }
 
@@ -118,6 +121,7 @@ export default function SyncVetContasPage() {
         estNome = (est as any)?.nome ?? null;
       }
       const blob = await gerarServicoPDF({
+        language,
         numero: s.id.slice(0, 8).toUpperCase(),
         data_referencia: s.data_referencia,
         data_vencimento: s.data_vencimento,
@@ -154,9 +158,9 @@ export default function SyncVetContasPage() {
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        <Card className="p-3"><div className="text-[10px] uppercase text-muted-foreground"><LocalizedText source={"Pendente"} /></div><div className="text-sm font-bold">{fmtBRL(totais.pendente)}</div></Card>
-        <Card className="p-3"><div className="text-[10px] uppercase text-muted-foreground"><LocalizedText source={"Pago"} /></div><div className="text-sm font-bold text-primary">{fmtBRL(totais.pago)}</div></Card>
-        <Card className="p-3"><div className="text-[10px] uppercase text-muted-foreground"><LocalizedText source={"Vencido"} /></div><div className="text-sm font-bold text-destructive">{fmtBRL(totais.vencido)}</div></Card>
+        <Card className="p-3"><div className="text-[10px] uppercase text-muted-foreground"><LocalizedText source={"Pendente"} /></div><div className="text-sm font-bold">{fmtBRL(totais.pendente, language)}</div></Card>
+        <Card className="p-3"><div className="text-[10px] uppercase text-muted-foreground"><LocalizedText source={"Pago"} /></div><div className="text-sm font-bold text-primary">{fmtBRL(totais.pago, language)}</div></Card>
+        <Card className="p-3"><div className="text-[10px] uppercase text-muted-foreground"><LocalizedText source={"Vencido"} /></div><div className="text-sm font-bold text-destructive">{fmtBRL(totais.vencido, language)}</div></Card>
       </div>
 
       <Card className="p-3 space-y-2">
@@ -206,15 +210,15 @@ export default function SyncVetContasPage() {
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold truncate">{fazById.get(s.fazenda_id)?.nome ?? "Fazenda"}</div>
                   <div className="text-xs text-muted-foreground">
-                    <LocalizedText source={"Emissão:"} />{" "}{fmtDate(s.data_referencia)}
-                    {s.data_vencimento && <> <LocalizedText source={"· Vence:"} />{" "}{fmtDate(s.data_vencimento)}</>}
+                    <LocalizedText source={"Emissão:"} />{" "}{fmtDate(s.data_referencia, language)}
+                    {s.data_vencimento && <> <LocalizedText source={"· Vence:"} />{" "}{fmtDate(s.data_vencimento, language)}</>}
                   </div>
                   <span className={cn("inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded uppercase font-semibold", badgeCls[s.status])}>
                     {s.status}
                   </span>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-base font-bold text-primary">{fmtBRL(s.valor_total)}</div>
+                  <div className="text-base font-bold text-primary">{fmtBRL(s.valor_total, language)}</div>
                 </div>
               </div>
               <div className="flex gap-2 mt-2">

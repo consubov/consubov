@@ -1,3 +1,4 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,6 +17,7 @@ import { Loader2, Plus, Trash2, ChevronRight, Workflow } from "lucide-react";
 type Proto = { id: string; nome: string; descricao: string | null };
 
 export default function SyncVetProtocolosPage() {
+  const uiText = useStaticUiText();
   const { roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
   const navigate = useNavigate();
@@ -42,7 +44,7 @@ export default function SyncVetProtocolosPage() {
 
   async function handleCreate() {
     if (!empresaId) return;
-    if (!nome.trim()) { toast.error("Nome é obrigatório"); return; }
+    if (!nome.trim()) { toast.error(uiText("Nome é obrigatório")); return; }
     setSaving(true);
     const { data, error } = await supabase
       .from("syncvet_protocolos")
@@ -51,39 +53,39 @@ export default function SyncVetProtocolosPage() {
       .single();
     setSaving(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Protocolo criado");
+    toast.success(uiText("Protocolo criado"));
     setOpen(false); setNome(""); setDescricao("");
     navigate(`/syncvet/protocolos/${data!.id}`);
   }
 
   async function handleDelete(p: Proto) {
-    if (!confirm(`Remover protocolo "${p.nome}"?`)) return;
+    if (!confirm(`${uiText("Remover protocolo ")}"${p.nome}"?`)) return;
     const { error } = await supabase.from("syncvet_protocolos").delete().eq("id", p.id);
     if (error) toast.error(error.message);
-    else { toast.success("Removido"); load(); }
+    else { toast.success(uiText("Removido")); load(); }
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">Protocolos</h1>
-          <p className="text-sm text-muted-foreground">Montador de protocolos reprodutivos</p>
+          <h1 className="text-xl font-bold"><LocalizedText source={"Protocolos"} /></h1>
+          <p className="text-sm text-muted-foreground"><LocalizedText source={"Montador de protocolos reprodutivos"} /></p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="w-4 h-4 mr-1" />Novo Protocolo</Button>
+            <Button><Plus className="w-4 h-4 mr-1" /><LocalizedText source={"Novo Protocolo"} /></Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Novo protocolo</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle><LocalizedText source={"Novo protocolo"} /></DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <div><Label className="text-xs">Nome*</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: IATF Padrão 10 dias" /></div>
-              <div><Label className="text-xs">Descrição</Label><Textarea rows={3} value={descricao} onChange={(e) => setDescricao(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Nome*"} /></Label><Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder={uiText("Ex: IATF Padrão 10 dias")} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Descrição"} /></Label><Textarea rows={3} value={descricao} onChange={(e) => setDescricao(e.target.value)} /></div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button variant="ghost" onClick={() => setOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
               <Button onClick={handleCreate} disabled={saving}>
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Criar
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Criar"} />
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -93,7 +95,7 @@ export default function SyncVetProtocolosPage() {
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : rows.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-muted-foreground">Nenhum protocolo cadastrado ainda.</Card>
+        <Card className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum protocolo cadastrado ainda."} /></Card>
       ) : (
         <div className="space-y-2">
           {rows.map((p) => (

@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +31,7 @@ const EMPTY: Empresa = {
 };
 
 export default function SyncVetEmpresaPage() {
+  const uiText = useStaticUiText();
   const { roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
   const [form, setForm] = useState<Empresa>(EMPTY);
@@ -56,7 +57,7 @@ export default function SyncVetEmpresaPage() {
 
   async function handleSave() {
     if (!form.nome.trim()) {
-      toast.error("Nome da empresa é obrigatório");
+      toast.error(uiText("Nome da empresa é obrigatório"));
       return;
     }
     setSaving(true);
@@ -72,11 +73,11 @@ export default function SyncVetEmpresaPage() {
     if (empresaId) {
       const { error } = await supabase.from("syncvet_empresas").update(payload).eq("id", empresaId);
       if (error) toast.error(error.message);
-      else toast.success("Empresa atualizada");
+      else toast.success(uiText("Empresa atualizada"));
     } else {
       const { error } = await supabase.from("syncvet_empresas").insert(payload as any);
       if (error) toast.error(error.message);
-      else toast.success("Empresa criada");
+      else toast.success(uiText("Empresa criada"));
     }
     setSaving(false);
   }
@@ -98,12 +99,12 @@ export default function SyncVetEmpresaPage() {
 
       <Card className="p-4 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Field label="Nome*" value={form.nome} onChange={(v) => setForm({ ...form, nome: v })} />
+          <Field label={uiText("Nome*")} value={form.nome} onChange={(v) => setForm({ ...form, nome: v })} />
           <Field label="CRMV" value={form.crmv ?? ""} onChange={(v) => setForm({ ...form, crmv: v })} />
           <Field label="CNPJ" value={form.cnpj ?? ""} onChange={(v) => setForm({ ...form, cnpj: v })} />
-          <Field label="Responsável técnico" value={form.responsavel_tecnico ?? ""} onChange={(v) => setForm({ ...form, responsavel_tecnico: v })} />
-          <Field label="Telefone" value={form.telefone ?? ""} onChange={(v) => setForm({ ...form, telefone: v })} />
-          <Field label="E-mail" value={form.email ?? ""} onChange={(v) => setForm({ ...form, email: v })} />
+          <Field label={uiText("Responsável técnico")} value={form.responsavel_tecnico ?? ""} onChange={(v) => setForm({ ...form, responsavel_tecnico: v })} />
+          <Field label={uiText("Telefone")} value={form.telefone ?? ""} onChange={(v) => setForm({ ...form, telefone: v })} />
+          <Field label={uiText("E-mail")} value={form.email ?? ""} onChange={(v) => setForm({ ...form, email: v })} />
           <div className="md:col-span-2">
             <Field label="Logo (URL)" value={form.logo_url ?? ""} onChange={(v) => setForm({ ...form, logo_url: v })} />
           </div>

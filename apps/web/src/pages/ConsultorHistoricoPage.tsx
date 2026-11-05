@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +33,7 @@ interface VisitaItem {
 }
 
 export default function ConsultorHistoricoPage() {
+  const uiText = useStaticUiText();
   const { roleData } = useAuth();
   const navigate = useNavigate();
   const [visitas, setVisitas] = useState<VisitaItem[]>([]);
@@ -106,7 +107,7 @@ export default function ConsultorHistoricoPage() {
       }
       setVisitas(merged);
     } catch (err: any) {
-      toast.error("Erro ao carregar histórico: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro ao carregar histórico: ") + (err?.message || uiText("desconhecido")));
       setVisitas([]);
     }
     setLoading(false);
@@ -119,11 +120,11 @@ export default function ConsultorHistoricoPage() {
       const result = await softDeleteVisita({ visitaId: toDelete.id, visita: toDelete as any });
       removeVisitFromCachedFarmLists(toDelete.id);
       setVisitas(prev => prev.filter(v => v.id !== toDelete.id));
-      toast.success(result.queued ? "Visita excluída off-line. A exclusão será sincronizada." : "Visita excluída.");
+      toast.success(uiText(result.queued ? "Visita excluída off-line. A exclusão será sincronizada." : "Visita excluída."));
       setToDelete(null);
       await load();
     } catch (err: any) {
-      toast.error("Erro ao excluir: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro ao excluir: ") + (err?.message || uiText("desconhecido")));
     } finally { setDeleting(false); }
   }
 
@@ -217,7 +218,7 @@ export default function ConsultorHistoricoPage() {
       <PdfViewerDialog
         url={pdfVisualizar?.url ?? null}
         fileName={pdfVisualizar ? `visita-${pdfVisualizar.nome}.pdf` : undefined}
-        title={pdfVisualizar ? `Relatório — ${pdfVisualizar.nome}` : undefined}
+        title={pdfVisualizar ? `${uiText("Relatório — ")}${pdfVisualizar.nome}` : undefined}
         onClose={() => setPdfVisualizar(null)}
       />
     </div>

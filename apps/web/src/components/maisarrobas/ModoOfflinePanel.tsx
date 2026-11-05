@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { CloudOff, Download, Loader2, RefreshCw, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ export function useMaOffline() {
 }
 
 export function ModoOfflinePanel({ perfil }: { perfil: MaPerfil }) {
+  const uiText = useStaticUiText();
   const off = useMaOffline();
   const { pendingCount } = useMaisArrobasSync();
   const [busy, setBusy] = useState<"baixar" | "sync" | null>(null);
@@ -25,7 +26,7 @@ export function ModoOfflinePanel({ perfil }: { perfil: MaPerfil }) {
     setBusy("baixar");
     try {
       await baixarDadosOffline(perfil);
-      toast.success("App pronto para uso offline");
+      toast.success(uiText("App pronto para uso offline"));
     } catch (e: any) {
       toast.error(e?.message ?? "Não foi possível baixar os dados.");
     }
@@ -41,7 +42,7 @@ export function ModoOfflinePanel({ perfil }: { perfil: MaPerfil }) {
         toast.error(detail ? `Não foi possível enviar: ${detail}` : `${restantes} envio(s) ainda pendente(s).`);
       }
       else {
-        toast.success("Tudo sincronizado. Modo Offline desativado.");
+        toast.success(uiText("Tudo sincronizado. Modo Offline desativado."));
         window.location.reload();
       }
     } catch (e: any) {

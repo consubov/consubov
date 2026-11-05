@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { forEachLimited, withReportExportDeadline } from "@/lib/reportPdfExport";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,6 +56,8 @@ function errorMessage(error: unknown, fallback: string): string {
 const WEEK_COLORS = ["#1F7A4D", "#C9A84C", "#B91C1C", "#0EA5E9", "#7C3AED", "#F97316"];
 
 export default function ConsultorDespesasPage() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const { user } = useAuth();
   const [consultorId, setConsultorId] = useState<string | null>(null);
   const [consultorNome, setConsultorNome] = useState("");
@@ -125,7 +128,7 @@ export default function ConsultorDespesasPage() {
 
   async function handleAdd() {
     if (!user || !consultorId || !addFile || !addValor) {
-      toast.error("Preencha valor e foto");
+      toast.error(uiText("Preencha valor e foto"));
       return;
     }
     setUploading(true);
@@ -141,12 +144,12 @@ export default function ConsultorDespesasPage() {
         data_despesa: addData,
       });
       if (insErr) throw insErr;
-      toast.success("Cupom adicionado");
+      toast.success(uiText("Cupom adicionado"));
       setAddOpen(false);
       setAddFile(null); setAddValor(""); setAddData(format(new Date(), "yyyy-MM-dd"));
       await loadDespesas(consultorId);
     } catch (e) {
-      toast.error(errorMessage(e, "Erro ao adicionar"));
+      toast.error(errorMessage(e, uiText("Erro ao adicionar")));
     } finally {
       setUploading(false);
     }
@@ -155,14 +158,14 @@ export default function ConsultorDespesasPage() {
   async function handleDelete() {
     if (!toDelete || !consultorId) return;
     if (toDelete.relatorio_despesa_id) {
-      toast.error("Cupom já vinculado a um relatório");
+      toast.error(uiText("Cupom já vinculado a um relatório"));
       setToDelete(null);
       return;
     }
     const path = extractPath(toDelete.foto_cupom_url);
     if (path) await supabase.storage.from("despesas-consultor-fotos").remove([path]);
     await supabase.from("despesas_combustivel").delete().eq("id", toDelete.id);
-    toast.success("Cupom removido");
+    toast.success(uiText("Cupom removido"));
     setToDelete(null);
     await loadDespesas(consultorId);
   }
@@ -176,11 +179,11 @@ export default function ConsultorDespesasPage() {
       }
       const { error } = await supabase.from("relatorios_despesas").delete().eq("id", toDeleteRel.id);
       if (error) throw error;
-      toast.success("Relatório excluído");
+      toast.success(uiText("Relatório excluído"));
       setToDeleteRel(null);
       await loadRelatorios(consultorId);
     } catch (e) {
-      toast.error(errorMessage(e, "Erro ao excluir relatório"));
+      toast.error(errorMessage(e, uiText("Erro ao excluir relatório")));
     }
   }
 
@@ -201,11 +204,11 @@ export default function ConsultorDespesasPage() {
   }, [genTipo]);
 
   async function handleGerar() {
-    if (!consultorId || !genIni || !genFim) { toast.error("Selecione o período"); return; }
+    if (!consultorId || !genIni || !genFim) { toast.error(uiText("Selecione o período")); return; }
     setGenerating(true);
     try {
       const pendentes = despesas.filter(d => !d.relatorio_despesa_id && d.data_despesa >= genIni && d.data_despesa <= genFim);
-      if (!pendentes.length) { toast.error("Sem cupons pendentes no período"); setGenerating(false); return; }
+      if (!pendentes.length) { toast.error(uiText("Sem cupons pendentes no período")); setGenerating(false); return; }
 
       const valor_total = pendentes.reduce((s, d) => s + Number(d.valor), 0);
 
@@ -222,6 +225,7 @@ export default function ConsultorDespesasPage() {
       });
 
       const blob = await withReportExportDeadline(gerarDespesasPdf({
+        language,
         consultor_nome: consultorNome,
         data_inicio: genIni,
         data_fim: genFim,
@@ -247,12 +251,12 @@ export default function ConsultorDespesasPage() {
 
       await supabase.from("despesas_combustivel").update({ relatorio_despesa_id: rel.id }).in("id", pendentes.map(p => p.id));
 
-      toast.success("Relatório gerado");
+      toast.success(uiText("Relatório gerado"));
       setGenOpen(false);
       await Promise.all([loadDespesas(consultorId), loadRelatorios(consultorId)]);
       window.open(pub.publicUrl, "_blank");
     } catch (e) {
-      toast.error(errorMessage(e, "Erro ao gerar relatório"));
+      toast.error(errorMessage(e, uiText("Erro ao gerar relatório")));
     } finally {
       setGenerating(false);
     }
@@ -301,7 +305,7 @@ export default function ConsultorDespesasPage() {
         </Card>
         <Card className="p-3">
           <div className="text-xs text-muted-foreground"><LocalizedText source={"Valor pendente"} /></div>
-          <div className="text-2xl font-bold text-primary">{totalPendente.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
+          <div className="text-2xl font-bold text-primary">{totalPendente.toLocaleString(language, { style: "currency", currency: "BRL" })}</div>
         </Card>
       </div>
 
@@ -316,19 +320,19 @@ export default function ConsultorDespesasPage() {
                 <Pie data={donutData} dataKey="value" innerRadius={40} outerRadius={70} strokeWidth={0}>
                   {donutData.map((_, i) => <Cell key={i} fill={WEEK_COLORS[i % WEEK_COLORS.length]} />)}
                 </Pie>
-                <Tooltip formatter={(v) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} />
+                <Tooltip formatter={(v) => Number(v).toLocaleString(language, { style: "currency", currency: "BRL" })} />
               </PieChart>
             </ResponsiveContainer>
             <div className="flex-1 space-y-1 text-xs">
               {donutData.map((d, i) => (
                 <div key={i} className="flex items-center justify-between gap-2">
                   <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{ background: WEEK_COLORS[i % WEEK_COLORS.length] }} />{d.name}</span>
-                  <span className="font-medium">{d.value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                  <span className="font-medium">{d.value.toLocaleString(language, { style: "currency", currency: "BRL" })}</span>
                 </div>
               ))}
               <div className="pt-1 mt-1 border-t flex items-center justify-between font-semibold">
                 <span>Total</span>
-                <span>{totalMes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                <span>{totalMes.toLocaleString(language, { style: "currency", currency: "BRL" })}</span>
               </div>
             </div>
           </div>
@@ -349,9 +353,9 @@ export default function ConsultorDespesasPage() {
         <div className="grid grid-cols-2 gap-3">
           {pendentes.map(d => (
             <Card key={d.id} className="p-2 space-y-2">
-              {d.signedUrl && <img src={d.signedUrl} alt="Cupom" className="w-full h-32 object-cover rounded" />}
+              {d.signedUrl && <img src={d.signedUrl} alt={uiText("Cupom")} className="w-full h-32 object-cover rounded" />}
               <div className="text-xs">
-                <div className="font-semibold">{Number(d.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
+                <div className="font-semibold">{Number(d.valor).toLocaleString(language, { style: "currency", currency: "BRL" })}</div>
                 <div className="text-muted-foreground">{format(new Date(d.data_despesa + "T00:00:00"), "dd/MM/yyyy")}</div>
               </div>
               <Button size="sm" variant="ghost" onClick={() => setToDelete(d)} className="w-full text-destructive">
@@ -372,7 +376,7 @@ export default function ConsultorDespesasPage() {
                   <div className="text-xs text-muted-foreground">
                     {format(new Date(r.data_inicio + "T00:00:00"), "dd/MM/yyyy")} — {format(new Date(r.data_fim + "T00:00:00"), "dd/MM/yyyy")}
                   </div>
-                  <div className="text-sm font-bold text-primary">{Number(r.valor_total).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
+                  <div className="text-sm font-bold text-primary">{Number(r.valor_total).toLocaleString(language, { style: "currency", currency: "BRL" })}</div>
                 </div>
                 <div className="flex items-center gap-2">
                   {r.pdf_url && (

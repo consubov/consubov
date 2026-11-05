@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -29,14 +30,14 @@ interface Props {
 
 const TZ_SP = "America/Sao_Paulo";
 
-function fmtDate(iso: string | null | undefined) {
+function fmtDate(iso: string | null | undefined, locale: string) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("pt-BR", { timeZone: TZ_SP });
+  return new Date(iso).toLocaleDateString(locale, { timeZone: TZ_SP });
 }
 
-function fmtShortDate(iso: string | null | undefined) {
+function fmtShortDate(iso: string | null | undefined, locale: string) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: TZ_SP });
+  return new Date(iso).toLocaleDateString(locale, { day: "2-digit", month: "2-digit", timeZone: TZ_SP });
 }
 
 const catLabels: Record<string, string> = {
@@ -66,6 +67,8 @@ function calcCarenciaDias(dataFimCarencia: string | null | undefined): number {
 }
 
 export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico }: Props) {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const [pesagem, setPesagem] = useState<any>(null);
   const [sanitario, setSanitario] = useState<any>(null);
   const [consumoGlobal, setConsumoGlobal] = useState<number | null>(null);
@@ -126,13 +129,13 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
 
     // Fetch consumo global e status da mesma fonte do Mapa
     supabase
-      .from("view_painel_mae_pasto_atual")
-      .select("consumo_global_g_cab_dia, status_global")
-      .eq("pasto_id", pasto.id)
+      .rpc("get_painel_pasto_atual_rapido" as never,
+        { p_pasto_id: pasto.id } as never)
       .maybeSingle()
       .then(({ data }) => {
-        setConsumoGlobal(data?.consumo_global_g_cab_dia != null ? Number(data.consumo_global_g_cab_dia) : null);
-        setStatusGlobal(data?.status_global ?? null);
+        const row = data as { consumo_global_g_cab_dia: number | null; status_global: string | null } | null;
+        setConsumoGlobal(row?.consumo_global_g_cab_dia != null ? Number(row.consumo_global_g_cab_dia) : null);
+        setStatusGlobal(row?.status_global ?? null);
       });
 
     supabase
@@ -182,10 +185,10 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
           <div className="space-y-1">
             <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider"><LocalizedText source={"Informações Gerais"} /></h4>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <Item label="Animais" value={String(pasto.num_animais)} />
-              <Item label="Peso médio" value={pasto.peso_medio_kg != null ? `${pasto.peso_medio_kg} kg` : "—"} />
+              <Item label={uiText("Animais")} value={String(pasto.num_animais)} />
+              <Item label={uiText("Peso médio")} value={pasto.peso_medio_kg != null ? `${pasto.peso_medio_kg} kg` : "—"} />
               <Item
-                label="Consumo global"
+                label={uiText("Consumo global")}
                 value={
                   consumoGlobal != null ? (
                     <span className="flex items-center gap-1.5 flex-wrap">
@@ -201,16 +204,16 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
                   )
                 }
               />
-              <Item label="Categoria" value={pasto.categoria || "—"} />
-              <Item label="Sexo" value={pasto.sexo || "—"} />
-              <Item label="Última movimentação" value={fmtDate(pasto.ultima_movimentacao)} />
-              <Item label="Última salga" value={ultimaSalga ? `${fmtShortDate(ultimaSalga.data)} (${ultimaSalga.sacos} sacos)` : "—"} />
+              <Item label={uiText("Categoria")} value={pasto.categoria || "—"} />
+              <Item label={uiText("Sexo")} value={pasto.sexo || "—"} />
+              <Item label={uiText("Última movimentação")} value={fmtDate(pasto.ultima_movimentacao, language)} />
+              <Item label={uiText("Última salga")} value={ultimaSalga ? `${fmtShortDate(ultimaSalga.data, language)} (${ultimaSalga.sacos} sacos)` : "—"} />
               {ultimoCocho && (!ultimaSalga || new Date(ultimoCocho).getTime() > new Date(ultimaSalga.data).getTime()) && (
-                <Item label="Último Cocho Cheio" value={fmtShortDate(ultimoCocho)} />
+                <Item label={uiText("Último Cocho Cheio")} value={fmtShortDate(ultimoCocho, language)} />
               )}
-              {ultimaSalga?.motivo && <Item label="Motivo (salga manual)" value={ultimaSalga.motivo} />}
+              {ultimaSalga?.motivo && <Item label={uiText("Motivo (salga manual)")} value={ultimaSalga.motivo} />}
               {motivoCocho && ultimoCocho && (!ultimaSalga || new Date(ultimoCocho).getTime() > new Date(ultimaSalga.data).getTime()) && (
-                <Item label="Motivo (cocho cheio manual)" value={motivoCocho} />
+                <Item label={uiText("Motivo (cocho cheio manual)")} value={motivoCocho} />
               )}
             </div>
           </div>
@@ -222,12 +225,12 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
             {pesagem ? (
               <div className="text-sm space-y-0.5">
                 <p className="flex items-center gap-2 flex-wrap">
-                  <span><LocalizedText source={"Última pesagem:"} />{" "}<strong>{fmtDate(pesagem.data_pesagem)}</strong></span>
+                  <span><LocalizedText source={"Última pesagem:"} />{" "}<strong>{fmtDate(pesagem.data_pesagem, language)}</strong></span>
                   <button
                     type="button"
                     onClick={handleShareClick}
                     className="inline-flex items-center gap-1 text-green-600 text-xs hover:underline"
-                    aria-label="Compartilhar resultado"
+                    aria-label={uiText("Compartilhar resultado")}
                   >
                     <Camera className="w-4 h-4" />
                     <LocalizedText source={"Compartilhar"} /></button>
@@ -247,8 +250,8 @@ export default function DetalhesLoteModal({ open, onClose, pasto, onVerHistorico
             {sanitario ? (
               <div className="text-sm space-y-0.5">
                 <p><strong>{catLabels[sanitario.categoria] || sanitario.categoria}</strong>: {sanitario.medicamento}</p>
-                <p className="text-muted-foreground">Dose: {sanitario.dose}</p>
-                <p className="text-muted-foreground"><LocalizedText source={"Data:"} />{" "}{fmtDate(sanitario.data_aplicacao)}</p>
+                <p className="text-muted-foreground"><LocalizedText source={"Dose:"} />{" "}{sanitario.dose}</p>
+                <p className="text-muted-foreground"><LocalizedText source={"Data:"} />{" "}{fmtDate(sanitario.data_aplicacao, language)}</p>
                 {carenciaDias > 0 && (
                   <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-xs font-medium bg-destructive/10 text-destructive border border-destructive/30">
                     <LocalizedText source={"Carência restante:"} />{" "}{carenciaDias} <LocalizedText source={"dias"} /></span>

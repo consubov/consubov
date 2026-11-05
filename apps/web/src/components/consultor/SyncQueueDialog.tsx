@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -18,6 +19,8 @@ interface Props {
 }
 
 export default function SyncQueueDialog({ open, onOpenChange, pending, mutPending, photoPending }: Props) {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [items, setItems] = useState<PendingVisitaDebugInfo[]>([]);
@@ -27,7 +30,7 @@ export default function SyncQueueDialog({ open, onOpenChange, pending, mutPendin
     try {
       setItems(await getPendingVisitaDebugInfos({ includeDeleted: true }));
     } catch (err) {
-      toast.error(`Erro ao ler fila local: ${getErrorMessage(err)}`);
+      toast.error(`${uiText("Erro ao ler fila local: ")}${getErrorMessage(err)}`);
     } finally {
       setLoading(false);
     }
@@ -37,9 +40,9 @@ export default function SyncQueueDialog({ open, onOpenChange, pending, mutPendin
     setSyncing(true);
     try {
       await forceFullSync();
-      toast.success("Sincronização forçada concluída. Confira os itens restantes abaixo.");
+      toast.success(uiText("Sincronização forçada concluída. Confira os itens restantes abaixo."));
     } catch (err) {
-      toast.error(`Falha ao forçar sincronização: ${getErrorMessage(err)}`);
+      toast.error(`${uiText("Falha ao forçar sincronização: ")}${getErrorMessage(err)}`);
     } finally {
       setSyncing(false);
       await load();
@@ -52,13 +55,13 @@ export default function SyncQueueDialog({ open, onOpenChange, pending, mutPendin
       const { discardUnrecoverableForVisita } = await import("@/lib/consultorOffline/discardOrphans");
       const res = await discardUnrecoverableForVisita(visitaId);
       if (res.descartados.length === 0) {
-        toast.info("Nenhum item irrecuperável encontrado nesta visita.");
+        toast.info(uiText("Nenhum item irrecuperável encontrado nesta visita."));
       } else {
         const nomes = res.descartados.map((d) => `${d.kind} ${d.parentId.slice(0, 8)}…`).join(", ");
-        toast.success(`Descartados ${res.mutations} dado(s) e ${res.fotos} foto(s) de: ${nomes}. Esses registros precisam ser refeitos presencialmente.`);
+        toast.success(`${uiText("Descartados ")}${res.mutations}${uiText(" dado(s) e ")}${res.fotos}${uiText(" foto(s) de: ")}${nomes}${uiText(". Esses registros precisam ser refeitos presencialmente.")}`);
       }
     } catch (err) {
-      toast.error(`Falha ao descartar itens: ${getErrorMessage(err)}`);
+      toast.error(`${uiText("Falha ao descartar itens: ")}${getErrorMessage(err)}`);
     } finally {
       setSyncing(false);
       await load();
@@ -82,10 +85,10 @@ export default function SyncQueueDialog({ open, onOpenChange, pending, mutPendin
           <span>{pending} <LocalizedText source={"visita(s) contada(s) ·"} />{" "}{mutPending} <LocalizedText source={"alteração(ões) ·"} />{" "}{photoPending} <LocalizedText source={"foto(s)"} /></span>
           <div className="flex gap-2">
             <Button type="button" size="sm" onClick={() => void forcarSync()} disabled={syncing || loading}>
-              {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Forçar sincronização"}
+              {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <LocalizedText source={"Forçar sincronização"} />}
             </Button>
             <Button type="button" variant="outline" size="sm" onClick={() => void load()} disabled={loading || syncing}>
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Atualizar"}
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LocalizedText source={"Atualizar"} />}
             </Button>
           </div>
         </div>
@@ -101,19 +104,19 @@ export default function SyncQueueDialog({ open, onOpenChange, pending, mutPendin
                 <div className="min-w-0">
                   <div className="font-semibold text-foreground truncate">{item.fazenda}</div>
                   <div className="text-xs text-muted-foreground">
-                    {item.tipo} · {item.data ? new Date(item.data).toLocaleString("pt-BR") : "data não identificada"}
+                    {item.tipo} · {item.data ? new Date(item.data).toLocaleString(language) : uiText("data não identificada")}
                   </div>
                 </div>
                 <Badge variant={item.deleted ? "destructive" : "secondary"} className="shrink-0">
-                  {item.deleted ? "Excluída · ignorada" : "Contada"}
+                  {uiText(item.deleted ? "Excluída · ignorada" : "Contada")}
                 </Badge>
               </div>
               {item.deletedAt && <div className="text-xs text-destructive"><LocalizedText source={"deleted_at:"} />{" "}{item.deletedAt}</div>}
               <div className="grid gap-1 text-xs text-muted-foreground">
                 <div>ID: <span className="font-mono break-all">{item.visitaId}</span></div>
-                <div><LocalizedText source={"Alterações:"} />{" "}{item.mutationTables.length ? item.mutationTables.join(", ") : "nenhuma"}</div>
-                <div><LocalizedText source={"Fotos:"} />{" "}{item.photoParents.length ? item.photoParents.join(", ") : "nenhuma"}</div>
-                {item.oldestCreatedAt && <div><LocalizedText source={"Na fila desde:"} />{" "}{new Date(item.oldestCreatedAt).toLocaleString("pt-BR")}</div>}
+                <div><LocalizedText source={"Alterações:"} />{" "}{item.mutationTables.length ? item.mutationTables.join(", ") : uiText("nenhuma")}</div>
+                <div><LocalizedText source={"Fotos:"} />{" "}{item.photoParents.length ? item.photoParents.join(", ") : uiText("nenhuma")}</div>
+                {item.oldestCreatedAt && <div><LocalizedText source={"Na fila desde:"} />{" "}{new Date(item.oldestCreatedAt).toLocaleString(language)}</div>}
                 {item.mutationErrors.length > 0 && <div className="text-destructive"><LocalizedText source={"Motivo (dados):"} />{" "}{item.mutationErrors.join("; ")}</div>}
                 {item.photoErrors.length > 0 && <div className="text-destructive"><LocalizedText source={"Motivo (fotos):"} />{" "}{item.photoErrors.join("; ")}</div>}
               </div>

@@ -4,12 +4,13 @@
  * e o mesmo local de gravação da finalização normal.
  */
 import { supabase } from "@/integrations/supabase/client";
+import type { SiteLanguage } from "@/lib/siteLanguage";
 import { gerarPecuaristaLotePdf, type PecuaristaPesoIdentificado, type PecuaristaPesoSemId } from "@/lib/pecuaristaPdf";
 import { diasEntrePesagens, escolherPesoAnterior } from "@/lib/pecuaristaData";
 import { dataLocalSP } from "@/lib/diasCalendario";
 import { loadLinhasSem } from "@/lib/maisArrobasResume";
 
-export async function gerarPdfPesagemPecuaristaHistorico(pesagemId: string, categoriaLabel: string): Promise<string> {
+export async function gerarPdfPesagemPecuaristaHistorico(pesagemId: string, categoriaLabel: string, language: SiteLanguage = "pt-BR"): Promise<string> {
   const sb = supabase as any;
   const { data: p, error } = await sb.from("pesagens_lote_pecuarista")
     .select("id, lote_id, data_pesagem, hora_inicio, hora_fim, peso_total, peso_medio, quantidade_animais, gmd")
@@ -87,6 +88,7 @@ export async function gerarPdfPesagemPecuaristaHistorico(pesagemId: string, cate
   }
 
   const blob = await gerarPecuaristaLotePdf({
+    language,
     header: {
       produtor: pc?.nome ?? "",
       nomeEmpresa: null,

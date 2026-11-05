@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ interface SolicitarSalModalProps {
 }
 
 export default function SolicitarSalModal({ open, onOpenChange, meuRetiroId, outrosRetiros, onSuccess }: SolicitarSalModalProps) {
+  const uiText = useStaticUiText();
   const [tab, setTab] = useState<string>("solicitar");
   const [retiroId, setRetiroId] = useState("");
   const [quantidade, setQuantidade] = useState("");
@@ -40,7 +41,7 @@ export default function SolicitarSalModal({ open, onOpenChange, meuRetiroId, out
           tipo_acao: 'solicitacao',
           solicitado_por: user?.id,
         });
-        toast.success(`Solicitação de ${qtd} sacos enviada`);
+        toast.success(`${uiText("Solicitação de ")}${qtd}${uiText(" sacos enviada")}`);
       } else {
         // Enviar: eu sou origem, retiro selecionado é destino
         await supabase.from("transferencias_estoque").insert({
@@ -50,7 +51,7 @@ export default function SolicitarSalModal({ open, onOpenChange, meuRetiroId, out
           tipo_acao: 'envio',
           solicitado_por: user?.id,
         });
-        toast.success(`Envio de ${qtd} sacos registrado`);
+        toast.success(`${uiText("Envio de ")}${qtd}${uiText(" sacos registrado")}`);
       }
 
       setRetiroId("");
@@ -58,7 +59,7 @@ export default function SolicitarSalModal({ open, onOpenChange, meuRetiroId, out
       onOpenChange(false);
       onSuccess();
     } catch (err: any) {
-      toast.error(err?.message || "Erro ao criar transferência");
+      toast.error(err?.message || uiText("Erro ao criar transferência"));
     } finally {
       setSaving(false);
     }
@@ -82,7 +83,7 @@ export default function SolicitarSalModal({ open, onOpenChange, meuRetiroId, out
             <div>
               <Label><LocalizedText source={"Retiro de origem"} /></Label>
               <Select value={retiroId} onValueChange={setRetiroId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione")} /></SelectTrigger>
                 <SelectContent>
                   {outrosRetiros.map(r => (
                     <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
@@ -101,7 +102,7 @@ export default function SolicitarSalModal({ open, onOpenChange, meuRetiroId, out
             <div>
               <Label><LocalizedText source={"Retiro de destino"} /></Label>
               <Select value={retiroId} onValueChange={setRetiroId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione")} /></SelectTrigger>
                 <SelectContent>
                   {outrosRetiros.map(r => (
                     <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>

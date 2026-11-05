@@ -1,8 +1,10 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
+import { ProfileProvisioningError, provisionProfileUser } from "@/lib/profileProvisioning";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -35,13 +37,16 @@ interface GerenteForm {
   nome: string;
   email: string;
   telefone: string;
+  senha: string;
+  confirmarSenha: string;
   fazenda_ids: string[];
   ativo: boolean;
 }
 
-const emptyForm: GerenteForm = { nome: "", email: "", telefone: "", fazenda_ids: [], ativo: true };
+const emptyForm: GerenteForm = { nome: "", email: "", telefone: "", senha: "", confirmarSenha: "", fazenda_ids: [], ativo: true };
 
 export default function GerentesPage() {
+  const uiText = useStaticUiText();
   const [gerentes, setGerentes] = useState<Gerente[]>([]);
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
   const [vinculos, setVinculos] = useState<Record<string, string[]>>({});
@@ -90,6 +95,7 @@ export default function GerentesPage() {
       nome: g.nome,
       email: g.email,
       telefone: g.telefone || "",
+      senha: "", confirmarSenha: "",
       fazenda_ids: ids,
       ativo: g.ativo ?? true,
     });
@@ -116,11 +122,15 @@ export default function GerentesPage() {
 
   async function handleSave() {
     if (!form.nome.trim() || !form.email.trim()) {
-      toast.error("Nome e email são obrigatórios");
+      toast.error(uiText("Nome e email são obrigatórios"));
       return;
     }
     if (form.fazenda_ids.length === 0) {
-      toast.error("Selecione pelo menos uma fazenda");
+      toast.error(uiText("Selecione pelo menos uma fazenda"));
+      return;
+    }
+    if (!editingId && (form.senha.length < 12 || form.senha !== form.confirmarSenha)) {
+      toast.error(uiText("Defina uma senha de pelo menos 12 caracteres e confirme-a."));
       return;
     }
     setSaving(true);
@@ -138,62 +148,53 @@ export default function GerentesPage() {
           ativo: form.ativo,
         }).eq("id", editingId);
         if (error) throw error;
-        toast.success("Gerente atualizado!");
+        toast.success(uiText("Gerente atualizado!"));
       } else {
-        // Create auth user first
-        const res = await supabase.functions.invoke("create-user", {
-          body: { email: form.email, password: "Consubov@2025" },
+        const userId = await provisionProfileUser({
+          email: form.email,
+          senha: form.senha,
+          role: "usuario",
         });
-        if (res.error) {
-          console.error("Erro ao criar usuário:", res.error);
-          toast.error("Erro ao criar usuário: " + (res.error.message || JSON.stringify(res.error)));
-          setSaving(false);
-          return;
-        }
-        const responseData = res.data;
-        if (responseData?.error) {
-          console.error("Erro ao criar usuário:", responseData.error);
-          toast.error("Erro ao criar usuário: " + responseData.error);
-          setSaving(false);
-          return;
-        }
 
-        const userId = responseData?.user?.id;
         const { data: novo, error } = await supabase.from("gerentes").insert({
           nome: form.nome,
-          email: form.email,
+          email: form.email.trim().toLowerCase(),
           telefone: form.telefone || null,
           fazenda_id: form.fazenda_ids[0],
-          user_id: userId || null,
+          user_id: userId,
           ativo: form.ativo,
         }).select("id").single();
         if (error) {
-          console.error("Erro ao salvar gerente:", error);
-          toast.error("Erro ao salvar: " + error.message);
-          setSaving(false);
+          toast.error(uiText("Usuário de acesso criado, mas o gerente não foi salvo. Verifique o cadastro antes de repetir."));
           return;
         }
-
-        await salvarVinculos(novo.id, form.fazenda_ids, form.fazenda_ids[0]);
-        toast.success("Gerente criado! Acessa todos os retiros das fazendas selecionadas.");
+        try {
+          await salvarVinculos(novo.id, form.fazenda_ids, form.fazenda_ids[0]);
+        } catch {
+          toast.error(uiText("Gerente criado, mas vínculos com fazendas não confirmados. Confira antes de repetir."));
+          void fetchData();
+          return;
+        }
+        toast.success(uiText("Gerente criado! Acessa todos os retiros das fazendas selecionadas."));
       }
       setDialogOpen(false);
       fetchData();
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Erro ao salvar");
+    } catch (err: unknown) {
+      toast.error(err instanceof ProfileProvisioningError
+        ? err.message : "Não foi possível salvar o gerente.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Excluir este gerente?")) return;
+    if (!confirm(uiText("Excluir este gerente?"))) return;
     await supabase.from("gerentes_fazendas").delete().eq("gerente_id", id);
     const { error } = await supabase.from("gerentes").delete().eq("id", id);
     if (error) {
-      toast.error("Erro ao excluir: " + error.message);
+      toast.error(uiText("Erro ao excluir: ") + error.message);
     } else {
-      toast.success("Gerente excluído");
+      toast.success(uiText("Gerente excluído"));
       fetchData();
     }
   }
@@ -292,12 +293,31 @@ export default function GerentesPage() {
               <Label><LocalizedText source={"Telefone"} /></Label>
               <Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} />
             </div>
+            {!editingId && (
+              <>
+                <div>
+                  <Label htmlFor="gerente-senha"><LocalizedText source={"Senha de acesso *"} /></Label>
+                  <PasswordInput id="gerente-senha" autoComplete="new-password"
+                    value={form.senha}
+                    onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} />
+                </div>
+                <div>
+                  <Label htmlFor="gerente-confirmar-senha"><LocalizedText source={"Confirmar senha *"} /></Label>
+                  <PasswordInput id="gerente-confirmar-senha" autoComplete="new-password"
+                    value={form.confirmarSenha}
+                    onChange={e => setForm(f => ({ ...f, confirmarSenha: e.target.value }))} />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    <LocalizedText source={"Mínimo 12 caracteres. Guarde a senha em cofre privado, nunca no cérebro compartilhado."} />
+                  </p>
+                </div>
+              </>
+            )}
             <div>
               <FazendasMultiSelect
                 fazendas={fazendas}
                 selected={form.fazenda_ids}
                 onChange={(ids) => setForm(f => ({ ...f, fazenda_ids: ids }))}
-                label="Fazendas *"
+                label={uiText("Fazendas *")}
               />
               <p className="text-xs text-muted-foreground mt-1"><LocalizedText source={"O gerente terá acesso a todos os retiros das fazendas selecionadas."} /></p>
             </div>

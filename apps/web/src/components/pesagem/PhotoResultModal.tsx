@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import html2canvas from "html2canvas";
@@ -129,6 +129,7 @@ function InsightBadge({ fontSize, exporting, position }: InsightBadgeProps) {
 }
 
 export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }: Props) {
+  const uiText = useStaticUiText();
   const [sharing, setSharing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
@@ -209,7 +210,7 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
   async function exportar() {
     const el = cardRef.current;
     if (!el) {
-      toast.error("Cartão não encontrado.");
+      toast.error(uiText("Cartão não encontrado."));
       return;
     }
 
@@ -246,10 +247,10 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
       }
 
       baixar(url);
-      toast.success("Imagem baixada!");
+      toast.success(uiText("Imagem baixada!"));
     } catch (error) {
       console.error("Erro ao gerar imagem:", error);
-      toast.error("Erro ao gerar imagem.");
+      toast.error(uiText("Erro ao gerar imagem."));
     } finally {
       setSharing(false);
       setExporting(false);
@@ -273,7 +274,7 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
         onClick={onClose}
         className="absolute right-4 top-4 z-[110] flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-sm"
         style={{ backgroundColor: "rgba(255,255,255,0.12)", color: "white" }}
-        aria-label="Fechar"
+        aria-label={uiText("Fechar")}
       >
         <X className="h-5 w-5" />
       </button>
@@ -291,7 +292,7 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
           {/* Foto */}
           <img
             src={photoUrl}
-            alt="Foto da pesagem"
+            alt={uiText("Foto da pesagem")}
             className="absolute inset-0 h-full w-full object-cover"
           />
 
@@ -529,7 +530,7 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
                     onClick={() => adjust(-1)}
                     className="h-8 w-8 rounded-full flex items-center justify-center"
                     style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
-                    aria-label="Diminuir"
+                    aria-label={uiText("Diminuir")}
                   >
                     <Minus className="h-4 w-4" />
                   </button>
@@ -537,7 +538,7 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
                     onClick={() => adjust(1)}
                     className="h-8 w-8 rounded-full flex items-center justify-center"
                     style={{ backgroundColor: "rgba(255,255,255,0.14)", color: "white" }}
-                    aria-label="Aumentar"
+                    aria-label={uiText("Aumentar")}
                   >
                     <Plus className="h-4 w-4" />
                   </button>
@@ -551,7 +552,7 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
                     onClick={() => mover("insight", "left")}
                     className="rounded-lg flex items-center justify-center"
                     style={{ width: 44, height: 44, backgroundColor: "rgb(39,39,42)", color: "white", fontSize: 20 }}
-                    aria-label="Esquerda"
+                    aria-label={uiText("Esquerda")}
                   >
                     <ArrowLeft style={{ width: 20, height: 20 }} />
                   </button>
@@ -559,7 +560,7 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
                     onClick={() => mover("insight", "up")}
                     className="rounded-lg flex items-center justify-center"
                     style={{ width: 44, height: 44, backgroundColor: "rgb(39,39,42)", color: "white", fontSize: 20 }}
-                    aria-label="Cima"
+                    aria-label={uiText("Cima")}
                   >
                     <ArrowUp style={{ width: 20, height: 20 }} />
                   </button>
@@ -567,7 +568,7 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
                     onClick={() => mover("insight", "down")}
                     className="rounded-lg flex items-center justify-center"
                     style={{ width: 44, height: 44, backgroundColor: "rgb(39,39,42)", color: "white", fontSize: 20 }}
-                    aria-label="Baixo"
+                    aria-label={uiText("Para baixo")}
                   >
                     <ArrowDown style={{ width: 20, height: 20 }} />
                   </button>
@@ -575,7 +576,7 @@ export default function PhotoResultModal({ open, onClose, photoUrl, pesagemId }:
                     onClick={() => mover("insight", "right")}
                     className="rounded-lg flex items-center justify-center"
                     style={{ width: 44, height: 44, backgroundColor: "rgb(39,39,42)", color: "white", fontSize: 20 }}
-                    aria-label="Direita"
+                    aria-label={uiText("Direita")}
                   >
                     <ArrowRight style={{ width: 20, height: 20 }} />
                   </button>

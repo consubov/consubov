@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { diasCalendarioSP, dataLocalSP } from "@/lib/diasCalendario";
 import { useNavigate } from "react-router-dom";
@@ -54,6 +55,7 @@ import {
 } from "@/lib/offlineDb";
 import { generateAndStoreSalgaPdf, downloadBlob } from "@/lib/autoSalgaPdf";
 import { maybeUpdateActiveServiceWorker } from "@/lib/swRegistration";
+import { extractQrUuid, findActivePastoForQr } from "@/lib/qrUtils";
 import { requestPersistentStorage } from "@/lib/storageProtection";
 import { compressImageDataUrl } from "@/lib/imageCompression";
 import { confirmObservationSynced, observationInScope } from "@/lib/observacoesGuard";
@@ -235,6 +237,9 @@ function computeFormSuggestion(
   selectedCiclo: CicloCache | undefined
 ): SalgaSugestao | null {
   if (!pasto || !produtoAtivo || !fazendaCache) return null;
+  // Sync uses the pasture's product ahead of the retiro's. Never suggest bags
+  // with a different product when only the retiro product is cached.
+  if (pasto.produto_id && pasto.produto_id !== produtoAtivo.id) return null;
 
   const { pesoAtual } = calcDinamicoPasto(pasto, retiro, selectedCiclo);
   const peso = pesoAtual;
@@ -261,6 +266,8 @@ function computeFormSuggestion(
 }
 
 export default function CapatazDashboard() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const { signOut, roleData, user } = useAuth();
   const navigate = useNavigate();
 
@@ -474,9 +481,7 @@ export default function CapatazDashboard() {
     let cancelled = false;
     void (async () => {
       const { data, error } = await (supabase as any)
-        .from("view_painel_mae_pasto_atual")
-        .select("pasto_id, indice_global, status_global")
-        .eq("retiro_id", retiroIdAtual);
+        .rpc("get_painel_pasto_atual_rapido", { p_retiro_id: retiroIdAtual });
       if (cancelled || error || !data) return;
       const map: Record<string, { status_consumo?: string; indice_consumo?: number }> = {};
       for (const row of data) {
@@ -959,7 +964,7 @@ export default function CapatazDashboard() {
   const handleTrocarRetiro = useCallback(async (novoRetiroId: string) => {
     if (!novoRetiroId || novoRetiroId === activeRetiroId) return;
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      toast.error('Sem conexão', { description: 'É preciso estar online para trocar de retiro.' });
+      toast.error(uiText("Sem conexão"), { description: uiText("É preciso estar online para trocar de retiro.") });
       return;
     }
     if (trocandoRetiro) return;
@@ -1033,12 +1038,12 @@ export default function CapatazDashboard() {
       setConsumoGlobalMap({});
       setRetiroAtivoId(novoRetiroId);
       await refreshLancamentosState(cicloAtivoId);
-      toast.success('Retiro alterado');
+      toast.success(uiText("Retiro alterado"));
     } catch (error) {
       console.warn('[CapatazDashboard] troca de retiro cancelada:', error);
       toast.error(error instanceof Error && error.message.includes('Sincronize')
         ? error.message
-        : 'Não foi possível carregar o novo retiro. Seus dados anteriores foram mantidos.');
+        : uiText('Não foi possível carregar o novo retiro. Seus dados anteriores foram mantidos.'));
     } finally {
       setTrocandoRetiro(false);
     }
@@ -1084,7 +1089,7 @@ export default function CapatazDashboard() {
     ]).catch((err) => console.warn('[CapatazDashboard] preload offline chunks failed:', err));
     const cached = await getCachedPastos();
     if (cached.length === 0) {
-      toast.error("Sem dados de pastos. Conecte-se à internet primeiro.");
+      toast.error(uiText("Sem dados de pastos. Conecte-se à internet primeiro."));
       setScreen('home');
       return;
     }
@@ -1092,7 +1097,7 @@ export default function CapatazDashboard() {
     const cachedCiclosNow = await getCachedCiclos();
     const cicloAberto = cachedCiclosNow.find(c => !c.fechado);
     if (!cicloAberto) {
-      toast.error("⚠ Nenhum ciclo aberto. Inicie o mês antes de registrar salgas.");
+      toast.error(uiText("⚠ Nenhum ciclo aberto. Inicie o mês antes de registrar salgas."));
       setScreen('home');
       return;
     }
@@ -1119,25 +1124,38 @@ export default function CapatazDashboard() {
     });
   };
 
-  // QR scanned
+  // QR resolves an identifier, not permission or current pasture data.
   const handleQrScan = async (qrValue: string) => {
-    const pasto = await getPastoByQr(qrValue);
-    if (pasto) {
-      if (pastoJaSalgadoHoje(pasto.id)) {
-        setDuplicadoPrompt({
-          pastoId: pasto.id,
-          pastoNome: pasto.nome,
-          tipo: 'salga',
-          hora: horaUltimaSalgaHoje(pasto.id),
-        });
-        setScreen('salga');
-        return;
-      }
-      openForm(pasto.id, pasto.nome, 'salga');
-    } else {
-      toast.error("QR Code não reconhecido");
-      setScreen('scanner');
+    const qrUuid = extractQrUuid(qrValue)?.toLowerCase();
+    if (!qrUuid) {
+      toast.error(uiText("QR Code inválido. Tente novamente."));
+      return;
     }
+
+    const cachedPasto = await getPastoByQr(qrUuid);
+    if (!cachedPasto) {
+      toast.error(uiText("QR não encontrado nos pastos sincronizados. Confira o retiro e atualize os dados."));
+      return;
+    }
+
+    const pasto = findActivePastoForQr(qrUuid, cachedPasto, pastos);
+    if (!pasto) {
+      toast.error(uiText("Dados do pasto indisponíveis neste retiro. Confira o retiro e sincronize."));
+      return;
+    }
+
+    if (pastoJaSalgadoHoje(pasto.id)) {
+      setDuplicadoPrompt({
+        pastoId: pasto.id,
+        pastoNome: pasto.nome,
+        tipo: 'salga',
+        hora: horaUltimaSalgaHoje(pasto.id),
+      });
+      setScreen('salga');
+      return;
+    }
+
+    void openForm(pasto.id, pasto.nome, 'salga');
   };
 
   const openForm = async (pastoId: string, pastoNome: string, tipo: 'salga' | 'falha_qr', justificativa?: string, duplicadoConfirmado = false) => {
@@ -1176,7 +1194,7 @@ export default function CapatazDashboard() {
 
   const confirmManualSelect = () => {
     if (!manualJustificativa.trim() || !manualPastoId) {
-      toast.error("Preencha a justificativa e selecione um pasto");
+      toast.error(uiText("Preencha a justificativa e selecione um pasto"));
       return;
     }
     const pasto = pastos.find(p => p.id === manualPastoId);
@@ -1206,7 +1224,7 @@ export default function CapatazDashboard() {
     // Block if no open ciclo
     const cicloAtivo = ciclos.find(c => c.id === selectedCicloId && !c.fechado);
     if (!cicloAtivo) {
-      toast.error("⚠ Inicie o mês antes de registrar a salga");
+      toast.error(uiText("⚠ Inicie o mês antes de registrar a salga"));
       return;
     }
 
@@ -1222,7 +1240,7 @@ export default function CapatazDashboard() {
       await saveLancamento(lancamento);
     } catch {
       // Keep the form/draft open: the write has NOT been committed.
-      toast.error('Não foi possível salvar no aparelho. Confira o armazenamento e tente novamente.');
+      toast.error(uiText("Não foi possível salvar no aparelho. Confira o armazenamento e tente novamente."));
       return;
     }
     setFormDuplicadoConfirmado(false);
@@ -1240,7 +1258,7 @@ export default function CapatazDashboard() {
       } catch { /* offline — no problem */ }
     }
 
-    toast.success("✅ Salvo offline");
+    toast.success(uiText("✅ Salvo offline"));
     setFormDraft(null);
 
     // Refresh local data
@@ -1249,7 +1267,7 @@ export default function CapatazDashboard() {
   };
   const handleDeleteLancamento = async (id: string) => {
     await deleteLancamento(id);
-    toast.success("Lançamento excluído");
+    toast.success(uiText("Lançamento excluído"));
     await refreshLancamentosState();
   };
 
@@ -1262,7 +1280,7 @@ export default function CapatazDashboard() {
     const fecharPend = await getFecharMesPendente();
     const totalPending = pendentes.length + obsPend.length + (fecharPend ? 1 : 0);
     if (totalPending === 0) {
-      toast.info("Nenhum dado pendente para sincronizar");
+      toast.info(uiText("Nenhum dado pendente para sincronizar"));
       return;
     }
     setScreen('syncing');
@@ -1511,7 +1529,7 @@ export default function CapatazDashboard() {
 
         await clearFecharMes();
         setFecharMesPendente(null);
-        toast.success("✅ Mês fechado e novo ciclo criado");
+        toast.success(uiText("✅ Mês fechado e novo ciclo criado"));
       } catch (err: any) {
         const errorMsg = err?.message || err?.details || JSON.stringify(err);
         failedCount++;
@@ -1529,9 +1547,9 @@ export default function CapatazDashboard() {
       const resumo = failedMessages.slice(0, 3).join(" | ");
       syncFailureMessage = `${failedCount} item(ns) com falha: ${resumo}`;
       setSyncError(syncFailureMessage);
-      toast.warning(`${failedCount} item(ns) não sincronizado(s). Tente novamente.`);
+      toast.warning(`${failedCount}${uiText(" item(ns) não sincronizado(s). Tente novamente.")}`);
     } else if (remaining.length === 0) {
-      toast.success("✅ Todos os dados sincronizados");
+      toast.success(uiText("✅ Todos os dados sincronizados"));
     }
 
     setScreen('home');
@@ -1566,12 +1584,13 @@ export default function CapatazDashboard() {
           retiroNome: retiro.nome,
           sinceIso: previousLastSyncedAt,
           responsavelNome: userName,
+          language,
         });
         if (result.empty) return;
-        toast.success("Sync concluído — PDF disponível", {
+        toast.success(uiText("Sync concluído — PDF disponível"), {
           duration: 10_000,
           action: {
-            label: "Baixar PDF",
+            label: uiText("Baixar PDF"),
             onClick: () => downloadBlob(result.blob, result.fileName),
           },
         });
@@ -1648,7 +1667,7 @@ export default function CapatazDashboard() {
 
   if (screen === 'scanner') {
     return (
-      <Suspense fallback={<DeferredFallback label="Abrindo câmera..." />}>
+      <Suspense fallback={<DeferredFallback label={uiText("Abrindo câmera...")} />}>
         <QrScanner
           onScan={handleQrScan}
           onManualSelect={handleManualSelect}
@@ -1696,7 +1715,7 @@ export default function CapatazDashboard() {
                 <Textarea
                   value={manualJustificativa}
                   onChange={(e) => setManualJustificativa(e.target.value)}
-                  placeholder="Descreva o motivo da falha..."
+                  placeholder={uiText("Descreva o motivo da falha...")}
                   rows={2}
                 />
               </div>
@@ -1704,7 +1723,7 @@ export default function CapatazDashboard() {
                 <label className="text-sm font-medium text-foreground mb-1 block"><LocalizedText source={"Selecionar pasto *"} /></label>
                 <Select value={manualPastoId} onValueChange={setManualPastoId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o pasto" />
+                    <SelectValue placeholder={uiText("Selecione o pasto")} />
                   </SelectTrigger>
                   <SelectContent>
                     {pastos.map((p) => (
@@ -1723,8 +1742,19 @@ export default function CapatazDashboard() {
   }
 
   if (screen === 'form') {
+    const formPasto = pastos.find(p => p.id === formPastoId);
+    if (!formPasto) {
+      return (
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-6">
+          <p role="alert" className="text-center text-destructive font-medium">
+            Dados do pasto indisponíveis neste retiro. Confira a sincronização antes de registrar a salga.
+          </p>
+          <Button onClick={() => setScreen('salga')}>Voltar aos pastos</Button>
+        </div>
+      );
+    }
     return (
-      <Suspense fallback={<DeferredFallback label="Abrindo formulário..." />}>
+      <Suspense fallback={<DeferredFallback label={uiText("Abrindo formulário...")} />}>
         <SalgaForm
           pastoId={formPastoId}
           pastoNome={formPastoNome}
@@ -1743,7 +1773,7 @@ export default function CapatazDashboard() {
             setFormSugestao(null);
             setScreen('salga');
           }}
-          numAnimais={pastos.find(p => p.id === formPastoId)?.num_animais ?? 0}
+          numAnimais={formPasto.num_animais}
           sugestao={formSugestao}
         />
       </Suspense>
@@ -1891,7 +1921,7 @@ export default function CapatazDashboard() {
                   variant="ghost"
                   size="icon"
                   className="text-primary-foreground hover:bg-primary/80 -ml-2"
-                  aria-label="Abrir menu"
+                  aria-label={uiText("Abrir menu")}
                 >
                   <Menu className="w-6 h-6" />
                 </Button>
@@ -1978,7 +2008,7 @@ export default function CapatazDashboard() {
               disabled={trocandoRetiro}
             >
               <SelectTrigger className="h-9 bg-primary-foreground/10 border-primary-foreground/30 text-primary-foreground text-xs">
-                <SelectValue placeholder="Selecionar retiro" />
+                <SelectValue placeholder={uiText("Selecionar retiro")} />
               </SelectTrigger>
               <SelectContent>
                 {retirosVinculados.map((r) => (
@@ -2065,9 +2095,9 @@ export default function CapatazDashboard() {
                       const cachedCiclosNow = await getCachedCiclos();
                       const updated = cachedCiclosNow.map(c => c.id === selectedCicloId ? { ...c, data_inicio: agora } : c);
                       await cacheCiclos(updated);
-                      toast.success("✅ Mês iniciado com sucesso");
+                      toast.success(uiText("✅ Mês iniciado com sucesso"));
                     } catch {
-                      toast.error("Erro ao iniciar mês");
+                      toast.error(uiText("Erro ao iniciar mês"));
                     }
                   }}
                 >
@@ -2098,7 +2128,7 @@ export default function CapatazDashboard() {
                       <AlertDialogAction onClick={async () => {
                         const salgasPend = await getLancamentosPendentes();
                         if (salgasPend.length > 0) {
-                          toast.error("Sincronize as salgas pendentes antes de fechar o mês");
+                          toast.error(uiText("Sincronize as salgas pendentes antes de fechar o mês"));
                           return;
                         }
                         if (!selectedCicloId) return;
@@ -2111,11 +2141,11 @@ export default function CapatazDashboard() {
                         try {
                           await saveFecharMes(action);
                         } catch {
-                          toast.error('Não foi possível guardar o fechamento no aparelho.');
+                          toast.error(uiText("Não foi possível guardar o fechamento no aparelho."));
                           return;
                         }
                         setFecharMesPendente(action);
-                        toast.success("Mês fechado. Sincronize para confirmar.");
+                        toast.success(uiText("Mês fechado. Sincronize para confirmar."));
                       }}>
                         <LocalizedText source={"Confirmar"} /></AlertDialogAction>
                     </AlertDialogFooter>
@@ -2127,10 +2157,10 @@ export default function CapatazDashboard() {
             {/* Ciclo date info */}
             {selectedCiclo?.data_inicio && (
               <div className="text-xs text-muted-foreground border-t border-primary/10 pt-2 space-y-0.5">
-                <p><LocalizedText source={"Iniciado em:"} />{" "}{new Date(selectedCiclo.data_inicio).toLocaleDateString("pt-BR")}</p>
+                <p><LocalizedText source={"Iniciado em:"} />{" "}{new Date(selectedCiclo.data_inicio).toLocaleDateString(language)}</p>
                 {selectedCiclo.data_fim && (
                   <>
-                    <p><LocalizedText source={"Fechado em:"} />{" "}{new Date(selectedCiclo.data_fim).toLocaleDateString("pt-BR")}</p>
+                    <p><LocalizedText source={"Fechado em:"} />{" "}{new Date(selectedCiclo.data_fim).toLocaleDateString(language)}</p>
                     <p><LocalizedText source={"Duração:"} />{" "}{selectedCiclo.duracao_dias ?? '—'} <LocalizedText source={"dias"} /></p>
                   </>
                 )}
@@ -2195,7 +2225,7 @@ export default function CapatazDashboard() {
                 <Card key={obs.id}>
                   <CardContent className="p-3 flex items-center gap-3">
                     {obs.foto_url && (
-                      <img src={obs.foto_url} alt="Obs" className="w-12 h-12 rounded object-cover shrink-0" />
+                      <img src={obs.foto_url} alt={uiText("Observação")} className="w-12 h-12 rounded object-cover shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm text-foreground capitalize">{obs.tipo?.replace(/_/g, ' ')}</p>
@@ -2221,7 +2251,7 @@ export default function CapatazDashboard() {
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
-                            <AlertDialogAction className={CAPATAZ_CLASS_4} onClick={async () => { await deleteObservacaoOffline(obs.id); await refreshObservacoes(); toast.success("Observação excluída"); }}>
+                            <AlertDialogAction className={CAPATAZ_CLASS_4} onClick={async () => { await deleteObservacaoOffline(obs.id); await refreshObservacoes(); toast.success(uiText("Observação excluída")); }}>
                               <LocalizedText source={"Excluir"} /></AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

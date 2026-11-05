@@ -37,3 +37,18 @@ export async function generateQrDataUri(value: string, size = 400): Promise<stri
     color: { dark: "#000000", light: "#FFFFFF" },
   });
 }
+
+/** A leitura offline deve cruzar a identidade do QR com a lista do retiro ativo.
+ *  O registro indexado pode ter sido substituido ou pertencer a outro contexto.
+ *  Usar sempre o cadastro atual, nunca dados de um scan anterior.
+ */
+export function findActivePastoForQr<T extends { id: string; qr_uuid: string }>(
+  qrUuid: string,
+  indexedPasto: T | null | undefined,
+  activePastos: readonly T[],
+): T | null {
+  if (!indexedPasto || indexedPasto.qr_uuid.toLowerCase() !== qrUuid.toLowerCase()) return null;
+  return activePastos.find(
+    (pasto) => pasto.id === indexedPasto.id && pasto.qr_uuid.toLowerCase() === qrUuid.toLowerCase(),
+  ) ?? null;
+}

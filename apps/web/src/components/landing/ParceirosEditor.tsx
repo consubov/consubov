@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ export default function ParceirosEditor({ landingSlug }: { landingSlug: string }
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const uiText = useStaticUiText();
 
   const load = async () => {
     setLoading(true);
@@ -81,7 +83,7 @@ export default function ParceirosEditor({ landingSlug }: { landingSlug: string }
     const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true });
     if (error) {
       setBusyId(null);
-      return toast.error(`Erro ao enviar imagem: ${error.message}`);
+      return toast.error(`${uiText("Erro ao enviar imagem: ")}${error.message}`);
     }
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
     await patch(id, { logo_url: data.publicUrl });
@@ -91,16 +93,16 @@ export default function ParceirosEditor({ landingSlug }: { landingSlug: string }
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Parceiros (logos)</CardTitle>
+        <CardTitle className="text-base"><LocalizedText source={"Parceiros (logos)"} /></CardTitle>
         <p className="text-xs text-muted-foreground">
-          Adicione, remova e reordene as logos exibidas na seção Parceiros.
+          <LocalizedText source={"Adicione, remova e reordene as logos exibidas na seção Parceiros."} />
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
         {loading ? (
           <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
         ) : items.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">Nenhum parceiro cadastrado.</p>
+          <p className="text-xs text-muted-foreground italic"><LocalizedText source={"Nenhum parceiro cadastrado."} /></p>
         ) : (
           items.map((p, idx) => (
             <div key={p.id} className="rounded-lg border border-border p-3 bg-muted/30 flex items-center gap-3">
@@ -114,7 +116,7 @@ export default function ParceirosEditor({ landingSlug }: { landingSlug: string }
               <div className="flex-1 space-y-2">
                 <Input
                   value={p.nome || ""}
-                  placeholder="Nome do parceiro"
+                  placeholder={uiText("Nome do parceiro")}
                   maxLength={120}
                   onChange={(e) => setItems((prev) => prev.map((x) => (x.id === p.id ? { ...x, nome: e.target.value } : x)))}
                   onBlur={(e) => patch(p.id, { nome: e.target.value })}
@@ -135,21 +137,21 @@ export default function ParceirosEditor({ landingSlug }: { landingSlug: string }
                     onClick={() => fileRefs.current[p.id]?.click()}
                   >
                     {busyId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                    {p.logo_url ? "Substituir" : "Enviar logo"}
+                    {uiText(p.logo_url ? "Substituir" : "Enviar logo")}
                   </Button>
                   <Button type="button" variant="ghost" size="sm" onClick={() => patch(p.id, { ativo: !p.ativo })}>
-                    {p.ativo ? "Ativo" : "Inativo"}
+                    {uiText(p.ativo ? "Ativo" : "Inativo")}
                   </Button>
                 </div>
               </div>
               <div className="flex flex-col gap-1">
-                <Button type="button" variant="ghost" size="icon" onClick={() => move(idx, -1)}>
+                <Button type="button" variant="ghost" size="icon" aria-label={uiText("Mover para cima")} title={uiText("Mover para cima")} onClick={() => move(idx, -1)}>
                   <ArrowUp className="w-4 h-4" />
                 </Button>
-                <Button type="button" variant="ghost" size="icon" onClick={() => move(idx, 1)}>
+                <Button type="button" variant="ghost" size="icon" aria-label={uiText("Mover para baixo")} title={uiText("Mover para baixo")} onClick={() => move(idx, 1)}>
                   <ArrowDown className="w-4 h-4" />
                 </Button>
-                <Button type="button" variant="ghost" size="icon" onClick={() => removeParceiro(p.id)}>
+                <Button type="button" variant="ghost" size="icon" aria-label={uiText("Excluir parceiro")} title={uiText("Excluir parceiro")} onClick={() => removeParceiro(p.id)}>
                   <Trash2 className="w-4 h-4 text-destructive" />
                 </Button>
               </div>
@@ -157,7 +159,7 @@ export default function ParceirosEditor({ landingSlug }: { landingSlug: string }
           ))
         )}
         <Button type="button" variant="outline" size="sm" className="gap-2" onClick={addParceiro}>
-          <Plus className="w-4 h-4" /> Adicionar parceiro
+          <Plus className="w-4 h-4" /> <LocalizedText source={"Adicionar parceiro"} />
         </Button>
       </CardContent>
     </Card>

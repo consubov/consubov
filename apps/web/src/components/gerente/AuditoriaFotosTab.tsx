@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -50,18 +51,19 @@ function faixa(periodo: Periodo, mes: number, ano: number) {
   return { ini: new Date(ano, mes - 1, 1), fim: new Date(ano, mes, 1) };
 }
 
-function rotuloDia(iso: string) {
+function rotuloDia(iso: string, language: string) {
   const d = new Date(iso);
   const now = new Date();
   const k = (x: Date) => `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`;
-  if (k(d) === k(now)) return "Hoje";
+  if (k(d) === k(now)) return language === "en-US" ? "Today" : "Hoje";
   const ontem = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  if (k(d) === k(ontem)) return "Ontem";
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  if (k(d) === k(ontem)) return language === "en-US" ? "Yesterday" : "Ontem";
+  return d.toLocaleDateString(language, { day: "2-digit", month: "2-digit" });
 }
-const hora = (iso: string) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+const hora = (iso: string, language: string) => new Date(iso).toLocaleString(language, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 export default function AuditoriaFotosTab({ fazendaId, retiros, mes, ano }: Props) {
+  const { language } = useTranslation();
   const [tipo, setTipo] = useState<"todas" | Tipo>("todas");
   const [retiroId, setRetiroId] = useState("todos");
   const [periodo, setPeriodo] = useState<Periodo>("7d");
@@ -226,7 +228,7 @@ export default function AuditoriaFotosTab({ fazendaId, retiros, mes, ano }: Prop
   const grupos = useMemo(() => {
     const g: Array<{ dia: string; itens: Array<{ it: Item; idx: number }> }> = [];
     itens.forEach((it, idx) => {
-      const dia = rotuloDia(it.data);
+      const dia = rotuloDia(it.data, language);
       const last = g[g.length - 1];
       if (last && last.dia === dia) last.itens.push({ it, idx });
       else g.push({ dia, itens: [{ it, idx }] });
@@ -341,6 +343,8 @@ async function buscarFoto(it: Item): Promise<string[]> {
 function FotoViewer({ item, pasto, retiro, onClose, onPrev, onNext }: {
   item: Item; pasto: string; retiro: string; onClose: () => void; onPrev?: () => void; onNext?: () => void;
 }) {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const [urls, setUrls] = useState<string[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [idx, setIdx] = useState(0);
@@ -358,7 +362,7 @@ function FotoViewer({ item, pasto, retiro, onClose, onPrev, onNext }: {
       <div className="bg-card text-card-foreground px-3 py-2 flex items-start gap-2">
         <div className="flex-1 min-w-0 text-xs space-y-0.5">
           <p className="text-sm font-semibold">{info.label} · {pasto}</p>
-          <p className="text-muted-foreground">{retiro} · {item.capataz} · {hora(item.data)}</p>
+          <p className="text-muted-foreground">{retiro} · {item.capataz} · {hora(item.data, language)}</p>
           {(item.tipo === "auditoria" || item.tipo === "cocho") && (
             <p><LocalizedText source={"Sacos:"} />{" "}{item.sacos ?? "—"} <LocalizedText source={"· Consumo:"} />{" "}{item.consumo != null ? `${Math.round(item.consumo)} g/cab/dia` : "—"}</p>
           )}
@@ -366,20 +370,20 @@ function FotoViewer({ item, pasto, retiro, onClose, onPrev, onNext }: {
           {item.tipo === "observacao" && item.texto && <p>{item.texto}</p>}
           {item.tipo === "mortalidade" && item.texto && <p><LocalizedText source={"Causa:"} />{" "}{item.texto}</p>}
         </div>
-        <Button size="icon" variant="ghost" onClick={onClose} aria-label="Fechar"><X className="w-5 h-5" /></Button>
+        <Button size="icon" variant="ghost" onClick={onClose} aria-label={uiText("Fechar")}><X className="w-5 h-5" /></Button>
       </div>
       <div className="flex-1 relative overflow-hidden">
         {!urls && !erro && <div className="absolute inset-0 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-background" /></div>}
         {erro && <p className="absolute inset-0 flex items-center justify-center text-background text-sm p-6 text-center">{erro}</p>}
         {urls && urls.length === 0 && <p className="absolute inset-0 flex items-center justify-center text-background text-sm"><LocalizedText source={"Foto indisponível."} /></p>}
         {urls && urls[idx] && <ZoomImage key={`${item.key}-${idx}`} src={urls[idx]} />}
-        {onPrev && <button onClick={onPrev} aria-label="Anterior" className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-card/80 flex items-center justify-center"><ChevronLeft className="w-6 h-6" /></button>}
-        {onNext && <button onClick={onNext} aria-label="Próxima" className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-card/80 flex items-center justify-center"><ChevronRight className="w-6 h-6" /></button>}
+        {onPrev && <button onClick={onPrev} aria-label={uiText("Anterior")} className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-card/80 flex items-center justify-center"><ChevronLeft className="w-6 h-6" /></button>}
+        {onNext && <button onClick={onNext} aria-label={uiText("Próxima")} className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-card/80 flex items-center justify-center"><ChevronRight className="w-6 h-6" /></button>}
       </div>
       {urls && urls.length > 1 && (
         <div className="bg-card flex justify-center gap-2 p-2">
           {urls.map((_, i) => (
-            <Button key={i} size="sm" variant={i === idx ? "default" : "outline"} onClick={() => setIdx(i)}>{i === 0 ? "Animal" : "Brinco"}</Button>
+            <Button key={i} size="sm" variant={i === idx ? "default" : "outline"} onClick={() => setIdx(i)}>{uiText(i === 0 ? "Animal" : "Brinco")}</Button>
           ))}
         </div>
       )}
@@ -388,6 +392,7 @@ function FotoViewer({ item, pasto, retiro, onClose, onPrev, onNext }: {
 }
 
 function ZoomImage({ src }: { src: string }) {
+  const uiText = useStaticUiText();
   const [t, setT] = useState({ s: 1, x: 0, y: 0 });
   const g = useRef<{ d0: number; s0: number; px: number; py: number; x0: number; y0: number } | null>(null);
   const dist = (e: React.TouchEvent) => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
@@ -407,7 +412,7 @@ function ZoomImage({ src }: { src: string }) {
       onTouchEnd={() => { g.current = null; setT((p) => (p.s <= 1.02 ? { s: 1, x: 0, y: 0 } : p)); }}
       onDoubleClick={() => setT((p) => (p.s > 1 ? { s: 1, x: 0, y: 0 } : { s: 2.5, x: 0, y: 0 }))}
     >
-      <img src={src} alt="Foto" className="max-w-full max-h-full select-none" draggable={false}
+      <img src={src} alt={uiText("Foto")} className="max-w-full max-h-full select-none" draggable={false}
         style={{ transform: `translate(${t.x}px, ${t.y}px) scale(${t.s})`, transition: g.current ? "none" : "transform .15s" }} />
     </div>
   );

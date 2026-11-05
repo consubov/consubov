@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { fmtPorCabeca } from "@/lib/consumoPasto";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -77,14 +78,17 @@ function parsePercent(v: string | null | undefined): number {
   return isFinite(n) ? n : 0;
 }
 
-function fmt(n: number, dec = 1): string {
+function fmtInLocale(n: number, dec: number, locale: string): string {
   if (!isFinite(n) || n === 0) return "—";
-  return n.toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  return n.toLocaleString(locale, { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
 
 export default function PastoVisitaModal({
   open, onOpenChange, visitaId, pasto, proximaLetra, proximaOrdem, onSaved, readOnly,
 }: Props) {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
+  const fmt = (n: number, dec = 1) => fmtInLocale(n, dec, language);
   const [pastoIdLocal, setPastoIdLocal] = useState<string | null>(null);
   const [letra, setLetra] = useState("");
   const [numPasto, setNumPasto] = useState("");
@@ -274,11 +278,11 @@ export default function PastoVisitaModal({
           pastos: [...(curr.pastos || []), { id, ...p, fotos: [], signed: {}, samples: { fezes: [], corporal: [], bebedouro: [] } }],
         }),
       });
-      if (res.queued) toast.info("Pasto salvo off-line.");
+      if (res.queued) toast.info(uiText("Pasto salvo off-line."));
       setPastoIdLocal(id);
       return id;
     } catch (err: any) {
-      toast.error("Erro ao criar pasto: " + (err?.message || ""));
+      toast.error(uiText("Erro ao criar pasto: ") + (err?.message || ""));
       return null;
     } finally {
       setCreating(false);
@@ -305,7 +309,7 @@ export default function PastoVisitaModal({
 
   async function addSample(tipo: keyof SamplesState, nota: number) {
     const id = await ensurePasto();
-    if (!id) { toast.error("Informe a letra do pasto primeiro"); return; }
+    if (!id) { toast.error(uiText("Informe a letra do pasto primeiro")); return; }
     const scoreId = crypto.randomUUID();
     const item = { id: scoreId, nota };
     setSamples(prev => ({ ...prev, [tipo]: [...prev[tipo], item] }));
@@ -322,7 +326,7 @@ export default function PastoVisitaModal({
           : p),
       }),
     });
-    if (res.queued) toast.info("Amostra salva off-line.");
+    if (res.queued) toast.info(uiText("Amostra salva off-line."));
   }
 
   async function removeSample(tipo: keyof SamplesState, index: number) {
@@ -344,7 +348,7 @@ export default function PastoVisitaModal({
   }
 
   async function handleSave() {
-    if (!letra.trim()) return toast.error("Letra é obrigatória");
+    if (!letra.trim()) return toast.error(uiText("Letra é obrigatória"));
     setSaving(true);
     try {
       const id = await ensurePasto();
@@ -413,12 +417,12 @@ export default function PastoVisitaModal({
           pastos: (curr.pastos || []).map((x: any) => x.id === id ? { ...x, ...p } : x),
         }),
       });
-      if (res.queued) toast.info("Pasto salvo off-line.");
-      toast.success(pasto ? "Pasto atualizado" : "Pasto adicionado");
+      if (res.queued) toast.info(uiText("Pasto salvo off-line."));
+      toast.success(pasto ? uiText("Pasto atualizado") : uiText("Pasto adicionado"));
       onOpenChange(false);
       onSaved();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setSaving(false); }
   }
 
@@ -492,7 +496,7 @@ export default function PastoVisitaModal({
           <div>
             <Label><LocalizedText source={"Tipo de Produto"} /></Label>
             <Select value={tipoProduto} onValueChange={handleTipoProdutoChange} disabled={readOnly}>
-              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={uiText("Selecione...")} /></SelectTrigger>
               <SelectContent>
                 {PRODUTOS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
               </SelectContent>
@@ -504,7 +508,7 @@ export default function PastoVisitaModal({
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label><LocalizedText source={"Meta do produto (g/100kg PV)"} /></Label>
-                  <Input type="number" inputMode="decimal" step="any" value={metaG100kg} onChange={e => setMetaG100kg(e.target.value)} placeholder="ex: 25" disabled={readOnly} />
+                  <Input type="number" inputMode="decimal" step="any" value={metaG100kg} onChange={e => setMetaG100kg(e.target.value)} placeholder={uiText("ex: 25")} disabled={readOnly} />
                 </div>
                 <div>
                   <Label><LocalizedText source={"Qtd. consumida (kg)"} /></Label>
@@ -573,7 +577,7 @@ export default function PastoVisitaModal({
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label><LocalizedText source={"% Peso Vivo"} /></Label>
-                  <Input value={percentualPv} onChange={e => setPercentualPv(e.target.value)} placeholder="ex: 0,3%" disabled={readOnly} />
+                  <Input value={percentualPv} onChange={e => setPercentualPv(e.target.value)} placeholder={uiText("ex: 0,3%")} disabled={readOnly} />
                 </div>
                 <div>
                   <Label><LocalizedText source={"Consumo Esperado (kg/dia)"} /></Label>
@@ -624,15 +628,15 @@ export default function PastoVisitaModal({
           <div className="pt-2 border-t space-y-4">
             <div className="text-sm font-semibold text-foreground"><LocalizedText source={"Avaliações (1–5) — múltiplas amostras"} /></div>
             <ScoreSamplesInput
-              label="Fezes" samples={samples.fezes}
+              label={uiText("Fezes")} samples={samples.fezes}
               onAdd={n => addSample("fezes", n)} onRemove={i => removeSample("fezes", i)} disabled={readOnly}
             />
             <ScoreSamplesInput
-              label="Escore Corporal" samples={samples.corporal}
+              label={uiText("Escore Corporal")} samples={samples.corporal}
               onAdd={n => addSample("corporal", n)} onRemove={i => removeSample("corporal", i)} disabled={readOnly}
             />
             <ScoreSamplesInput
-              label="Bebedouro" samples={samples.bebedouro}
+              label={uiText("Bebedouro")} samples={samples.bebedouro}
               onAdd={n => addSample("bebedouro", n)} onRemove={i => removeSample("bebedouro", i)} disabled={readOnly}
             />
           </div>

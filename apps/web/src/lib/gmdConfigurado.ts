@@ -23,8 +23,36 @@ export function dataReferenciaGmd(mes: number | null | undefined, ano: number): 
 }
 
 /** Prevent bursty RPC fan-out across concurrent screen refreshes in this tab. */
-const MAX_GMD_RPC_INFLIGHT = 4;
+// The DB enforces a statement timeout for gmd_do_pasto when farm RLS is busy.
+// Keep reads below the prior four-way fan-out to limit simultaneous RLS work.
+const MAX_GMD_RPC_INFLIGHT = 2;
+const MAX_GMD_RPC_ATTEMPTS = 2;
+const GMD_TRANSIENT_RETRY_DELAY_MS = 450;
 let activeGmdRpc = 0;
+
+function gmdTransientFailure(response: { error?: unknown; status?: number }): boolean {
+  const error = response.error;
+  const code = error && typeof error === "object" && "code" in error
+    ? (error as { code?: unknown }).code : null;
+  // 57014 is PostgreSQL query_canceled (observed on the deployed RPC).
+  return code === "57014" || response.status === 503 || response.status === 504;
+}
+
+function gmdAbortablePause(signal: AbortSignal, milliseconds: number): Promise<void> {
+  if (signal.aborted) return Promise.reject(gmdAbortError());
+  return new Promise<void>((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(gmdAbortError());
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, milliseconds);
+    signal.addEventListener("abort", onAbort, { once: true });
+    if (signal.aborted) onAbort();
+  });
+}
 interface PendingGmdRpc {
   resolve: () => void;
   reject: (error: Error) => void;
@@ -93,9 +121,19 @@ export async function fetchGmdPastos(
       if (index >= ids.length) return;
       const id = ids[index];
       try {
-        const response: { data: unknown; error?: unknown } = await withGmdSlot(async () => {
-          const query = supabase.rpc("gmd_do_pasto", { p_pasto: id, p_dia: dia });
-          return query.abortSignal(batchSignal);
+        const response: { data: unknown; error?: unknown; status?: number } = await withGmdSlot(async () => {
+          for (let attempt = 0; attempt < MAX_GMD_RPC_ATTEMPTS; attempt++) {
+            if (batchSignal.aborted) throw gmdAbortError();
+            const result = await supabase.rpc("gmd_do_pasto", { p_pasto: id, p_dia: dia })
+              .abortSignal(batchSignal);
+            // A read-only canceled statement may succeed once the short overload
+            // passes. Never retry permission/schema failures or unconfirmed data.
+            if (!result.error || !gmdTransientFailure(result) || attempt === MAX_GMD_RPC_ATTEMPTS - 1) {
+              return result;
+            }
+            await gmdAbortablePause(batchSignal, GMD_TRANSIENT_RETRY_DELAY_MS);
+          }
+          throw new Error("Consulta GMD sem resposta confirmada");
         }, batchSignal);
         if (response?.error) throw new Error("RPC GMD indisponivel");
         const value: unknown = response?.data;

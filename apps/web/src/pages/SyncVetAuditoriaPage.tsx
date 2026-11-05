@@ -1,3 +1,4 @@
+import { useTranslation } from "@/hooks/useTranslation";
 import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState, useCallback } from "react";
 import {
@@ -10,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, ShieldCheck } from "lucide-react";
 
 export default function SyncVetAuditoriaPage() {
+  const { language } = useTranslation();
   const { roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
   const [loading, setLoading] = useState(true);
@@ -52,7 +54,7 @@ export default function SyncVetAuditoriaPage() {
                     <span className="font-medium truncate">{r.entidade}</span>
                   </div>
                   <span className="text-muted-foreground text-[10px] shrink-0">
-                    {dt.toLocaleString("pt-BR")}
+                    {dt.toLocaleString(language)}
                   </span>
                 </div>
                 <div className="text-muted-foreground mt-0.5">

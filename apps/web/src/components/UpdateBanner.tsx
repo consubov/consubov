@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useSWUpdate } from "@/lib/swRegistration";
 import { Button } from "@/components/ui/button";
@@ -87,6 +87,7 @@ export function UpdateBanner() {
 
 export function RefreshButton({ className = "" }: { className?: string }) {
   const { forceRefresh } = useSWUpdate();
+  const uiText = useStaticUiText();
 
   return (
     <Button
@@ -94,7 +95,7 @@ export function RefreshButton({ className = "" }: { className?: string }) {
       size="icon"
       onClick={forceRefresh}
       className={`text-primary-foreground hover:bg-primary/80 ${className}`}
-      title="Atualizar app"
+      title={uiText("Atualizar app")}
     >
       <RefreshCw className="w-4 h-4" />
     </Button>

@@ -66,6 +66,26 @@ describe("GMD: bounded RPC access and fail-closed semantics", () => {
     expect(mocked.rpc).toHaveBeenCalledTimes(2);
   });
 
+  it("conservatively groups report pastures by retiro/category when mode is not supplied", async () => {
+    const pastos = Array.from({ length: 72 }, (_, i) => {
+      const retiro = "ret-" + (i % 3);
+      const categoria = i % 2 ? "Recria" : "Engorda";
+      return { id: retiro + ":" + categoria + ":" + i, retiro_id: retiro, categoria };
+    });
+    mocked.rpc.mockImplementation((_name: string, args: { p_pasto: string }) => ({
+      abortSignal: async () => {
+        const [, categoria] = args.p_pasto.split(":");
+        return { data: categoria === "Recria" ? 0.4 : 0.7, error: null };
+      },
+    }));
+    const values = await fetchGmdPastosAgrupados(pastos, "2026-11-03");
+    expect(Object.keys(values)).toHaveLength(72);
+    for (const pasto of pastos) {
+      expect(values[pasto.id]).toBe(pasto.categoria === "Recria" ? 0.4 : 0.7);
+    }
+    expect(mocked.rpc).toHaveBeenCalledTimes(6);
+  });
+
   it("never publishes grouped values when one representative fails", async () => {
     mocked.rpc.mockImplementation((_name: string, args: { p_pasto: string }) => ({
       abortSignal: async () => ({
@@ -80,7 +100,7 @@ describe("GMD: bounded RPC access and fail-closed semantics", () => {
     ], "2026-10-30")).rejects.toThrow(/nao confirmado/i);
   });
 
-  it("never starts more than 4 requests concurrently", async () => {
+  it("never starts more than 2 GMD requests concurrently", async () => {
     let inFlight = 0, maxInFlight = 0;
     mocked.rpc.mockImplementation(() => ({
       abortSignal: async () => {
@@ -99,7 +119,7 @@ describe("GMD: bounded RPC access and fail-closed semantics", () => {
     ]);
     expect(Object.keys(a)).toHaveLength(22);
     expect(Object.keys(b)).toHaveLength(22);
-    expect(maxInFlight).toBeLessThanOrEqual(4);
+    expect(maxInFlight).toBeLessThanOrEqual(2);
   });
 
   it("aborts sibling RPCs on 57014 and never publishes a partial result", async () => {
@@ -122,7 +142,72 @@ describe("GMD: bounded RPC access and fail-closed semantics", () => {
     await expect(fetchGmdPastos(["bad", "slow1", "slow2", "slow3", "slow4"], "2026-10-30"))
       .rejects.toThrow(/nao confirmado/i);
     expect(aborted).toBeGreaterThanOrEqual(1);
-    expect(mocked.rpc).toHaveBeenCalledTimes(4);
+    expect(mocked.rpc).toHaveBeenCalledTimes(3);
+  });
+
+  it("recovers a transient PostgreSQL 57014 timeout with one bounded retry", async () => {
+    let callCount = 0;
+    mocked.rpc.mockImplementation(() => ({
+      abortSignal: async () => {
+        callCount += 1;
+        return callCount === 1
+          ? { data: null, error: { code: "57014" }, status: 500 }
+          : { data: 0.75, error: null, status: 200 };
+      },
+    }));
+    await expect(fetchGmdPastos(["pasto-1"], "2026-11-03")).resolves.toEqual({ "pasto-1": 0.75 });
+    expect(mocked.rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it("recovers a transient HTTP 503 while keeping the server result authoritative", async () => {
+    let called = 0;
+    mocked.rpc.mockImplementation(() => ({
+      abortSignal: async () => ++called === 1
+        ? { data: null, error: { message: "unavailable" }, status: 503 }
+        : { data: 0, error: null, status: 200 },
+    }));
+    await expect(fetchGmdPastos(["pasto-1"], "2026-11-03"))
+      .resolves.toEqual({ "pasto-1": 0 });
+    expect(mocked.rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it("never retries an authorization failure 42501 or presents unconfirmed GMD", async () => {
+    mocked.rpc.mockImplementation(() => ({
+      abortSignal: async () => ({ data: null, error: { code: "42501" }, status: 403 }),
+    }));
+    await expect(fetchGmdPastos(["pasto-1"], "2026-11-03"))
+      .rejects.toThrow(/nao confirmado/i);
+    expect(mocked.rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed after exactly one retry when a statement timeout persists", async () => {
+    mocked.rpc.mockImplementation(() => ({
+      abortSignal: async () => ({ data: null, error: { code: "57014" }, status: 500 }),
+    }));
+    await expect(fetchGmdPastos(["pasto-1"], "2026-11-03"))
+      .rejects.toThrow(/nao confirmado/i);
+    expect(mocked.rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it("cancels an in-progress retry backoff without sending another request", async () => {
+    const ac = new AbortController();
+    mocked.rpc.mockImplementation(() => ({
+      abortSignal: async () => ({ data: null, error: { code: "57014" }, status: 500 }),
+    }));
+    const result = fetchGmdPastos(["pasto-1"], "2026-11-03", ac.signal);
+    await new Promise(resolve => setTimeout(resolve, 15));
+    ac.abort();
+    await expect(result).rejects.toMatchObject({ name: "AbortError" });
+    expect(mocked.rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry a 200 response containing an invalid payload", async () => {
+    mocked.rpc.mockImplementation(() => ({
+      abortSignal: async () => ({ data: { invalid: "payload" }, error: null, status: 200 }),
+    }));
+    await expect(fetchGmdPastos(["pasto-1"], "2026-11-03"))
+      .rejects.toThrow(/nao confirmado/i);
+    expect(mocked.rpc).toHaveBeenCalledTimes(1);
   });
 
   it("never sends a pre-aborted farm batch to the database", async () => {

@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,16 +42,18 @@ interface Props {
 
 const ALL = "__all__";
 
-function formatTime(iso: string | null | undefined) {
+function formatTime(iso: string | null | undefined, locale: string) {
   if (!iso) return null;
   try {
-    return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+    return new Date(iso).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" });
   } catch {
     return null;
   }
 }
 
 export default function SyncCapatazPanel({ fazendaIdsScope, title = "Sincroniza√ß√£o dos Capatazes" }: Props) {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [fazendas, setFazendas] = useState<FazendaOpt[]>([]);
   const [retiros, setRetiros] = useState<RetiroOpt[]>([]);
@@ -105,11 +108,11 @@ export default function SyncCapatazPanel({ fazendaIdsScope, title = "Sincroniza√
       setCapatazes(capList);
       setLogs(logMap);
     } catch (err: any) {
-      toast.error("Erro ao carregar dados: " + (err?.message ?? "desconhecido"));
+      toast.error(uiText("Erro ao carregar dados: ") + (err?.message ?? uiText("desconhecido")));
     } finally {
       setLoading(false);
     }
-  }, [fazendaIdsScope]);
+  }, [fazendaIdsScope, uiText]);
 
   useEffect(() => {
     void fetchAll();
@@ -157,7 +160,7 @@ export default function SyncCapatazPanel({ fazendaIdsScope, title = "Sincroniza√
   const handleBulkSync = async () => {
     const targets = capatazesByFilter.filter((c) => !!c.user_id);
     if (targets.length === 0) {
-      toast.error("Nenhum capataz com conta vinculada na sele√ß√£o atual");
+      toast.error(uiText("Nenhum capataz com conta vinculada na sele√ß√£o atual"));
       return;
     }
     setBulkSending(true);
@@ -171,9 +174,9 @@ export default function SyncCapatazPanel({ fazendaIdsScope, title = "Sincroniza√
       }));
       const { error } = await supabase.from("sync_commands").insert(rows);
       if (error) throw error;
-      toast.success(`Sinal enviado para ${targets.length} capataz(es)`);
+      toast.success(`${uiText("Sinal enviado para ")}${targets.length} ${uiText(targets.length === 1 ? "capataz" : "capatazes")}`);
     } catch (err: any) {
-      toast.error("Erro ao enviar em lote: " + (err?.message ?? "desconhecido"));
+      toast.error(uiText("Erro ao enviar em lote: ") + (err?.message ?? uiText("desconhecido")));
     } finally {
       setBulkSending(false);
     }
@@ -185,7 +188,7 @@ export default function SyncCapatazPanel({ fazendaIdsScope, title = "Sincroniza√
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle className="text-base">{title}</CardTitle>
+          <CardTitle className="text-base">{title === "Sincroniza√ß√£o dos Capatazes" ? uiText(title) : title}</CardTitle>
           <Button variant="outline" size="sm" onClick={() => void fetchAll()} disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             <LocalizedText source={"Atualizar"} /></Button>
@@ -255,7 +258,7 @@ export default function SyncCapatazPanel({ fazendaIdsScope, title = "Sincroniza√
               const log = c.user_id ? logs.get(c.user_id) : undefined;
               const pending = log?.record_count_pending ?? 0;
               const lastSync = log?.last_success ?? null;
-              const lastSyncFormatted = formatTime(lastSync);
+              const lastSyncFormatted = formatTime(lastSync, language);
               const neverSynced = !lastSync;
 
               return (
@@ -283,7 +286,7 @@ export default function SyncCapatazPanel({ fazendaIdsScope, title = "Sincroniza√
                     ) : pending > 0 ? (
                       <Badge variant="outline" className="gap-1 border-secondary bg-secondary/15 text-secondary-foreground">
                         <AlertTriangle className="w-3 h-3" />
-                        {pending} <LocalizedText source={"pendente"} />{pending > 1 ? "s" : ""}
+                        {pending} {uiText(pending === 1 ? "pendente" : "pendentes")}
                       </Badge>
                     ) : (
                       <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary border-primary/20">

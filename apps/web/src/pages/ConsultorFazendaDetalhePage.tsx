@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +35,7 @@ interface Visita {
 }
 
 export default function ConsultorFazendaDetalhePage() {
+  const uiText = useStaticUiText();
   const { fazendaId } = useParams<{ fazendaId: string }>();
   const { roleData } = useAuth();
   const navigate = useNavigate();
@@ -177,7 +178,7 @@ export default function ConsultorFazendaDetalhePage() {
           assinantes: [{ id: assinanteId, ...assinantePayload }],
         }),
       });
-      if (res.queued) toast.info("Visita salva off-line. Sincronize quando a internet voltar.");
+      if (res.queued) toast.info(uiText("Visita salva off-line. Sincronize quando a internet voltar."));
       try {
         const nextVisitas = [{ id, tipo, status: "rascunho", hora_inicio: payload.hora_inicio, hora_fim: null }, ...visitas];
         window.localStorage.setItem(`consultor_offline_fazenda_${fazendaId}`, JSON.stringify({ ...(cached || {}), fazenda: cached?.fazenda || fazenda, consultor: cached?.consultor || null, visitas: nextVisitas }));
@@ -185,7 +186,7 @@ export default function ConsultorFazendaDetalhePage() {
       setTipoModal(false);
       navigate(`/consultor/visitas/${id}`);
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setCreating(false); }
   }
 

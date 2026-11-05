@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,6 +32,7 @@ const TABS: { key: TabKey; label: string; icon: any }[] = [
 ];
 
 export default function FabricaDashboard() {
+  const uiText = useStaticUiText();
   const { roleData, user, signOut } = useAuth();
   const [fabrica, setFabrica] = useState<Fabrica | null>(null);
   const [operador, setOperador] = useState<Operador | null>(null);
@@ -182,10 +184,10 @@ export default function FabricaDashboard() {
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-primary/80" disabled={refreshing} title="Atualizar">
+            <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-primary-foreground hover:bg-primary/80" disabled={refreshing} title={uiText("Atualizar")}>
               <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
-            <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80" title="Sair">
+            <Button variant="ghost" size="icon" onClick={signOut} className="text-primary-foreground hover:bg-primary/80" title={uiText("Sair")}>
               <LogOut className="w-5 h-5" />
             </Button>
           </div>
@@ -206,10 +208,10 @@ export default function FabricaDashboard() {
       <main className="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-4 space-y-4">
         {/* SUMMARY CARDS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="Estoque Atual" value={stockSacos} suffix="sc" icon={Warehouse} />
-          <StatCard label="Produção Hoje" value={prodHoje} suffix="sc" icon={Factory} />
-          <StatCard label="Em Trânsito" value={transito} icon={Truck} />
-          <StatCard label="Divergências (30d)" value={divergencias} icon={AlertTriangle} alert={divergencias > 0} />
+          <StatCard label={uiText("Estoque Atual")} value={stockSacos} suffix="sc" icon={Warehouse} />
+          <StatCard label={uiText("Produção Hoje")} value={prodHoje} suffix="sc" icon={Factory} />
+          <StatCard label={uiText("Em Trânsito")} value={transito} icon={Truck} />
+          <StatCard label={uiText("Divergências (30d)")} value={divergencias} icon={AlertTriangle} alert={divergencias > 0} />
         </div>
 
         {/* TABS CONTENT */}
@@ -225,6 +227,7 @@ export default function FabricaDashboard() {
 function StatCard({ label, value, suffix, icon: Icon, alert }: {
   label: string; value: number; suffix?: string; icon: any; alert?: boolean;
 }) {
+  const { language } = useTranslation();
   return (
     <Card>
       <CardContent className="p-3 sm:p-4 flex items-center gap-3">
@@ -234,7 +237,7 @@ function StatCard({ label, value, suffix, icon: Icon, alert }: {
         <div className="min-w-0">
           <div className="text-[11px] uppercase text-muted-foreground leading-tight truncate">{label}</div>
           <div className="text-lg font-bold leading-tight">
-            {value.toLocaleString("pt-BR")}
+            {value.toLocaleString(language)}
             {suffix && <span className="text-xs text-muted-foreground font-normal ml-1">{suffix}</span>}
           </div>
         </div>

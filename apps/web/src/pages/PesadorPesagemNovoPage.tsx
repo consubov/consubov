@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,6 +70,7 @@ function Chip({
 const parseNum = (s: string) => parseFloat(s.replace(",", "."));
 
 export default function PesadorPesagemNovoPage() {
+  const uiText = useStaticUiText();
   const { roleData } = useAuth();
   const pesadorId = roleData.roleId;
   const [params] = useSearchParams();
@@ -332,8 +333,7 @@ export default function PesadorPesagemNovoPage() {
               <option value={5}><LocalizedText source={"5 animais"} /></option>
             </select>
             <p className="text-xs text-muted-foreground">
-              O peso digitado será o TOTAL da leitura, dividido pelo número de animais. Você poderá ajustar a quantidade a cada leitura.
-              Modo incompatível com lote misto (Aleatória) e com rendimento aleatório.
+              <LocalizedText source={"O peso digitado será o TOTAL da leitura, dividido pelo número de animais. Você poderá ajustar a quantidade a cada leitura. Modo incompatível com lote misto (Aleatória) e com rendimento aleatório."} />
             </p>
           </>
         )}
@@ -358,7 +358,7 @@ export default function PesadorPesagemNovoPage() {
             inputMode="decimal"
             value={rendimentoRotina}
             onChange={(e) => setRendimentoRotina(e.target.value)}
-            placeholder="Ex: 52"
+            placeholder={uiText("Ex: 52")}
           />
           <p className="text-xs text-muted-foreground">
             <LocalizedText source={"Obrigatório. Usado para estimar @ e Média de @ por animal no resumo. Valor informativo, sem finalidade comercial."} /></p>
@@ -415,7 +415,7 @@ export default function PesadorPesagemNovoPage() {
                       inputMode="decimal"
                       value={cfg.preco_valor}
                       onChange={(e) => setMistaPreco(c.value, e.target.value)}
-                      placeholder="Ex: 320,00"
+                      placeholder={uiText("Ex: 320,00")}
                     />
                   </div>
                 )}
@@ -447,7 +447,7 @@ export default function PesadorPesagemNovoPage() {
                   inputMode="decimal"
                   value={precoValor}
                   onChange={(e) => setPrecoValor(e.target.value)}
-                  placeholder="Ex: 320,00"
+                  placeholder={uiText("Ex: 320,00")}
                 />
               </div>
 
@@ -472,7 +472,7 @@ export default function PesadorPesagemNovoPage() {
                     inputMode="decimal"
                     value={percentualFixo}
                     onChange={(e) => setPercentualFixo(e.target.value)}
-                    placeholder="Ex: 52"
+                    placeholder={uiText("Ex: 52")}
                   />
                 </div>
               )}
@@ -487,7 +487,7 @@ export default function PesadorPesagemNovoPage() {
                 inputMode="decimal"
                 value={precoValor}
                 onChange={(e) => setPrecoValor(e.target.value)}
-                placeholder="Ex: 10,50"
+                placeholder={uiText("Ex: 10,50")}
               />
             </div>
           )}
@@ -500,7 +500,7 @@ export default function PesadorPesagemNovoPage() {
                 inputMode="decimal"
                 value={precoValor}
                 onChange={(e) => setPrecoValor(e.target.value)}
-                placeholder="Ex: 3000,00"
+                placeholder={uiText("Ex: 3000,00")}
               />
             </div>
           )}

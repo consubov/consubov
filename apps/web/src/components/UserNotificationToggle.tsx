@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useStaticUiText } from "@/components/i18n/LocalizedText";
 import { Bell, BellOff, BellPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +33,7 @@ export function UserNotificationToggle({ floating = false }: UserNotificationTog
   const { user, session } = useAuth();
   const [state, setState] = useState<State>("loading");
   const [busy, setBusy] = useState(false);
+  const uiText = useStaticUiText();
 
   const refresh = useCallback(async () => {
     if (!session || !user?.id) return;
@@ -73,28 +75,28 @@ export function UserNotificationToggle({ floating = false }: UserNotificationTog
   if (state === "loading" || !isVapidConfigured()) return null;
 
   const enableFlow = async () => {
-    if (!isVapidConfigured()) { toast.error("Notificações temporariamente indisponíveis"); return; }
+    if (!isVapidConfigured()) { toast.error(uiText("Notificações temporariamente indisponíveis")); return; }
     setBusy(true);
     try {
       const { isIos, isStandalone } = getIosStandaloneRequirement();
       if (isIos && !isStandalone) {
-        toast.error("No iPhone, instale na Tela de Início e abra pelo ícone para ativar notificações.");
+        toast.error(uiText("No iPhone, instale na Tela de Início e abra pelo ícone para ativar notificações."));
         return;
       }
       if (!isPushSupported()) {
-        toast.error("Este aparelho ou navegador não permite notificações push neste modo.");
+        toast.error(uiText("Este aparelho ou navegador não permite notificações push neste modo."));
         return;
       }
       const perm = await requestPushPermission();
       if (perm !== "granted") {
-        toast.error(perm === "denied" ? "Permissão negada nas configurações do aparelho" : "Permissão não concedida");
+        toast.error(uiText(perm === "denied" ? "Permissão negada nas configurações do aparelho" : "Permissão não concedida"));
         await refresh();
         return;
       }
       const { registration } = await activatePushNotifications(user.id);
       try {
         await registration.showNotification("CONSUBOV", {
-          body: "Notificações ativadas com sucesso ✓",
+          body: uiText("Notificações ativadas com sucesso ✓"),
           icon: "/icon-192.png",
           badge: "/icon-96.png",
           tag: `consubov-ativado-${Date.now()}`,
@@ -102,10 +104,10 @@ export function UserNotificationToggle({ floating = false }: UserNotificationTog
       } catch {
         /* ignore */
       }
-      toast.success("Notificações ativadas");
+      toast.success(uiText("Notificações ativadas"));
       setState("enabled");
     } catch (e) {
-      toast.error("Falha: " + (e instanceof Error ? e.message : String(e)));
+      toast.error(uiText("Falha: ") + (e instanceof Error ? e.message : String(e)));
     } finally {
       setBusy(false);
     }
@@ -118,10 +120,10 @@ export function UserNotificationToggle({ floating = false }: UserNotificationTog
       .update({ enabled: novo })
       .eq("user_id", user.id);
     setBusy(false);
-    if (error) { toast.error("Falha ao salvar preferência"); return; }
+    if (error) { toast.error(uiText("Falha ao salvar preferência")); return; }
     setStoredPushEnabledPreference(novo);
     setState(novo ? "enabled" : "disabled");
-    toast.success(novo ? "Notificações ativadas" : "Notificações desativadas");
+    toast.success(uiText(novo ? "Notificações ativadas" : "Notificações desativadas"));
   };
 
   const onClick = () => {
@@ -155,8 +157,8 @@ export function UserNotificationToggle({ floating = false }: UserNotificationTog
     <button
       onClick={onClick}
       disabled={busy || state === "unsupported"}
-      aria-label={visual.label}
-      title={visual.label}
+      aria-label={uiText(visual.label)}
+      title={uiText(visual.label)}
       style={
         floating
           ? { top: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }

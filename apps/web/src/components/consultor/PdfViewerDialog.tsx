@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -18,6 +18,7 @@ interface Props {
 // dentro de um <iframe>, evitando expor a URL do Supabase Storage na barra
 // de endereço do navegador. Também oferece Baixar/Enviar a partir do blob.
 export default function PdfViewerDialog({ url, fileName, title, onClose }: Props) {
+  const uiText = useStaticUiText();
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [loading, setLoading] = useState(false);
@@ -83,7 +84,7 @@ export default function PdfViewerDialog({ url, fileName, title, onClose }: Props
       if (blob) {
         // Fallback: baixar (evita expor URL)
         await baixar();
-        toast.success("PDF baixado — envie manualmente pelo seu app preferido.");
+        toast.success(uiText("PDF baixado — envie manualmente pelo seu app preferido."));
       }
     } catch { /* cancelado */ }
   }
@@ -99,7 +100,7 @@ export default function PdfViewerDialog({ url, fileName, title, onClose }: Props
               <Download className="w-4 h-4" /> <LocalizedText source={"Baixar"} /></Button>
             <Button size="sm" className="gap-1.5" style={{ background: "#1F7A4D", color: "white" }} onClick={enviar} disabled={!blob}>
               <Share2 className="w-4 h-4" /> <LocalizedText source={"Enviar"} /></Button>
-            <Button size="icon" variant="ghost" onClick={onClose} aria-label="Fechar">
+            <Button size="icon" variant="ghost" onClick={onClose} aria-label={uiText("Fechar")}>
               <X className="w-4 h-4" />
             </Button>
           </div>

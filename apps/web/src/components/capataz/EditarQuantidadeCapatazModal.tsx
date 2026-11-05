@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,7 @@ export default function EditarQuantidadeCapatazModal({
   open, onClose, pastoId, pastoNome, numAnimaisAtual, pesoAtual,
   sexoAtual, categoriaAtual, ativoAtual, onPastoUpdated,
 }: Props) {
+  const uiText = useStaticUiText();
   const buildInitial = (): FormState => ({
     nome: pastoNome ?? "",
     quantidade: numAnimaisAtual > 0 ? String(numAnimaisAtual) : "",
@@ -116,7 +117,7 @@ export default function EditarQuantidadeCapatazModal({
     !faltaCategoria(qtdNum, form.categoria);
 
   async function handleSave() {
-    if (faltaCategoria(qtdNum, form.categoria)) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
+    if (faltaCategoria(qtdNum, form.categoria)) { toast.error(uiText(MSG_CATEGORIA_OBRIGATORIA)); return; }
     if (!isValid) return;
     setSalvando(true);
     try {
@@ -131,11 +132,11 @@ export default function EditarQuantidadeCapatazModal({
         })
         .eq("id", pastoId);
       if (error) throw error;
-      toast.success(`Pasto ${form.nome.trim()} atualizado com sucesso!`);
+      toast.success(`${uiText("Pasto ")}${form.nome.trim()}${uiText(" atualizado com sucesso!")}`);
       onPastoUpdated();
       handleClose();
     } catch (err: any) {
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`${uiText("Erro: ")}${err?.message || uiText("Erro desconhecido")}`);
     } finally {
       setSalvando(false);
     }
@@ -151,11 +152,11 @@ export default function EditarQuantidadeCapatazModal({
         })
         .eq("id", pastoId);
       if (error) throw error;
-      toast.success("Pasto zerado com sucesso!");
+      toast.success(uiText("Pasto zerado com sucesso!"));
       onPastoUpdated();
       handleClose();
     } catch (err: any) {
-      toast.error(`Erro ao zerar pasto: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`${uiText("Erro ao zerar pasto: ")}${err?.message || uiText("Erro desconhecido")}`);
     } finally {
       setZerando(false);
       setShowZerarConfirm(false);
@@ -214,7 +215,7 @@ export default function EditarQuantidadeCapatazModal({
               <div className="space-y-2">
                 <Label><LocalizedText source={"Sexo"} /></Label>
                 <Select value={form.sexo} onValueChange={handleSexoChange}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={uiText("Selecione")} /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Macho"><LocalizedText source={"Macho"} /></SelectItem>
                     <SelectItem value="Fêmea"><LocalizedText source={"Fêmea"} /></SelectItem>
@@ -225,7 +226,7 @@ export default function EditarQuantidadeCapatazModal({
               <div className="space-y-2">
                 <Label><LocalizedText source={"Categoria"} /></Label>
                 <Select value={form.categoria} onValueChange={handleCategoriaChange}>
-                  <SelectTrigger><SelectValue placeholder="Automática" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={uiText("Automática")} /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Recria 1"><LocalizedText source={"Recria 1"} /></SelectItem>
                     <SelectItem value="Recria 2"><LocalizedText source={"Recria 2"} /></SelectItem>
