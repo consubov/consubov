@@ -23,8 +23,14 @@ tasks:
   qa:check:
     desc: Local check, build and unit tests with evidence
     cmds:
+      - task: qa:camera:contract
       - bash scripts/qa/record.sh check bun run check
       - bash scripts/qa/record.sh gerente-rpc-contract node --test scripts/tests/gerente-rpc-release-contract.test.mjs
+
+  qa:camera:contract:
+    desc: Block new camera regressions and enforce the published release floor
+    cmds:
+      - bash scripts/qa/record.sh camera-contract node --test scripts/tests/capataz-camera-contract.test.mjs
 
   qa:web:unit:
     desc: All Web unit tests with local source evidence

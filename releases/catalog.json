@@ -10,7 +10,7 @@
       "artifactDirectory": "apps/web/dist",
       "versionPolicy": "semver",
       "versionSource": "apps/web/src/lib/appVersion.ts",
-      "minVersion": "2.0.0"
+      "minVersion": "2.0.59"
     },
     "consubov-site": {
       "productId": "consubov",
