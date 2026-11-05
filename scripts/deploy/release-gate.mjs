@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { cameraContractViolations, compareSemver, CAMERA_SAFE_BASELINE } from '../ci/capataz-camera-contract.mjs';
 
 function git(cwd, ...args) {
   const res = spawnSync('git', ['-C', cwd, ...args], {
@@ -80,6 +81,19 @@ export function decideDeployment(target, env = process.env, cwd = process.cwd())
     }
   } else if (project.versionPolicy !== 'none') {
     return skip('site-must-not-have-semver');
+  }
+
+  // The production Consubov camera was repaired in 2.0.57 and accepted in
+  // 2.0.58. Prevent any Git-triggered release of a new version that loses
+  // the in-PWA JPEG/preview pipeline, mandatory photo, or fullscreen UI.
+  // Older main remains CI-testable, but cannot release below catalog.minVersion.
+  if (target === 'consubov-app' && compareSemver(current.appVersion, CAMERA_SAFE_BASELINE) >= 0) {
+    const violations = cameraContractViolations({
+      camera: git(root, 'show', 'HEAD:apps/web/src/components/capataz/CapatazCameraCapture.tsx') ?? '',
+      form: git(root, 'show', 'HEAD:apps/web/src/components/capataz/SalgaForm.tsx') ?? '',
+      photo: git(root, 'show', 'HEAD:apps/web/src/lib/capatazPhoto.ts') ?? '',
+    });
+    if (violations.length > 0) return skip('camera-regression-contract-failed');
   }
   return { build: true, reason: 'explicit-product-release' };
 }
