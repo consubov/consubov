@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation, Card, Button } from '@consubov/ui';
+import { useQuiescenceLock } from '@consubov/module-release';
 import { CapatazStore, CapatazState } from '../store/capatazStore';
 import { compressPhoto, CompressedPhotoResult } from '../sync/photoCompression';
 
@@ -16,6 +17,9 @@ export const CapatazFotosTab: React.FC<CapatazFotosTabProps> = ({ store, state }
   const [isCompressing, setIsCompressing] = useState(false);
   const [lastCompressed, setLastCompressed] = useState<CompressedPhotoResult | null>(null);
   const [successMessage, setSuccessMessage] = useState(false);
+
+  // Trava de quiescência: impede autoupdate durante captura ou compressão de fotos de cocho
+  useQuiescenceLock('capataz-camera-compress', 'CAMERA_ACTIVE', isCompressing);
 
   // Simula captura de foto de alta resolução (4MB) e executa compressão client-side
   const handleSimulateCapture = async () => {

@@ -1,0 +1,87 @@
+{
+  "gate_id": "GATE_Q7_AUTOUPDATE_SERVICE_WORKER_QUIESCENCE_ROLLBACK_INTEGRITY",
+  "task_id": "F23-NEXT-07",
+  "milestone": "FASE 07 (Atualização Automática sem Clique, Versões, Service Worker, Cache, Quiescência e Rollback Atômico)",
+  "worktree_path": "D:\\MATEUS\\Documentos\\GitHub\\consubov-worktrees\\f23-isolated-next-platform",
+  "branch": "feat/platform/f23-isolated-next-platform",
+  "executed_at": "2026-11-05T10:07:46.172Z",
+  "runtime": {
+    "bun_version": "1.4.2",
+    "node_version": "v26.3.0",
+    "os": "win32 x64"
+  },
+  "checks": [
+    {
+      "id": "Q7.1_SW_BACKGROUND_DOWNLOAD",
+      "name": "Service Worker: Precache silencioso em cache vN sem skipWaiting no install e retenção N e N-1 (q7-sw-background-download.test.ts)",
+      "status": "PASS",
+      "duration_ms": 63
+    },
+    {
+      "id": "Q7.2_QUIESCENCE_DETECTION",
+      "name": "QuiescenceRegistry: Gerenciamento rigoroso das travas FORM_DIRTY, CAMERA_ACTIVE, WEIGHING_ACTIVE e OUTBOX_SYNCING (q7-quiescence-detection.test.ts)",
+      "status": "PASS",
+      "duration_ms": 241
+    },
+    {
+      "id": "Q7.3_SAFE_ACTIVATION",
+      "name": "UpdateCoordinator: Retenção de atualização durante operações críticas e liberação automática na quiescência (q7-safe-activation.test.ts)",
+      "status": "PASS",
+      "duration_ms": 270
+    },
+    {
+      "id": "Q7.4_CHUNK_404_ROLLBACK",
+      "name": "RollbackManager & safeDynamicImport: Intercepção de erro 404 em chunks e fallback atômico para N-1 sem WSOD (q7-chunk-404-rollback.test.ts)",
+      "status": "PASS",
+      "duration_ms": 117
+    },
+    {
+      "id": "Q7.5_INTEGRITY_CATALOG",
+      "name": "Catálogo Zod & Integridade Criptográfica SHA-256 via Web Crypto Subtle com rejeição de adulterações (q7-integrity-catalog.test.ts)",
+      "status": "PASS",
+      "duration_ms": 79
+    },
+    {
+      "id": "Q7.6_AST_LITERAL_GUARD",
+      "name": "AST QA Guard: Certificação de Zero Literais JSX Hardcoded e Paridade Bilíngue 100% em update.* (q7-ast-literal-guard.test.ts)",
+      "status": "PASS",
+      "duration_ms": 351
+    },
+    {
+      "id": "Q7.7_TYPECHECK",
+      "name": "Compilação Estrita TypeScript sem Erros em Todo o Workspace next-platform (tsc --noEmit)",
+      "status": "PASS",
+      "duration_ms": 6888
+    },
+    {
+      "id": "Q7.8_REGRESSION_Q1_Q6",
+      "name": "Regressão Integral das Suítes Anteriores Q1 a Q6 (zero quebras de contrato)",
+      "status": "PASS",
+      "duration_ms": 6994
+    }
+  ],
+  "summary": {
+    "total_checks": 8,
+    "passed": 8,
+    "failed": 0,
+    "blocked": 0
+  },
+  "audit_flags": {
+    "isolation_preserved": true,
+    "sw_background_download_verified": true,
+    "sw_no_skip_waiting_on_install_verified": true,
+    "sw_two_generation_cache_retention_verified": true,
+    "quiescence_registry_4_mandatory_locks_verified": true,
+    "quiescence_hooks_react_verified": true,
+    "safe_activation_without_click_verified": true,
+    "chunk_404_atomic_rollback_verified": true,
+    "anti_white_screen_guard_verified": true,
+    "release_catalog_zod_schemas_verified": true,
+    "sha256_cryptographic_integrity_verified": true,
+    "ast_ui_literal_guard_zero_violations": true,
+    "i18n_parity_update_keys_100_percent": true,
+    "regression_q1_to_q6_all_passed": true,
+    "zero_network_egress": true
+  },
+  "verdict": "PASS"
+}

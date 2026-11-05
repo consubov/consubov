@@ -13,7 +13,8 @@
   "dependencies": {
     "@consubov/contracts": "workspace:*",
     "@consubov/ui": "workspace:*",
-    "@consubov/auth-client": "workspace:*"
+    "@consubov/auth-client": "workspace:*",
+    "@consubov/module-release": "workspace:*"
   },
   "peerDependencies": {
     "react": "^18.3.1",

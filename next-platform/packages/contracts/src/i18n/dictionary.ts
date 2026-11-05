@@ -703,7 +703,37 @@ export const APP_DICTIONARY: Record<SupportedLanguage, Record<string, string>> =
     'admin.common.search': 'Pesquisar',
     'admin.common.all': 'Todos',
     'admin.common.filter': 'Filtrar',
-    'admin.common.id': 'ID'
+    'admin.common.id': 'ID',
+
+    // FASE 07: Atualização Automática, Quiescência e Rollback Atômico
+    'update.title': 'Atualização do Sistema',
+    'update.status.checking': 'Verificando novas atualizações...',
+    'update.status.available': 'Nova versão {version} identificada.',
+    'update.status.downloading': 'Baixando nova versão em segundo plano...',
+    'update.status.downloaded': 'Nova versão pronta para ativação.',
+    'update.status.waitingQuiescence': 'Atualização retida: aguardando conclusão de operações críticas ({locks}).',
+    'update.status.activating': 'Ativando nova versão de forma segura...',
+    'update.status.updated': 'Sistema atualizado para a versão {version} com sucesso!',
+    'update.rollback.warning': 'Falha no carregamento de pacote dinâmico. Revertendo para versão anterior estável.',
+    'update.rollback.success': 'Rollback concluído: operando na versão anterior {version}.',
+    'update.lock.formDirty': 'Formulário com alterações não salvas',
+    'update.lock.cameraActive': 'Câmera ou captura de fotos de cocho ativa',
+    'update.lock.weighingActive': 'Pesagem zootécnica em andamento',
+    'update.lock.outboxSyncing': 'Sincronização de comandos em trânsito',
+    'update.lock.qrScanning': 'Leitor de QR Code ativo',
+    'update.lock.localDbTransaction': 'Transação de banco de dados em andamento',
+    'update.badge.retained': 'Atualização em espera',
+    'update.checking': 'Verificando atualizações...',
+    'update.downloading': 'Baixando atualização em segundo plano...',
+    'update.waitingQuiescence': 'Atualização pronta. Aguardando conclusão da atividade em andamento...',
+    'update.applied': 'Aplicativo atualizado com sucesso.',
+    'update.rollback': 'Versão anterior restaurada automaticamente para evitar falha.',
+    'update.quiescence.lockForm': 'Edição de dados em andamento',
+    'update.quiescence.lockCamera': 'Câmera ou foto em processamento',
+    'update.quiescence.lockWeighing': 'Pesagem em andamento',
+    'update.quiescence.lockSync': 'Sincronização em andamento',
+    'update.quiescence.lockQr': 'Leitura de QR Code em andamento',
+    'update.quiescence.lockDb': 'Transação local em processamento'
   },
   'en-US': {
     // App Identity, Shell & Global Header
@@ -1406,7 +1436,37 @@ export const APP_DICTIONARY: Record<SupportedLanguage, Record<string, string>> =
     'admin.common.search': 'Search',
     'admin.common.all': 'All',
     'admin.common.filter': 'Filter',
-    'admin.common.id': 'ID'
+    'admin.common.id': 'ID',
+
+    // FASE 07: Automatic Update, Quiescence and Atomic Rollback
+    'update.title': 'System Update',
+    'update.status.checking': 'Checking for new updates...',
+    'update.status.available': 'New version {version} identified.',
+    'update.status.downloading': 'Downloading new version in background...',
+    'update.status.downloaded': 'New version ready for activation.',
+    'update.status.waitingQuiescence': 'Update held: waiting for critical operations to complete ({locks}).',
+    'update.status.activating': 'Activating new version seamlessly...',
+    'update.status.updated': 'System successfully updated to version {version}!',
+    'update.rollback.warning': 'Failed to load dynamic chunk. Reverting to stable previous version.',
+    'update.rollback.success': 'Rollback completed: running on previous version {version}.',
+    'update.lock.formDirty': 'Form with unsaved changes',
+    'update.lock.cameraActive': 'Camera or trough photo capture active',
+    'update.lock.weighingActive': 'Zootechnical weighing in progress',
+    'update.lock.outboxSyncing': 'Command sync in progress',
+    'update.lock.qrScanning': 'QR Code scanner active',
+    'update.lock.localDbTransaction': 'Database transaction in progress',
+    'update.badge.retained': 'Update pending idle state',
+    'update.checking': 'Checking for updates...',
+    'update.downloading': 'Downloading update in background...',
+    'update.waitingQuiescence': 'Update ready. Waiting for ongoing activity to finish...',
+    'update.applied': 'App updated successfully.',
+    'update.rollback': 'Previous version restored automatically to prevent failure.',
+    'update.quiescence.lockForm': 'Data editing in progress',
+    'update.quiescence.lockCamera': 'Camera or photo processing',
+    'update.quiescence.lockWeighing': 'Weighing in progress',
+    'update.quiescence.lockSync': 'Synchronization in progress',
+    'update.quiescence.lockQr': 'QR Code reading in progress',
+    'update.quiescence.lockDb': 'Local transaction in processing'
   }
 };
 

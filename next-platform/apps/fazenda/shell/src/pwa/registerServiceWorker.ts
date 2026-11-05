@@ -1,7 +1,15 @@
-export interface ServiceWorkerRegistrationCallbacks {
+import { UpdateCoordinator, UpdateCoordinatorOptions } from './UpdateCoordinator';
+
+export interface ServiceWorkerRegistrationCallbacks extends UpdateCoordinatorOptions {
   onSuccess?: (registration: ServiceWorkerRegistration) => void;
   onUpdate?: (registration: ServiceWorkerRegistration) => void;
   onConnectivityChange?: (isOnline: boolean) => void;
+}
+
+let activeCoordinator: UpdateCoordinator | null = null;
+
+export function getUpdateCoordinator(): UpdateCoordinator | null {
+  return activeCoordinator;
 }
 
 export function registerServiceWorker(callbacks?: ServiceWorkerRegistrationCallbacks): void {
@@ -15,29 +23,31 @@ export function registerServiceWorker(callbacks?: ServiceWorkerRegistrationCallb
     callbacks?.onConnectivityChange?.(false);
   });
 
-  if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+  if ('serviceWorker' in navigator && (process.env.NODE_ENV === 'production' || process.env.VITE_SW_ENABLED === 'true')) {
     window.addEventListener('load', () => {
       navigator.serviceWorker
         .register('/sw.js')
         .then((registration) => {
-          registration.onupdatefound = () => {
-            const installingWorker = registration.installing;
-            if (!installingWorker) return;
+          // Inicializa o coordenador de atualizações silenciosas com quiescência
+          activeCoordinator = new UpdateCoordinator({
+            ...callbacks,
+            onUpdateAvailable: (version) => {
+              callbacks?.onUpdate?.(registration);
+              callbacks?.onUpdateAvailable?.(version);
+            }
+          });
+          activeCoordinator.initialize(registration);
 
-            installingWorker.onstatechange = () => {
-              if (installingWorker.state === 'installed') {
-                if (navigator.serviceWorker.controller) {
-                  callbacks?.onUpdate?.(registration);
-                } else {
-                  callbacks?.onSuccess?.(registration);
-                }
-              }
-            };
-          };
+          if (!registration.waiting && !registration.installing) {
+            callbacks?.onSuccess?.(registration);
+          }
         })
-        .catch(() => {
-          // Registro defensivo: ignora falhas em testes ou dev
+        .catch((err) => {
+          // Registro defensivo: ignora falhas em ambientes sem HTTPS ou em dev
+          console.warn('[SW_REGISTRATION_FAILED]', err);
         });
     });
   }
 }
+
+export * from './UpdateCoordinator';

@@ -1,5 +1,6 @@
 import React from 'react';
 import { UserProfileId } from '@consubov/contracts';
+import { safeDynamicImport } from '@consubov/module-release';
 
 export interface FazendaModuleDescriptor {
   moduleId: string;
@@ -17,7 +18,10 @@ export const FAZENDA_MODULES: Record<UserProfileId, FazendaModuleDescriptor> = {
     basePath: '/fazenda/gerente',
     titleKey: 'role.gerente',
     iconName: 'chart-bar',
-    loader: () => import('@consubov/fazenda-gerente')
+    loader: () =>
+      safeDynamicImport(() => import('@consubov/fazenda-gerente'), {
+        moduleId: 'gerente'
+      })
   },
   capataz: {
     moduleId: 'capataz',
@@ -25,7 +29,10 @@ export const FAZENDA_MODULES: Record<UserProfileId, FazendaModuleDescriptor> = {
     basePath: '/fazenda/capataz',
     titleKey: 'role.capataz',
     iconName: 'clipboard-check',
-    loader: () => import('@consubov/fazenda-capataz')
+    loader: () =>
+      safeDynamicImport(() => import('@consubov/fazenda-capataz'), {
+        moduleId: 'capataz'
+      })
   },
   escritorio: {
     moduleId: 'escritorio',
@@ -33,7 +40,10 @@ export const FAZENDA_MODULES: Record<UserProfileId, FazendaModuleDescriptor> = {
     basePath: '/fazenda/escritorio',
     titleKey: 'role.escritorio',
     iconName: 'building-office',
-    loader: () => import('@consubov/fazenda-escritorio')
+    loader: () =>
+      safeDynamicImport(() => import('@consubov/fazenda-escritorio'), {
+        moduleId: 'escritorio'
+      })
   },
   fabrica: {
     moduleId: 'fabrica',
@@ -41,7 +51,10 @@ export const FAZENDA_MODULES: Record<UserProfileId, FazendaModuleDescriptor> = {
     basePath: '/fazenda/fabrica',
     titleKey: 'role.fabrica',
     iconName: 'cog-6-tooth',
-    loader: () => import('@consubov/fazenda-fabrica')
+    loader: () =>
+      safeDynamicImport(() => import('@consubov/fazenda-fabrica'), {
+        moduleId: 'fabrica'
+      })
   },
   administrador: {
     moduleId: 'admin-global',
