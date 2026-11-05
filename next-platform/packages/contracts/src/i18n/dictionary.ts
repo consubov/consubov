@@ -16,6 +16,8 @@ export const APP_DICTIONARY: Record<SupportedLanguage, Record<string, string>> =
     'shell.header.activeUnit': 'Retiro:',
     'shell.header.activeProfile': 'Perfil:',
     'shell.header.switchContext': 'Trocar Perfil / Fazenda',
+    'shell.header.switchContextAria': 'Contexto ativo: {farm}, perfil {role}. Pressione para trocar de fazenda ou perfil.',
+    'shell.header.currentContextAria': 'Contexto ativo: {farm}, perfil {role}',
     'shell.header.language': 'Idioma',
     'shell.header.languageAria': 'Idioma / Language',
     'shell.header.notifications': 'Notificações',
@@ -39,6 +41,7 @@ export const APP_DICTIONARY: Record<SupportedLanguage, Record<string, string>> =
     'shell.login.submitButton': 'Entrar no Sistema',
     'shell.login.submitting': 'Autenticando sessão...',
     'shell.login.quickFillTitle': 'Acesso Rápido de Bancada (Sintético)',
+    'shell.login.quickFillAria': 'Preencher como {role}',
     'shell.login.errorInvalid': 'E-mail ou senha inválidos. Verifique suas credenciais.',
     'shell.login.errorInactive': 'Acesso Negado: Usuário inativo ou sem vínculos autorizados.',
 
@@ -70,6 +73,9 @@ export const APP_DICTIONARY: Record<SupportedLanguage, Record<string, string>> =
     'shell.context.cardRetiro': 'Retiro / Unidade',
     'shell.context.cardPerfil': 'Perfil Operacional',
     'shell.context.btnSelect': 'Acessar Este Contexto',
+    'shell.context.btnSelectAria': 'Acessar fazenda {farm} no perfil {role}',
+    'shell.context.selectFarmRoleAria': 'Trocar para fazenda {farm} no perfil {role}',
+    'shell.context.isoPrefix': 'ISO-004:',
     'shell.context.noMemberships': 'Nenhum vínculo ativo encontrado para este usuário.',
     'shell.context.switchModalTitle': 'Trocar de Fazenda ou Perfil',
 
@@ -95,11 +101,13 @@ export const APP_DICTIONARY: Record<SupportedLanguage, Record<string, string>> =
     'shell.nav.currentContext': 'Contexto Ativo',
     'shell.nav.online': 'Conectado à Fazenda',
     'shell.nav.offline': 'Modo Campo Off-Grid',
+    'shell.nav.ariaLabel': 'Navegação Operacional',
 
     // Acesso Negado (403 RBAC)
     'shell.denied.title': 'Acesso Não Autorizado',
     'shell.denied.message': 'Seu perfil ativo não possui permissão para acessar este módulo.',
     'shell.denied.back': 'Voltar ao Meu Módulo',
+    'shell.denied.required': 'Requerido:',
 
     // Falha de Carregamento Modular
     'shell.error.moduleLoadTitle': 'Falha ao Carregar Módulo',
@@ -122,6 +130,7 @@ export const APP_DICTIONARY: Record<SupportedLanguage, Record<string, string>> =
     'role.administrador': 'Administrador Global',
     'role.administrador.title': 'Administrador Global da Plataforma',
     'role.administrador.desc': 'Governança SaaS multi-tenant, gestão de planos, licenças de operação e controle de acessos.',
+    'role.multirole': 'Multi-Perfil',
 
     // Entidades e Termos Zootécnicos
     'domain.fazenda': 'Fazenda',
@@ -175,6 +184,7 @@ export const APP_DICTIONARY: Record<SupportedLanguage, Record<string, string>> =
     'state.loading': 'Carregando dados operacionais...',
     'state.error': 'Ocorreu um erro ao carregar os dados desta visualização.',
     'state.empty': 'Nenhum registro cadastrado no momento.',
+    'state.emptyRegion': 'Sem registros',
     'state.partial': 'Exibindo dados locais com snapshot desatualizado.',
     'state.noInternet': 'Sem conexão com a internet. Os dados locais estão disponíveis.',
 
@@ -201,7 +211,22 @@ export const APP_DICTIONARY: Record<SupportedLanguage, Record<string, string>> =
     'api.error.invalid_envelope': 'Envelope de comando atômico estruturalmente inválido.',
     'api.error.invalid_domain_payload': 'Payload de dados viola as regras de validação do domínio.',
     'api.error.concurrency_conflict': 'Conflito de concorrência: a versão base do registro divergiu no servidor.',
-    'api.error.command_not_allowed': 'Comando desconhecido fora da allowlist autorizada.'
+    'api.error.command_not_allowed': 'Comando desconhecido fora da allowlist autorizada.',
+
+    // Abas Semânticas de Navegação
+    'nav.tab.overview': 'Visão Geral',
+    'nav.tab.gmd': 'Curvas de GMD',
+    'nav.tab.lots': 'Lotes e Animais',
+    'nav.tab.field': 'Painel Campo',
+    'nav.tab.trough': 'Escore de Cocho',
+    'nav.tab.salt': 'Salga e Ronda',
+    'nav.tab.office': 'Painel Escritório',
+    'nav.tab.invoices': 'Notas Fiscais',
+    'nav.tab.purchases': 'Ordens de Compra',
+    'nav.tab.factory': 'Painel Fábrica',
+    'nav.tab.batches': 'Batidas de Ração',
+    'nav.tab.silos': 'Estoque de Silos',
+    'nav.tab.admin': 'Administração'
   },
   'en-US': {
     // App Identity, Shell & Global Header
@@ -217,6 +242,8 @@ export const APP_DICTIONARY: Record<SupportedLanguage, Record<string, string>> =
     'shell.header.activeUnit': 'Ranch Unit:',
     'shell.header.activeProfile': 'Profile:',
     'shell.header.switchContext': 'Switch Profile / Ranch',
+    'shell.header.switchContextAria': 'Active context: {farm}, role {role}. Press to switch ranch or profile.',
+    'shell.header.currentContextAria': 'Active context: {farm}, role {role}',
     'shell.header.language': 'Language',
     'shell.header.languageAria': 'Idioma / Language',
     'shell.header.notifications': 'Notifications',
@@ -240,6 +267,7 @@ export const APP_DICTIONARY: Record<SupportedLanguage, Record<string, string>> =
     'shell.login.submitButton': 'Sign In to System',
     'shell.login.submitting': 'Authenticating session...',
     'shell.login.quickFillTitle': 'Synthetic Test Quick Access',
+    'shell.login.quickFillAria': 'Fill credentials as {role}',
     'shell.login.errorInvalid': 'Invalid email or password. Please verify your credentials.',
     'shell.login.errorInactive': 'Access Denied: Inactive user or no authorized memberships.',
 
@@ -271,6 +299,9 @@ export const APP_DICTIONARY: Record<SupportedLanguage, Record<string, string>> =
     'shell.context.cardRetiro': 'Ranch Unit / Retreat',
     'shell.context.cardPerfil': 'Operational Role',
     'shell.context.btnSelect': 'Access This Context',
+    'shell.context.btnSelectAria': 'Access ranch {farm} as {role}',
+    'shell.context.selectFarmRoleAria': 'Switch to ranch {farm} as {role}',
+    'shell.context.isoPrefix': 'ISO-004:',
     'shell.context.noMemberships': 'No active memberships found for this user.',
     'shell.context.switchModalTitle': 'Switch Ranch or Role',
 
@@ -296,11 +327,13 @@ export const APP_DICTIONARY: Record<SupportedLanguage, Record<string, string>> =
     'shell.nav.currentContext': 'Active Context',
     'shell.nav.online': 'Connected to Ranch',
     'shell.nav.offline': 'Off-Grid Field Mode',
+    'shell.nav.ariaLabel': 'Operational Navigation',
 
     // Access Denied (403 RBAC)
     'shell.denied.title': 'Unauthorized Access',
     'shell.denied.message': 'Your active role does not have permission to access this module.',
     'shell.denied.back': 'Back to My Module',
+    'shell.denied.required': 'Required:',
 
     // Module Loading Failure
     'shell.error.moduleLoadTitle': 'Failed to Load Module',
@@ -323,6 +356,7 @@ export const APP_DICTIONARY: Record<SupportedLanguage, Record<string, string>> =
     'role.administrador': 'Global Administrator',
     'role.administrador.title': 'Global Platform Administrator',
     'role.administrador.desc': 'Multi-tenant SaaS governance, plan management, operating licenses, and access administration.',
+    'role.multirole': 'Multi-Role',
 
     // Entities and Livestock Terms
     'domain.fazenda': 'Ranch',
@@ -376,6 +410,7 @@ export const APP_DICTIONARY: Record<SupportedLanguage, Record<string, string>> =
     'state.loading': 'Loading operational data...',
     'state.error': 'An error occurred while loading this view\'s data.',
     'state.empty': 'No records registered at the moment.',
+    'state.emptyRegion': 'No records',
     'state.partial': 'Displaying local data with outdated snapshot.',
     'state.noInternet': 'No internet connection. Local data remains available.',
 
@@ -402,7 +437,22 @@ export const APP_DICTIONARY: Record<SupportedLanguage, Record<string, string>> =
     'api.error.invalid_envelope': 'Atomic command envelope structurally invalid.',
     'api.error.invalid_domain_payload': 'Data payload violates domain validation rules.',
     'api.error.concurrency_conflict': 'Concurrency conflict: record base version diverged on server.',
-    'api.error.command_not_allowed': 'Unknown command outside authorized allowlist.'
+    'api.error.command_not_allowed': 'Unknown command outside authorized allowlist.',
+
+    // Semantic Navigation Tabs
+    'nav.tab.overview': 'Overview',
+    'nav.tab.gmd': 'ADG Curves',
+    'nav.tab.lots': 'Lots & Cattle',
+    'nav.tab.field': 'Field Dashboard',
+    'nav.tab.trough': 'Trough Score',
+    'nav.tab.salt': 'Salt & Round',
+    'nav.tab.office': 'Office Dashboard',
+    'nav.tab.invoices': 'Invoices',
+    'nav.tab.purchases': 'Purchase Orders',
+    'nav.tab.factory': 'Feed Mill Dashboard',
+    'nav.tab.batches': 'Feed Batches',
+    'nav.tab.silos': 'Silo Inventory',
+    'nav.tab.admin': 'Administration'
   }
 };
 

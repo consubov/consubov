@@ -4,6 +4,7 @@ import { readFileSync, existsSync } from 'fs';
 import { createApiServer } from '@consubov/platform-api';
 import { allocateAvailablePort } from '../harness/port-allocator';
 import { installNetworkGuard } from '../harness/network-guard';
+import { scanAstLiterals, findTsxFiles } from '../harness/ast-literal-guard';
 import {
   LocalAuthService,
   SYNTHETIC_USERS,
@@ -390,6 +391,47 @@ describe('Gate Q3: Shell Fazendas, Login, Roteamento por Perfil, i18n & PWA', ()
       expect(pkg.dependencies['@consubov/auth-client']).toBeDefined();
       expect(pkg.dependencies['@consubov/contracts']).toBeDefined();
       expect(pkg.dependencies['@consubov/ui']).toBeDefined();
+    });
+  });
+
+  // ==========================================================================
+  // CENÁRIO 7: AST GUARD — VARREDURA ESTRITA DE LITERAIS EM UI (i18n AUTOMATION)
+  // ==========================================================================
+  describe('Cenário 7: AST Guard — Varredura Estrita contra Literais Hardcoded em Telas e Componentes TSX', () => {
+    it('Q3.7.1: todos os componentes de UI em apps/fazenda/shell/src/components devem possuir zero literais fora de t(...)', () => {
+      const componentsDir = resolve(
+        import.meta.dir,
+        '../../apps/fazenda/shell/src/components'
+      );
+      const files = findTsxFiles(componentsDir);
+      expect(files.length).toBeGreaterThanOrEqual(7);
+
+      const violations = scanAstLiterals(files);
+      if (violations.length > 0) {
+        console.error(`\n❌ [AST GUARD] ${violations.length} literais hardcoded detectados em componentes do Shell:`);
+        for (const v of violations) {
+          console.error(`  - [${v.kind}${v.attributeName ? ` ${v.attributeName}` : ''}] ${v.file}:${v.line} -> "${v.text}"`);
+        }
+      }
+      expect(violations).toEqual([]);
+    });
+
+    it('Q3.7.2: todas as telas e rotas de apps/fazenda/shell/src devem possuir zero literais hardcoded', () => {
+      const shellSrcDir = resolve(
+        import.meta.dir,
+        '../../apps/fazenda/shell/src'
+      );
+      const files = findTsxFiles(shellSrcDir);
+      expect(files.length).toBeGreaterThanOrEqual(10);
+
+      const violations = scanAstLiterals(files);
+      if (violations.length > 0) {
+        console.error(`\n❌ [AST GUARD] ${violations.length} literais hardcoded detectados em src do Shell:`);
+        for (const v of violations) {
+          console.error(`  - [${v.kind}${v.attributeName ? ` ${v.attributeName}` : ''}] ${v.file}:${v.line} -> "${v.text}"`);
+        }
+      }
+      expect(violations).toEqual([]);
     });
   });
 });

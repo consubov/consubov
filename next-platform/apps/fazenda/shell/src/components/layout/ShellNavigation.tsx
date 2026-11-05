@@ -52,7 +52,7 @@ export const ShellNavigation: React.FC<ShellNavigationProps> = ({ activeTab = 'h
 
   return (
     <nav
-      aria-label="Navegação Operacional"
+      aria-label={t('shell.nav.ariaLabel', 'Navegação Operacional')}
       style={{
         position: 'fixed',
         bottom: 0,

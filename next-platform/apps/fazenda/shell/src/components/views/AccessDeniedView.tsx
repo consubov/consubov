@@ -65,7 +65,7 @@ export const AccessDeniedView: React.FC<AccessDeniedViewProps> = ({
             </div>
             {requiredProfile && (
               <div style={{ marginTop: 4 }}>
-                <strong>Requerido: </strong>
+                <strong>{t('shell.denied.required', 'Requerido:')} </strong>
                 <span style={{ color: colorTokens.status.danger, fontWeight: 600 }}>
                   {t(`role.${requiredProfile}`, requiredProfile)}
                 </span>

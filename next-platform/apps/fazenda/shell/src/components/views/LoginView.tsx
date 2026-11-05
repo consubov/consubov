@@ -176,7 +176,7 @@ export const LoginView: React.FC = () => {
                 onClick={() => handleQuickFill('gerente@consubov.local')}
                 style={{ fontSize: '0.75rem', padding: '0 10px', minHeight: 36 }}
               >
-                Gerente
+                {t('role.gerente', 'Gerente')}
               </Button>
               <Button
                 variant="ghost"
@@ -184,7 +184,7 @@ export const LoginView: React.FC = () => {
                 onClick={() => handleQuickFill('capataz@consubov.local')}
                 style={{ fontSize: '0.75rem', padding: '0 10px', minHeight: 36 }}
               >
-                Capataz
+                {t('role.capataz', 'Capataz')}
               </Button>
               <Button
                 variant="ghost"
@@ -192,7 +192,7 @@ export const LoginView: React.FC = () => {
                 onClick={() => handleQuickFill('escritorio@consubov.local')}
                 style={{ fontSize: '0.75rem', padding: '0 10px', minHeight: 36 }}
               >
-                Escritório
+                {t('role.escritorio', 'Escritório')}
               </Button>
               <Button
                 variant="ghost"
@@ -200,7 +200,7 @@ export const LoginView: React.FC = () => {
                 onClick={() => handleQuickFill('fabrica@consubov.local')}
                 style={{ fontSize: '0.75rem', padding: '0 10px', minHeight: 36 }}
               >
-                Fábrica
+                {t('role.fabrica', 'Fábrica')}
               </Button>
               <Button
                 variant="ghost"
@@ -208,7 +208,7 @@ export const LoginView: React.FC = () => {
                 onClick={() => handleQuickFill('multirole@consubov.local')}
                 style={{ fontSize: '0.75rem', padding: '0 10px', minHeight: 36 }}
               >
-                Multi-Perfil
+                {t('role.multirole', 'Multi-Perfil')}
               </Button>
             </div>
           </div>

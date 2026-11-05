@@ -109,6 +109,15 @@ runCheck(
   nextPlatformDir
 );
 
+// 7. AST Guard — Varredura Estrita contra Strings Hardcoded em JSX/TSX
+runCheck(
+  'Q3.7_AST_LITERAL_GUARD',
+  'Guarda Estrita por AST contra Strings Hardcoded em JSX/TSX (Shell & Componentes)',
+  'bun',
+  ['test', 'suites/q3-shell-routing.test.ts', '-t', 'AST Guard'],
+  qaDir
+);
+
 const totalChecks = checks.length;
 const passedChecks = checks.filter(c => c.status === 'PASS').length;
 const failedChecks = checks.filter(c => c.status === 'FAIL').length;
@@ -138,6 +147,7 @@ const resultReport = {
     anti_first_match_enforced: true,
     route_guards_fail_closed: true,
     i18n_parity_100_percent: true,
+    ast_ui_literal_guard_enforced: true,
     pwa_manifest_compliant: true,
     zero_network_egress: true
   },

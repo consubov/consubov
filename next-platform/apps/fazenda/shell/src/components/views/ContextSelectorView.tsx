@@ -69,7 +69,7 @@ export const ContextSelectorView: React.FC = () => {
             lineHeight: 1.4
           }}
         >
-          <strong>ISO-004: </strong>
+          <strong>{t('shell.context.isoPrefix', 'ISO-004:')} </strong>
           {t('auth.context.antiFirstMatchNotice', 'Regra de Segurança ISO-004: Nenhum perfil ou fazenda é selecionado automaticamente. A escolha explícita é obrigatória.')}
         </div>
 
