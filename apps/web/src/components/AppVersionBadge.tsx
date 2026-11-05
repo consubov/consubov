@@ -1,4 +1,6 @@
 import { APP_VERSION } from "@/lib/appVersion";
+import { SiteLanguageSwitch } from "@/components/landing/SiteLanguageSwitch";
+import { useTranslation } from "@/hooks/useTranslation";
 
 // Exibe somente a versão semântica do app, igual em todas as plataformas.
 const FULL_VERSION = APP_VERSION;
@@ -13,6 +15,7 @@ interface AppVersionBadgeProps {
  * Modo inline (padrão): entra no fluxo do header sem sobrepor outros elementos.
  */
 export function AppVersionBadge({ floating = false }: AppVersionBadgeProps) {
+  const { language, setLanguage } = useTranslation();
   const base =
     "pointer-events-none select-none rounded-full bg-foreground/90 text-background px-2 py-0.5 text-[11px] font-mono font-semibold shadow-md";
 
@@ -29,8 +32,11 @@ export function AppVersionBadge({ floating = false }: AppVersionBadgeProps) {
   }
 
   return (
-    <div aria-label={`Versão do app ${FULL_VERSION}`} className={base}>
-      v{FULL_VERSION}
+    <div className="inline-flex max-w-full items-center justify-center gap-1.5" data-testid="app-language-version">
+      <SiteLanguageSwitch language={language} onChange={setLanguage} compactOnMobile />
+      <div aria-label={`Versão do app ${FULL_VERSION}`} className={`${base} shrink-0`}>
+        v{FULL_VERSION}
+      </div>
     </div>
   );
 }

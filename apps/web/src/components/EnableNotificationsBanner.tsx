@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { Bell, X, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,7 @@ function saveBannerDecision(decision: "enabled" | "later") {
 type Status = "needs-enable" | "denied" | "preview" | "unsupported" | "hidden";
 
 export function EnableNotificationsBanner() {
+  const uiText = useStaticUiText();
   const { user, session } = useAuth();
   const [status, setStatus] = useState<Status>("hidden");
   const [dismissedThisSession, setDismissedThisSession] = useState(false);
@@ -202,7 +203,7 @@ export function EnableNotificationsBanner() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold text-foreground"><LocalizedText source={"Notificações só funcionam no app publicado"} /></p>
-              <button onClick={dismiss} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
+              <button onClick={dismiss} aria-label={uiText("Fechar")} className="text-muted-foreground hover:text-foreground">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -224,7 +225,7 @@ export function EnableNotificationsBanner() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold text-foreground"><LocalizedText source={"Navegador sem suporte a push"} /></p>
-              <button onClick={dismiss} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
+              <button onClick={dismiss} aria-label={uiText("Fechar")} className="text-muted-foreground hover:text-foreground">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -246,7 +247,7 @@ export function EnableNotificationsBanner() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold text-foreground"><LocalizedText source={"Notificações bloqueadas"} /></p>
-              <button onClick={dismiss} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
+              <button onClick={dismiss} aria-label={uiText("Fechar")} className="text-muted-foreground hover:text-foreground">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -274,7 +275,7 @@ export function EnableNotificationsBanner() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-semibold text-foreground"><LocalizedText source={"Ative as notificações"} /></p>
-            <button onClick={dismiss} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
+            <button onClick={dismiss} aria-label={uiText("Fechar")} className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
           </div>

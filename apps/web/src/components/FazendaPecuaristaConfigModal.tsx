@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -14,6 +14,7 @@ interface Props {
 }
 
 export default function FazendaPecuaristaConfigModal({ open, onOpenChange, fazendaId, onSaved }: Props) {
+  const uiText = useStaticUiText();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -53,9 +54,9 @@ export default function FazendaPecuaristaConfigModal({ open, onOpenChange, fazen
       if (updErr) throw updErr;
       setLogoUrl(url);
       onSaved?.();
-      toast.success("Logo atualizada");
+      toast.success(uiText("Logo atualizada"));
     } catch (e: any) {
-      toast.error("Erro ao enviar logo: " + (e?.message ?? ""));
+      toast.error(uiText("Erro ao enviar logo: ") + (e?.message ?? ""));
     } finally {
       setSaving(false);
     }
@@ -72,9 +73,9 @@ export default function FazendaPecuaristaConfigModal({ open, onOpenChange, fazen
       if (error) throw error;
       setLogoUrl(null);
       onSaved?.();
-      toast.success("Logo removida");
+      toast.success(uiText("Logo removida"));
     } catch (e: any) {
-      toast.error("Erro: " + (e?.message ?? ""));
+      toast.error(uiText("Erro: ") + (e?.message ?? ""));
     } finally {
       setSaving(false);
     }

@@ -7,6 +7,8 @@ import {
   View,
 } from "@react-pdf/renderer";
 import { buildFixedPages } from "@/lib/qrCodeLayout";
+import { translatePdfLabel } from "@/lib/pdfUiLabels";
+import type { SiteLanguage } from "@/lib/siteLanguage";
 
 export interface QrCodePdfItem {
   id: string;
@@ -19,6 +21,7 @@ interface QrCodePrintPDFProps {
   items: QrCodePdfItem[];
   fazendaNome?: string;
   logoUrl?: string;
+  language?: SiteLanguage;
 }
 
 const PAGE_SIZE = 4;
@@ -102,7 +105,7 @@ const s = StyleSheet.create({
   },
 });
 
-export default function QrCodePrintPDF({ items, fazendaNome, logoUrl }: QrCodePrintPDFProps) {
+export default function QrCodePrintPDF({ items, fazendaNome, logoUrl, language = "pt-BR" }: QrCodePrintPDFProps) {
   const pages = buildFixedPages(items, PAGE_SIZE);
   const resolvedLogo =
     logoUrl ||
@@ -152,10 +155,10 @@ export default function QrCodePrintPDF({ items, fazendaNome, logoUrl }: QrCodePr
           </View>
 
           <View style={s.footer} fixed>
-            <Text>QR Codes para impressão</Text>
+            <Text>{translatePdfLabel(language, "QR Codes para impressão")}</Text>
             <Text
               render={({ pageNumber, totalPages }) =>
-                `Página ${pageNumber} de ${totalPages}`
+                `${translatePdfLabel(language, "Página")} ${pageNumber}${translatePdfLabel(language, " de ")}${totalPages}`
               }
             />
           </View>
