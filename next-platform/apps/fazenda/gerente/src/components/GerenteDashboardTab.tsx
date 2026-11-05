@@ -71,11 +71,11 @@ export const GerenteDashboardTab: React.FC<GerenteDashboardTabProps> = ({
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#475569' }}>
-                <th style={{ padding: '8px 12px' }}>{t('gerente.lote.nome', 'Identificação do Lote')}</th>
-                <th style={{ padding: '8px 12px' }}>{t('gerente.transfer.originLabel', 'Pasto de Origem')}</th>
-                <th style={{ padding: '8px 12px' }}>{t('gerente.lote.cabecas', 'Quantidade de Cabeças')}</th>
-                <th style={{ padding: '8px 12px' }}>{t('gerente.lote.peso_medio', 'Peso Médio (kg)')}</th>
-                <th style={{ padding: '8px 12px' }}>{t('gerente.metas.gmdTargetLabel', 'GMD Alvo (kg/dia)')}</th>
+                <th scope="col" style={{ padding: '8px 12px' }}>{t('gerente.lote.nome', 'Identificação do Lote')}</th>
+                <th scope="col" style={{ padding: '8px 12px' }}>{t('gerente.transfer.originLabel', 'Pasto de Origem')}</th>
+                <th scope="col" style={{ padding: '8px 12px' }}>{t('gerente.lote.cabecas', 'Quantidade de Cabeças')}</th>
+                <th scope="col" style={{ padding: '8px 12px' }}>{t('gerente.lote.peso_medio', 'Peso Médio (kg)')}</th>
+                <th scope="col" style={{ padding: '8px 12px' }}>{t('gerente.metas.gmdTargetLabel', 'GMD Alvo (kg/dia)')}</th>
               </tr>
             </thead>
             <tbody>

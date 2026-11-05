@@ -209,7 +209,20 @@ export const criarFormulaRacaoPayloadSchema = z.object({
   ingredientes: z.array(ingredienteFormulaSchema).min(1, 'Fórmula deve ter ao menos 1 ingrediente'),
   tamanho_batida_padrao_kg: z.number().positive('Tamanho padrão da batida deve ser positivo').max(10000),
   ativo: z.boolean()
-}).strict();
+}).strict()
+.refine(
+  data => {
+    const total = data.ingredientes.reduce((sum, item) => sum + item.porcentagem_inclusao, 0);
+    return Math.abs(total - 100) <= 0.01;
+  },
+  {
+    message: 'A soma das porcentagens de inclusão dos ingredientes deve ser exatamente 100% (±0.01%)',
+    path: ['ingredientes']
+  }
+);
+
+export const saveFormulaCommandSchema = criarFormulaRacaoPayloadSchema;
+export const salvarFormulaPayloadSchema = criarFormulaRacaoPayloadSchema;
 
 export const iniciarBatidaPayloadSchema = z.object({
   batida_id: z.string().min(1, 'ID da batida é obrigatório'),

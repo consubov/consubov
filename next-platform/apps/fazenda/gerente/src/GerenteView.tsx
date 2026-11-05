@@ -83,8 +83,10 @@ export const GerenteView: React.FC = () => {
           return (
             <button
               key={tab.key}
+              id={`tab-${tab.key}`}
               role="tab"
               aria-selected={isActive}
+              aria-controls={`tabpanel-${tab.key}`}
               onClick={() => handleSelectTab(tab.key)}
               style={{
                 padding: '8px 16px',
@@ -107,27 +109,33 @@ export const GerenteView: React.FC = () => {
       </div>
 
       {/* Conteúdo da Sub-Aba Ativa */}
-      <StateBoundary state={state.lotes.length === 0 ? 'empty' : 'success'}>
-        {activeTab === 'overview' && (
-          <GerenteDashboardTab
-            state={state}
-            onRefresh={() => setState({ ...store.getState() })}
-            onNavigateTab={tab => handleSelectTab(tab as GerenteSubTab)}
-          />
-        )}
-        {activeTab === 'metas' && (
-          <GerenteGmdTab state={state} store={store} />
-        )}
-        {activeTab === 'lotes' && (
-          <GerenteLotesTab state={state} store={store} />
-        )}
-        {activeTab === 'custos' && (
-          <GerenteCustosTab state={state} store={store} />
-        )}
-        {activeTab === 'auditoria' && (
-          <GerenteCochoAuditTab state={state} store={store} />
-        )}
-      </StateBoundary>
+      <div
+        role="tabpanel"
+        id={`tabpanel-${activeTab}`}
+        aria-labelledby={`tab-${activeTab}`}
+      >
+        <StateBoundary state={state.lotes.length === 0 ? 'empty' : 'success'}>
+          {activeTab === 'overview' && (
+            <GerenteDashboardTab
+              state={state}
+              onRefresh={() => setState({ ...store.getState() })}
+              onNavigateTab={tab => handleSelectTab(tab as GerenteSubTab)}
+            />
+          )}
+          {activeTab === 'metas' && (
+            <GerenteGmdTab state={state} store={store} />
+          )}
+          {activeTab === 'lotes' && (
+            <GerenteLotesTab state={state} store={store} />
+          )}
+          {activeTab === 'custos' && (
+            <GerenteCustosTab state={state} store={store} />
+          )}
+          {activeTab === 'auditoria' && (
+            <GerenteCochoAuditTab state={state} store={store} />
+          )}
+        </StateBoundary>
+      </div>
     </div>
   );
 };

@@ -83,8 +83,10 @@ export const EscritorioView: React.FC = () => {
           return (
             <button
               key={tab.key}
+              id={`tab-${tab.key}`}
               role="tab"
               aria-selected={isActive}
+              aria-controls={`tabpanel-${tab.key}`}
               onClick={() => handleSelectTab(tab.key)}
               style={{
                 padding: '8px 16px',
@@ -107,27 +109,33 @@ export const EscritorioView: React.FC = () => {
       </div>
 
       {/* Conteúdo da Sub-Aba Ativa */}
-      <StateBoundary state={state.notasFiscais.length === 0 ? 'empty' : 'success'}>
-        {activeTab === 'overview' && (
-          <EscritorioDashboardTab
-            state={state}
-            onRefresh={() => setState({ ...store.getState() })}
-            onNavigateTab={tab => handleSelectTab(tab as EscritorioSubTab)}
-          />
-        )}
-        {activeTab === 'invoices' && (
-          <EscritorioNotasTab state={state} store={store} />
-        )}
-        {activeTab === 'purchases' && (
-          <EscritorioComprasTab state={state} store={store} />
-        )}
-        {activeTab === 'lots' && (
-          <EscritorioLotesTab state={state} store={store} />
-        )}
-        {activeTab === 'closing' && (
-          <EscritorioFinanceiroTab state={state} store={store} />
-        )}
-      </StateBoundary>
+      <div
+        role="tabpanel"
+        id={`tabpanel-${activeTab}`}
+        aria-labelledby={`tab-${activeTab}`}
+      >
+        <StateBoundary state={state.notasFiscais.length === 0 ? 'empty' : 'success'}>
+          {activeTab === 'overview' && (
+            <EscritorioDashboardTab
+              state={state}
+              onRefresh={() => setState({ ...store.getState() })}
+              onNavigateTab={tab => handleSelectTab(tab as EscritorioSubTab)}
+            />
+          )}
+          {activeTab === 'invoices' && (
+            <EscritorioNotasTab state={state} store={store} />
+          )}
+          {activeTab === 'purchases' && (
+            <EscritorioComprasTab state={state} store={store} />
+          )}
+          {activeTab === 'lots' && (
+            <EscritorioLotesTab state={state} store={store} />
+          )}
+          {activeTab === 'closing' && (
+            <EscritorioFinanceiroTab state={state} store={store} />
+          )}
+        </StateBoundary>
+      </div>
     </div>
   );
 };

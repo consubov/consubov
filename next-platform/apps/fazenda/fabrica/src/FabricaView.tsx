@@ -83,8 +83,10 @@ export const FabricaView: React.FC = () => {
           return (
             <button
               key={tab.key}
+              id={`tab-${tab.key}`}
               role="tab"
               aria-selected={isActive}
+              aria-controls={`tabpanel-${tab.key}`}
               onClick={() => handleSelectTab(tab.key)}
               style={{
                 padding: '8px 16px',
@@ -107,27 +109,33 @@ export const FabricaView: React.FC = () => {
       </div>
 
       {/* Conteúdo da Sub-Aba Ativa */}
-      <StateBoundary state={state.silos.length === 0 ? 'empty' : 'success'}>
-        {activeTab === 'overview' && (
-          <FabricaDashboardTab
-            state={state}
-            onRefresh={() => setState({ ...store.getState() })}
-            onNavigateTab={tab => handleSelectTab(tab as FabricaSubTab)}
-          />
-        )}
-        {activeTab === 'batches' && (
-          <FabricaBatidasTab state={state} store={store} />
-        )}
-        {activeTab === 'formulas' && (
-          <FabricaFormulasTab state={state} store={store} />
-        )}
-        {activeTab === 'silos' && (
-          <FabricaSilosTab state={state} store={store} />
-        )}
-        {activeTab === 'calibration' && (
-          <FabricaCalibracaoTab state={state} store={store} />
-        )}
-      </StateBoundary>
+      <div
+        role="tabpanel"
+        id={`tabpanel-${activeTab}`}
+        aria-labelledby={`tab-${activeTab}`}
+      >
+        <StateBoundary state={state.silos.length === 0 ? 'empty' : 'success'}>
+          {activeTab === 'overview' && (
+            <FabricaDashboardTab
+              state={state}
+              onRefresh={() => setState({ ...store.getState() })}
+              onNavigateTab={tab => handleSelectTab(tab as FabricaSubTab)}
+            />
+          )}
+          {activeTab === 'batches' && (
+            <FabricaBatidasTab state={state} store={store} />
+          )}
+          {activeTab === 'formulas' && (
+            <FabricaFormulasTab state={state} store={store} />
+          )}
+          {activeTab === 'silos' && (
+            <FabricaSilosTab state={state} store={store} />
+          )}
+          {activeTab === 'calibration' && (
+            <FabricaCalibracaoTab state={state} store={store} />
+          )}
+        </StateBoundary>
+      </div>
     </div>
   );
 };

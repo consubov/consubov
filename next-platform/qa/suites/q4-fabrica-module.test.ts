@@ -5,8 +5,9 @@ import { I18nProvider } from '@consubov/ui';
 import { FabricaView, FABRICA_MODULE_DESCRIPTOR } from '@consubov/fazenda-fabrica';
 import { FabricaStore } from '../../apps/fazenda/fabrica/src/store/fabricaStore';
 import { scanAstLiterals, findTsxFiles } from '../harness/ast-literal-guard';
-import { iniciarBatidaPayloadSchema, concluirBatidaPayloadSchema } from '@consubov/contracts';
+import { iniciarBatidaPayloadSchema, concluirBatidaPayloadSchema, criarFormulaRacaoPayloadSchema, APP_DICTIONARY } from '@consubov/contracts';
 import { resolve } from 'path';
+import * as fs from 'fs';
 
 describe('Q4.3: Módulo Fábrica Local-First, Batidas Industriais, Baixa de Silos e Bilinguismo', () => {
   let store: FabricaStore;
@@ -35,7 +36,7 @@ describe('Q4.3: Módulo Fábrica Local-First, Batidas Industriais, Baixa de Silo
     expect(html).toContain('Balança e Calibração');
   });
 
-  it('Q4.3.3: deve renderizar FabricaView em en-US com 100% de paridade linguística', () => {
+  it('Q4.3.3: deve renderizar FabricaView em en-US com 100% de paridade linguística e zero vazamento de português', () => {
     const html = renderToString(
       React.createElement(I18nProvider, { language: 'en-US' }, React.createElement(FabricaView))
     );
@@ -46,10 +47,28 @@ describe('Q4.3: Módulo Fábrica Local-First, Batidas Industriais, Baixa de Silo
     expect(html).toContain('Nutritional Formulas');
     expect(html).toContain('Silo Inventory');
     expect(html).toContain('Scales &amp; Calibration');
+    expect(html).toContain('Feed Mill Overview');
+
+    // Asserções negativas obrigatórias contra vazamento de português em modo en-US
+    const ptForbiddenTerms = [
+      'Operador da Fábrica de Ração',
+      'Painel da Fábrica',
+      'Batidas e Misturadores',
+      'Fórmulas Nutricionais',
+      'Estoque de Silos',
+      'Balança e Calibração',
+      'Salvar Fórmula Nutricional',
+      'Produto Armazenado',
+      'Ajustar Inventário do Silo',
+      'Receber Carga de Matéria-Prima'
+    ];
+    for (const term of ptForbiddenTerms) {
+      expect(html).not.toContain(term);
+    }
   });
 
-  it('Q4.3.4: validação matemática estrita da soma de 100% dos ingredientes na fórmula', () => {
-    // Fórmula com soma incorreta (90%): deve lançar erro
+  it('Q4.3.4: validação matemática estrita da soma de 100% dos ingredientes na fórmula (Store e Schema Zod .refine)', () => {
+    // 1. Frontend Store: Fórmula com soma incorreta (90%): deve lançar erro
     expect(() => {
       store.salvarFormula({
         formula_id: 'formula-errada-90',
@@ -64,7 +83,69 @@ describe('Q4.3: Módulo Fábrica Local-First, Batidas Industriais, Baixa de Silo
       });
     }).toThrow('Soma das porcentagens de inclusão deve ser exatamente 100%');
 
-    // Fórmula com soma exata de 100%: deve ser aceita com sucesso
+    // 2. Schema Zod criarFormulaRacaoPayloadSchema com .refine():
+    // 90% deve falhar no schema
+    const parseResult90 = criarFormulaRacaoPayloadSchema.safeParse({
+      formula_id: 'formula-zod-90',
+      nome_formula: 'Fórmula 90%',
+      tipo_raca_destino: 'racao_confinamento',
+      tamanho_batida_padrao_kg: 2000,
+      ativo: true,
+      ingredientes: [
+        { materia_prima_id: 'mp-milho', nome_ingrediente: 'Milho Moído', porcentagem_inclusao: 60 },
+        { materia_prima_id: 'mp-soja', nome_ingrediente: 'Farelo de Soja', porcentagem_inclusao: 30 }
+      ]
+    });
+    expect(parseResult90.success).toBe(false);
+
+    // 99.9% deve falhar no schema
+    const parseResult99 = criarFormulaRacaoPayloadSchema.safeParse({
+      formula_id: 'formula-zod-99',
+      nome_formula: 'Fórmula 99.9%',
+      tipo_raca_destino: 'racao_confinamento',
+      tamanho_batida_padrao_kg: 2000,
+      ativo: true,
+      ingredientes: [
+        { materia_prima_id: 'mp-milho', nome_ingrediente: 'Milho Moído', porcentagem_inclusao: 65 },
+        { materia_prima_id: 'mp-soja', nome_ingrediente: 'Farelo de Soja', porcentagem_inclusao: 25 },
+        { materia_prima_id: 'mp-nucleo', nome_ingrediente: 'Núcleo', porcentagem_inclusao: 7 },
+        { materia_prima_id: 'mp-calcario', nome_ingrediente: 'Calcário', porcentagem_inclusao: 2.9 }
+      ]
+    });
+    expect(parseResult99.success).toBe(false);
+
+    // 100.1% deve falhar no schema
+    const parseResult1001 = criarFormulaRacaoPayloadSchema.safeParse({
+      formula_id: 'formula-zod-1001',
+      nome_formula: 'Fórmula 100.1%',
+      tipo_raca_destino: 'racao_confinamento',
+      tamanho_batida_padrao_kg: 2000,
+      ativo: true,
+      ingredientes: [
+        { materia_prima_id: 'mp-milho', nome_ingrediente: 'Milho Moído', porcentagem_inclusao: 65 },
+        { materia_prima_id: 'mp-soja', nome_ingrediente: 'Farelo de Soja', porcentagem_inclusao: 25 },
+        { materia_prima_id: 'mp-nucleo', nome_ingrediente: 'Núcleo', porcentagem_inclusao: 7 },
+        { materia_prima_id: 'mp-calcario', nome_ingrediente: 'Calcário', porcentagem_inclusao: 3.1 }
+      ]
+    });
+    expect(parseResult1001.success).toBe(false);
+
+    // 100.0% exato deve passar no schema
+    const parseResult100 = criarFormulaRacaoPayloadSchema.safeParse({
+      formula_id: 'formula-zod-100',
+      nome_formula: 'Fórmula 100%',
+      tipo_raca_destino: 'racao_confinamento',
+      tamanho_batida_padrao_kg: 2000,
+      ativo: true,
+      ingredientes: [
+        { materia_prima_id: 'mp-milho', nome_ingrediente: 'Milho Moído', porcentagem_inclusao: 65 },
+        { materia_prima_id: 'mp-soja', nome_ingrediente: 'Farelo de Soja', porcentagem_inclusao: 25 },
+        { materia_prima_id: 'mp-nucleo', nome_ingrediente: 'Núcleo', porcentagem_inclusao: 10 }
+      ]
+    });
+    expect(parseResult100.success).toBe(true);
+
+    // 3. Fórmula com soma exata de 100% no Store: deve ser aceita com sucesso
     const envelope = store.salvarFormula({
       formula_id: 'formula-certa-100',
       nome_formula: 'Ração Confinamento Terminação',

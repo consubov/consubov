@@ -6,6 +6,8 @@ import { GerenteView, GERENTE_MODULE_DESCRIPTOR } from '@consubov/fazenda-gerent
 import { GerenteStore } from '../../apps/fazenda/gerente/src/store/gerenteStore';
 import { scanAstLiterals, findTsxFiles } from '../harness/ast-literal-guard';
 import { resolve } from 'path';
+import * as fs from 'fs';
+import { APP_DICTIONARY } from '@consubov/contracts';
 
 describe('Q4.1: Módulo Gerente Local-First, Indicadores Zootécnicos, Metas e Bilinguismo', () => {
   let store: GerenteStore;
@@ -33,7 +35,7 @@ describe('Q4.1: Módulo Gerente Local-First, Indicadores Zootécnicos, Metas e B
     expect(html).toContain('Gestão de Lotes');
   });
 
-  it('Q4.1.3: deve renderizar GerenteView em en-US com 100% de paridade linguística', () => {
+  it('Q4.1.3: deve renderizar GerenteView em en-US com 100% de paridade linguística e zero vazamento de português', () => {
     const html = renderToString(
       React.createElement(I18nProvider, { language: 'en-US' }, React.createElement(GerenteView))
     );
@@ -43,6 +45,26 @@ describe('Q4.1: Módulo Gerente Local-First, Indicadores Zootécnicos, Metas e B
     expect(html).toContain('Average Daily Gain (ADG)');
     expect(html).toContain('Trough Score');
     expect(html).toContain('Herd Lots Management');
+    expect(html).toContain('Lot Identification');
+    expect(html).toContain('Head Count');
+    expect(html).toContain('Average Weight (kg)');
+    expect(html).toContain('Target ADG (kg/day)');
+
+    // Asserções negativas obrigatórias contra vazamento de português em modo en-US
+    const ptForbiddenTerms = [
+      'Gerente de Produção',
+      'Identificação do Lote',
+      'Quantidade de Cabeças',
+      'Peso Médio',
+      'Movimentar para Pasto',
+      'Apropriar Custos Mensais',
+      'Ganho Médio Diário',
+      'Escore de Cocho',
+      'Visão Geral da Produção'
+    ];
+    for (const term of ptForbiddenTerms) {
+      expect(html).not.toContain(term);
+    }
   });
 
   it('Q4.1.4: store.definirMetas deve gerar AtomicCommandEnvelope válido e atualizar estado local', () => {
@@ -157,5 +179,44 @@ describe('Q4.1: Módulo Gerente Local-First, Indicadores Zootécnicos, Metas e B
       console.error(`[AST GUARD FAIL] ${violations.length} literais detectados em gerente/src:`, violations);
     }
     expect(violations).toEqual([]);
+  });
+
+  it('Q4.1.10: deve possuir semântica W3C ARIA Tabs completa e scope="col" nas tabelas', () => {
+    const html = renderToString(
+      React.createElement(I18nProvider, { language: 'pt-BR' }, React.createElement(GerenteView))
+    );
+
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain('id="tab-overview"');
+    expect(html).toContain('role="tab"');
+    expect(html).toContain('aria-selected="true"');
+    expect(html).toContain('aria-controls="tabpanel-overview"');
+    expect(html).toContain('role="tabpanel"');
+    expect(html).toContain('id="tabpanel-overview"');
+    expect(html).toContain('aria-labelledby="tab-overview"');
+    expect(html).toContain('scope="col"');
+  });
+
+  it('Q4.1.11: 100% das chaves passadas a t(...) em gerente/src devem existir em APP_DICTIONARY', () => {
+    const gerenteSrcDir = resolve(import.meta.dir, '../../apps/fazenda/gerente/src');
+    const files = findTsxFiles(gerenteSrcDir);
+    const validPtKeys = new Set(Object.keys(APP_DICTIONARY['pt-BR']));
+    const validEnKeys = new Set(Object.keys(APP_DICTIONARY['en-US']));
+
+    const missingKeys: { file: string; key: string }[] = [];
+    const tCallRegex = /\bt\(\s*['"]([a-zA-Z0-9_.-]+)['"]/g;
+
+    for (const file of files) {
+      const content = fs.readFileSync(file, 'utf8');
+      let match;
+      while ((match = tCallRegex.exec(content)) !== null) {
+        const key = match[1] ?? '';
+        if (!validPtKeys.has(key) || !validEnKeys.has(key)) {
+          missingKeys.push({ file, key });
+        }
+      }
+    }
+
+    expect(missingKeys).toEqual([]);
   });
 });

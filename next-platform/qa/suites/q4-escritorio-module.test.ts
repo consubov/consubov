@@ -5,8 +5,9 @@ import { I18nProvider } from '@consubov/ui';
 import { EscritorioView, ESCRITORIO_MODULE_DESCRIPTOR } from '@consubov/fazenda-escritorio';
 import { EscritorioStore } from '../../apps/fazenda/escritorio/src/store/escritorioStore';
 import { scanAstLiterals, findTsxFiles } from '../harness/ast-literal-guard';
-import { registrarNotaFiscalPayloadSchema } from '@consubov/contracts';
+import { registrarNotaFiscalPayloadSchema, APP_DICTIONARY } from '@consubov/contracts';
 import { resolve } from 'path';
+import * as fs from 'fs';
 
 describe('Q4.2: Módulo Escritório Local-First, Gestão de NF-e, Compras, Lotes e Bilinguismo', () => {
   let store: EscritorioStore;
@@ -34,7 +35,7 @@ describe('Q4.2: Módulo Escritório Local-First, Gestão de NF-e, Compras, Lotes
     expect(html).toContain('Cadastros e Desdobramentos');
   });
 
-  it('Q4.2.3: deve renderizar EscritorioView em en-US com 100% de paridade linguística', () => {
+  it('Q4.2.3: deve renderizar EscritorioView em en-US com 100% de paridade linguística e zero vazamento de português', () => {
     const html = renderToString(
       React.createElement(I18nProvider, { language: 'en-US' }, React.createElement(EscritorioView))
     );
@@ -44,6 +45,24 @@ describe('Q4.2: Módulo Escritório Local-First, Gestão de NF-e, Compras, Lotes
     expect(html).toContain('Invoices (NF-e)');
     expect(html).toContain('Purchase Orders');
     expect(html).toContain('Lot Registrations &amp; Splits');
+    expect(html).toContain('Administrative Overview');
+    expect(html).toContain('Reconciliation Outbox Queue');
+    expect(html).toContain('Pending Dispatch');
+
+    // Asserções negativas obrigatórias contra vazamento de português em modo en-US
+    const ptForbiddenTerms = [
+      'Escritório Administrativo',
+      'Resumo Administrativo',
+      'Fila Outbox de Conciliação',
+      'Pendentes de Envio',
+      'Notas Fiscais (NF-e)',
+      'Pedidos de Compra',
+      'Cadastros e Desdobramentos',
+      'Fechamento Financeiro'
+    ];
+    for (const term of ptForbiddenTerms) {
+      expect(html).not.toContain(term);
+    }
   });
 
   it('Q4.2.4: validação Zod da chave de acesso de 44 dígitos da NF-e (válida vs inválida)', () => {
@@ -206,5 +225,44 @@ describe('Q4.2: Módulo Escritório Local-First, Gestão de NF-e, Compras, Lotes
       console.error(`[AST GUARD FAIL] ${violations.length} literais detectados em escritorio/src:`, violations);
     }
     expect(violations).toEqual([]);
+  });
+
+  it('Q4.2.10: deve possuir semântica W3C ARIA Tabs completa e scope="col" nas tabelas', () => {
+    const html = renderToString(
+      React.createElement(I18nProvider, { language: 'pt-BR' }, React.createElement(EscritorioView))
+    );
+
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain('id="tab-overview"');
+    expect(html).toContain('role="tab"');
+    expect(html).toContain('aria-selected="true"');
+    expect(html).toContain('aria-controls="tabpanel-overview"');
+    expect(html).toContain('role="tabpanel"');
+    expect(html).toContain('id="tabpanel-overview"');
+    expect(html).toContain('aria-labelledby="tab-overview"');
+    expect(html).toContain('scope="col"');
+  });
+
+  it('Q4.2.11: 100% das chaves passadas a t(...) em escritorio/src devem existir em APP_DICTIONARY', () => {
+    const escritorioSrcDir = resolve(import.meta.dir, '../../apps/fazenda/escritorio/src');
+    const files = findTsxFiles(escritorioSrcDir);
+    const validPtKeys = new Set(Object.keys(APP_DICTIONARY['pt-BR']));
+    const validEnKeys = new Set(Object.keys(APP_DICTIONARY['en-US']));
+
+    const missingKeys: { file: string; key: string }[] = [];
+    const tCallRegex = /\bt\(\s*['"]([a-zA-Z0-9_.-]+)['"]/g;
+
+    for (const file of files) {
+      const content = fs.readFileSync(file, 'utf8');
+      let match;
+      while ((match = tCallRegex.exec(content)) !== null) {
+        const key = match[1] ?? '';
+        if (!validPtKeys.has(key) || !validEnKeys.has(key)) {
+          missingKeys.push({ file, key });
+        }
+      }
+    }
+
+    expect(missingKeys).toEqual([]);
   });
 });

@@ -71,10 +71,10 @@ export const EscritorioDashboardTab: React.FC<EscritorioDashboardTabProps> = ({
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#475569' }}>
-                <th style={{ padding: '8px 12px' }}>{t('escritorio.invoice.number', 'Número da NF')}</th>
-                <th style={{ padding: '8px 12px' }}>{t('escritorio.invoice.supplierName', 'Nome do Fornecedor')}</th>
-                <th style={{ padding: '8px 12px' }}>{t('escritorio.invoice.totalValue', 'Valor Total (R$)')}</th>
-                <th style={{ padding: '8px 12px' }}>{t('escritorio.invoice.issueDate', 'Data de Emissão')}</th>
+                <th scope="col" style={{ padding: '8px 12px' }}>{t('escritorio.invoice.number', 'Número da NF')}</th>
+                <th scope="col" style={{ padding: '8px 12px' }}>{t('escritorio.invoice.supplierName', 'Nome do Fornecedor')}</th>
+                <th scope="col" style={{ padding: '8px 12px' }}>{t('escritorio.invoice.totalValue', 'Valor Total (R$)')}</th>
+                <th scope="col" style={{ padding: '8px 12px' }}>{t('escritorio.invoice.issueDate', 'Data de Emissão')}</th>
               </tr>
             </thead>
             <tbody>
