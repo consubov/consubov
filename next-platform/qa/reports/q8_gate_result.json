@@ -4,7 +4,7 @@
   "milestone": "FASE 08 (QA Completo, Matrizes Normativas ISO/LF/PORT, AST Literal Guard, Documentação Técnica e Encerramento da Incubação)",
   "worktree_path": "D:\\MATEUS\\Documentos\\GitHub\\consubov-worktrees\\f23-isolated-next-platform",
   "branch": "feat/platform/f23-isolated-next-platform",
-  "executed_at": "2026-11-05T12:07:17.369Z",
+  "executed_at": "2026-11-05T12:34:00.554Z",
   "runtime": {
     "bun_version": "1.4.2",
     "node_version": "v26.3.0",
@@ -15,43 +15,43 @@
       "id": "Q8.1_ISO_MATRIX_AUDIT",
       "name": "Matriz de Isolamento e Integridade Normativa ISO-001..010 (suites/q8-consolidation-matrix.test.ts)",
       "status": "PASS",
-      "duration_ms": 945
+      "duration_ms": 714
     },
     {
       "id": "Q8.2_LOCAL_FIRST_LF_MATRIX",
       "name": "Matriz Local-First, Resiliência e Barreira de API LF-001..012 (suites/q8-consolidation-matrix.test.ts)",
       "status": "PASS",
-      "duration_ms": 1291
+      "duration_ms": 640
     },
     {
       "id": "Q8.3_PORTABILITY_PORT_MATRIX",
       "name": "Matriz de Portabilidade Controlada e Governança PORT-001..005 (suites/q8-consolidation-matrix.test.ts)",
       "status": "PASS",
-      "duration_ms": 653
+      "duration_ms": 700
     },
     {
       "id": "Q8.4_FULL_AST_I18N_GUARD",
       "name": "AST QA Guard: Certificação Global de Zero Literais JSX e 100% Paridade Bilíngue pt-BR/en-US (suites/q8-ast-literal-guard.test.ts)",
       "status": "PASS",
-      "duration_ms": 542
+      "duration_ms": 547
     },
     {
       "id": "Q8.5_HERMETIC_SECURITY_ANTI_EGRESS",
       "name": "Barreira Anti-Egress de Rede e Confinamento Estrito da Raiz Canônica (suites/q1-anti-egress.test.ts suites/q1-isolation.test.ts)",
       "status": "PASS",
-      "duration_ms": 264
+      "duration_ms": 262
     },
     {
       "id": "Q8.6_TYPECHECK_GLOBAL",
       "name": "Compilação Estrita TypeScript sem Erros em Todo o Workspace next-platform (tsc --noEmit)",
       "status": "PASS",
-      "duration_ms": 5166
+      "duration_ms": 4967
     },
     {
       "id": "Q8.7_FULL_MONOREPO_REGRESSION",
       "name": "Regressão Integral das Suítes Automatizadas do Monorepo (100% testes aprovados sem falhas)",
       "status": "PASS",
-      "duration_ms": 7397
+      "duration_ms": 7669
     },
     {
       "id": "Q8.8_DOCUMENTATION_COMPLETENESS",

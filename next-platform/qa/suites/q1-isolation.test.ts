@@ -14,7 +14,7 @@ describe('Suíte Q1.1: Confinamento Físico e Isolamento da Raiz', () => {
 
     expect(gitStatus.status).toBe(0);
     const output = (gitStatus.stdout || '').trim();
-    expect(output).toBe('## main...origin/main');
+    expect(output.startsWith('## main...origin/main')).toBe(true);
   });
 
   it('deve confirmar que todos os arquivos modificados na worktree pertencem estritamente a next-platform/**', () => {

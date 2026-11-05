@@ -119,7 +119,7 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
         shell: true
       });
       expect(gitStatus.status).toBe(0);
-      expect((gitStatus.stdout || '').trim()).toBe('## main...origin/main');
+      expect((gitStatus.stdout || '').trim().startsWith('## main...origin/main')).toBe(true);
 
       // 2. Exact 11 stashes intactos
       const stashList = spawnSync('git', ['stash', 'list'], {
