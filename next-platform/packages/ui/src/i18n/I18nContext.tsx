@@ -9,31 +9,31 @@ import React, {
 } from 'react';
 import {
   SupportedLanguage,
+  APP_LANGUAGE_STORAGE_KEY,
   normalizeLanguage,
-  translateKey
+  translateKey,
+  I18nParams
 } from '@consubov/contracts';
-
-const STORAGE_KEY = 'consubov:app-language';
 
 export interface I18nContextValue {
   language: SupportedLanguage;
   setLanguage: (lang: SupportedLanguage) => void;
-  t: (key: string, fallback?: string) => string;
+  t: (key: string, paramsOrFallback?: I18nParams | string, fallback?: string) => string;
 }
 
 export const I18nContext = createContext<I18nContextValue>({
   language: 'pt-BR',
   setLanguage: () => {},
-  t: (key, fallback) => translateKey('pt-BR', key, fallback)
+  t: (key, paramsOrFallback, fallback) => translateKey('pt-BR', key, paramsOrFallback, fallback)
 });
 
 function getInitialLanguage(): SupportedLanguage {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
-      return normalizeLanguage(window.localStorage.getItem(STORAGE_KEY));
+      return normalizeLanguage(window.localStorage.getItem(APP_LANGUAGE_STORAGE_KEY));
     }
   } catch {
-    // Fallback silencioso para ambientes sem localStorage
+    // Fallback silencioso para ambientes com restrição de storage
   }
   return 'pt-BR';
 }
@@ -53,7 +53,7 @@ export function I18nProvider({ children, defaultLanguage }: I18nProviderProps) {
     if (typeof window === 'undefined') return;
 
     const handleStorage = (event: StorageEvent) => {
-      if (event.key === STORAGE_KEY && event.newValue) {
+      if (event.key === APP_LANGUAGE_STORAGE_KEY && event.newValue) {
         setLanguageState(normalizeLanguage(event.newValue));
       }
     };
@@ -74,7 +74,7 @@ export function I18nProvider({ children, defaultLanguage }: I18nProviderProps) {
     setLanguageState(valid);
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem(STORAGE_KEY, valid);
+        window.localStorage.setItem(APP_LANGUAGE_STORAGE_KEY, valid);
       }
     } catch {
       // Storage opcional
@@ -82,8 +82,8 @@ export function I18nProvider({ children, defaultLanguage }: I18nProviderProps) {
   }, []);
 
   const t = useCallback(
-    (key: string, fallback?: string) => {
-      return translateKey(language, key, fallback);
+    (key: string, paramsOrFallback?: I18nParams | string, fallback?: string) => {
+      return translateKey(language, key, paramsOrFallback, fallback);
     },
     [language]
   );

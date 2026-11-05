@@ -1,4 +1,5 @@
 import { UserProfileId } from '@consubov/contracts';
+export { default, CapatazView } from './CapatazView';
 
 export const CAPATAZ_MODULE_DESCRIPTOR = {
   moduleId: 'capataz',

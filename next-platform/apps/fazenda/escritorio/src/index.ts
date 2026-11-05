@@ -1,4 +1,5 @@
 import { UserProfileId } from '@consubov/contracts';
+export { default, EscritorioView } from './EscritorioView';
 
 export const ESCRITORIO_MODULE_DESCRIPTOR = {
   moduleId: 'escritorio',

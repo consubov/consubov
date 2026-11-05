@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { colorTokens } from '../tokens/colors';
 import { spacingTokens } from '../tokens/spacing';
+import { useTranslation } from '../i18n';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
   size?: 'md' | 'lg';
   isLoading?: boolean;
+  loadingText?: string;
   debounceMs?: number;
 }
 
@@ -13,6 +15,7 @@ export const Button: React.FC<ButtonProps> = ({
   variant = 'primary',
   size = 'md',
   isLoading = false,
+  loadingText,
   debounceMs = 300,
   onClick,
   disabled,
@@ -20,6 +23,7 @@ export const Button: React.FC<ButtonProps> = ({
   style,
   ...rest
 }) => {
+  const { t } = useTranslation();
   const [isDebouncing, setIsDebouncing] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -58,6 +62,7 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const minHeight = size === 'lg' ? 56 : spacingTokens.touch.buttonHeightPx;
+  const effectiveLoadingText = loadingText ?? t('common.wait', 'Aguarde...');
 
   return (
     <button
@@ -83,7 +88,7 @@ export const Button: React.FC<ButtonProps> = ({
         ...style
       }}
     >
-      {isLoading ? 'Aguarde...' : children}
+      {isLoading ? effectiveLoadingText : children}
     </button>
   );
 };

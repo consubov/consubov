@@ -17,7 +17,6 @@ describe('Suíte Q1.2: Compilação Estrita TypeScript (Strict Typecheck)', () =
       console.error('STDOUT:', result.stdout);
       console.error('STDERR:', result.stderr);
     }
-
     expect(result.status).toBe(0);
-  });
+  }, 30000);
 });

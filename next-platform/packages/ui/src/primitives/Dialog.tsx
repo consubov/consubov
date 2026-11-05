@@ -1,15 +1,26 @@
 import React from 'react';
 import { colorTokens } from '../tokens/colors';
+import { useTranslation } from '../i18n';
 
 export interface DialogProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
+  closeAriaLabel?: string;
   children: React.ReactNode;
 }
 
-export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children }) => {
+export const Dialog: React.FC<DialogProps> = ({
+  isOpen,
+  onClose,
+  title,
+  closeAriaLabel,
+  children
+}) => {
+  const { t } = useTranslation();
   if (!isOpen) return null;
+
+  const ariaLabel = closeAriaLabel ?? t('action.close', 'Fechar');
 
   return (
     <div
@@ -45,7 +56,7 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children
           </h2>
           <button
             onClick={onClose}
-            aria-label="Fechar"
+            aria-label={ariaLabel}
             style={{
               background: 'transparent',
               border: 'none',

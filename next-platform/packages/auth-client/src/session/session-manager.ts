@@ -69,6 +69,7 @@ export class SessionManager {
     if (key !== 'unauthenticated') {
       this.storage.removeItem(key);
     }
+    this.storage.removeItem('current');
     this.currentSession = null;
     this.currentTokens = null;
     this.notify();
@@ -95,12 +96,14 @@ export class SessionManager {
   private persistToStorage(): void {
     if (!this.currentSession) return;
     const partitionKey = this.getPartitionKey();
-    this.storage.setItem(partitionKey, {
+    const data = {
       session: this.currentSession,
       tokens: this.currentTokens,
       partitionKey,
       storedAt: new Date().toISOString()
-    });
+    };
+    this.storage.setItem(partitionKey, data);
+    this.storage.setItem('current', data);
   }
 
   public restoreFromStorage(partitionKey: string): boolean {

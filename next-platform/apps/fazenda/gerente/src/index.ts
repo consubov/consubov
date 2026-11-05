@@ -1,4 +1,5 @@
 import { UserProfileId } from '@consubov/contracts';
+export { default, GerenteView } from './GerenteView';
 
 export const GERENTE_MODULE_DESCRIPTOR = {
   moduleId: 'gerente',

@@ -30,7 +30,17 @@
       "@consubov/testing": ["./packages/testing/src/index.ts"],
       "@consubov/testing/*": ["./packages/testing/src/*"],
       "@consubov/platform-api": ["./api/src/index.ts"],
-      "@consubov/platform-api/*": ["./api/src/*"]
+      "@consubov/platform-api/*": ["./api/src/*"],
+      "@consubov/fazenda-gerente": ["./apps/fazenda/gerente/src/index.ts"],
+      "@consubov/fazenda-gerente/*": ["./apps/fazenda/gerente/src/*"],
+      "@consubov/fazenda-capataz": ["./apps/fazenda/capataz/src/index.ts"],
+      "@consubov/fazenda-capataz/*": ["./apps/fazenda/capataz/src/*"],
+      "@consubov/fazenda-escritorio": ["./apps/fazenda/escritorio/src/index.ts"],
+      "@consubov/fazenda-escritorio/*": ["./apps/fazenda/escritorio/src/*"],
+      "@consubov/fazenda-fabrica": ["./apps/fazenda/fabrica/src/index.ts"],
+      "@consubov/fazenda-fabrica/*": ["./apps/fazenda/fabrica/src/*"],
+      "@consubov/fazenda-shell": ["./apps/fazenda/shell/src/index.ts"],
+      "@consubov/fazenda-shell/*": ["./apps/fazenda/shell/src/*"]
     }
   }
 }

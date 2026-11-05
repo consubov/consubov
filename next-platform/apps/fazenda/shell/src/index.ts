@@ -9,3 +9,20 @@ export const FAZENDA_SHELL_CONFIG = {
   sessionManager: new SessionManager(),
   quiescence: new QuiescenceRegistry()
 };
+
+export * from './auth/AuthContext';
+export * from './auth/useAuth';
+export * from './auth/ProtectedRoute';
+export * from './router/moduleRegistry';
+export * from './router/routes.config';
+export * from './router/AppRouter';
+export * from './components/layout/ShellLayout';
+export * from './components/layout/ShellAppBar';
+export * from './components/layout/ShellNavigation';
+export * from './components/layout/ContextSwitchModal';
+export * from './components/views/LoginView';
+export * from './components/views/ContextSelectorView';
+export * from './components/views/AccessDeniedView';
+export * from './types/shell.types';
+export * from './App';
+export { default } from './App';

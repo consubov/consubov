@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '../i18n';
 
 export type UiState = 'loading' | 'empty' | 'error' | 'success' | 'partial' | 'pending';
 
@@ -25,23 +26,39 @@ export const StateBoundary: React.FC<StateBoundaryProps> = ({
   onRetry,
   children
 }) => {
+  const { t } = useTranslation();
+
   if (state === 'loading') {
-    return <div role="status" aria-live="polite">{loadingFallback ?? <p>Carregando dados...</p>}</div>;
+    return (
+      <div role="status" aria-live="polite">
+        {loadingFallback ?? <p>{t('state.loading', 'Carregando dados operacionais...')}</p>}
+      </div>
+    );
   }
   if (state === 'error') {
     return (
       <div role="alert" aria-live="assertive">
-        {errorFallback ? errorFallback(error, onRetry ?? (() => {})) : (
+        {errorFallback ? (
+          errorFallback(error, onRetry ?? (() => {}))
+        ) : (
           <div>
-            <p>Ocorreu um erro na visualização.</p>
-            {onRetry && <button onClick={onRetry} style={{ minHeight: 48, minWidth: 48 }}>Tentar Novamente</button>}
+            <p>{t('state.error', 'Ocorreu um erro ao carregar os dados desta visualização.')}</p>
+            {onRetry && (
+              <button onClick={onRetry} style={{ minHeight: 48, minWidth: 48 }}>
+                {t('action.retry', 'Tentar Novamente')}
+              </button>
+            )}
           </div>
         )}
       </div>
     );
   }
   if (state === 'empty') {
-    return <div role="region" aria-label="Sem registros">{emptyFallback ?? <p>Nenhum registro encontrado.</p>}</div>;
+    return (
+      <div role="region" aria-label={t('state.empty', 'Nenhum registro cadastrado no momento.')}>
+        {emptyFallback ?? <p>{t('state.empty', 'Nenhum registro cadastrado no momento.')}</p>}
+      </div>
+    );
   }
   if (state === 'pending') {
     return (

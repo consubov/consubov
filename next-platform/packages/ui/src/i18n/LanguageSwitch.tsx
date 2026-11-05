@@ -1,37 +1,50 @@
 import React from 'react';
 import { useTranslation } from './I18nContext';
 import { SupportedLanguage } from '@consubov/contracts';
+import { colorTokens } from '../tokens/colors';
+import { spacingTokens } from '../tokens/spacing';
 
 export interface LanguageSwitchProps {
   className?: string;
-  selectClassName?: string;
+  style?: React.CSSProperties;
 }
 
-/**
- * Seletor bilingue de idioma para cabeçalhos e menus da plataforma CONSUBOV.
- * Suporta pt-BR e en-US com persistência local e acessibilidade.
- */
-export function LanguageSwitch({ className, selectClassName }: LanguageSwitchProps) {
-  const { language, setLanguage } = useTranslation();
+export const LanguageSwitch: React.FC<LanguageSwitchProps> = ({ className, style }) => {
+  const { language, setLanguage, t } = useTranslation();
 
   return (
     <aside
-      aria-label="Idioma / Language"
-      data-testid="app-language-switch"
-      className={className ?? 'inline-flex items-center'}
+      aria-label={t('shell.header.languageAria', 'Idioma / Language')}
+      className={className}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        ...style
+      }}
     >
       <select
-        aria-label="Idioma / Language"
-        className={
-          selectClassName ??
-          'rounded border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 shadow-sm focus:border-green-600 focus:outline-none'
-        }
         value={language}
-        onChange={e => setLanguage(e.target.value as SupportedLanguage)}
+        onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
+        aria-label={t('shell.header.languageAria', 'Idioma / Language')}
+        style={{
+          minHeight: spacingTokens.touch.inputHeightPx,
+          minWidth: 120,
+          padding: '6px 12px',
+          borderRadius: 8,
+          border: `1px solid ${colorTokens.surface.borderStrong}`,
+          backgroundColor: colorTokens.surface.card,
+          color: colorTokens.text.primary,
+          fontSize: '0.875rem',
+          fontWeight: 600,
+          cursor: 'pointer',
+          outline: 'none',
+          touchAction: 'manipulation'
+        }}
       >
         <option value="pt-BR">🇧🇷 Português</option>
         <option value="en-US">🇺🇸 English</option>
       </select>
     </aside>
   );
-}
+};
