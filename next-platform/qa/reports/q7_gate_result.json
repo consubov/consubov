@@ -4,7 +4,7 @@
   "milestone": "FASE 07 (Atualização Automática sem Clique, Versões, Service Worker, Cache, Quiescência e Rollback Atômico)",
   "worktree_path": "D:\\MATEUS\\Documentos\\GitHub\\consubov-worktrees\\f23-isolated-next-platform",
   "branch": "feat/platform/f23-isolated-next-platform",
-  "executed_at": "2026-11-05T10:31:36.209Z",
+  "executed_at": "2026-11-05T10:39:21.257Z",
   "runtime": {
     "bun_version": "1.4.2",
     "node_version": "v26.3.0",
@@ -15,49 +15,49 @@
       "id": "Q7.1_SW_BACKGROUND_DOWNLOAD",
       "name": "Service Worker: Precache silencioso em cache vN sem skipWaiting no install e retenção N e N-1 (q7-sw-background-download.test.ts)",
       "status": "PASS",
-      "duration_ms": 63
+      "duration_ms": 75
     },
     {
       "id": "Q7.2_QUIESCENCE_DETECTION",
       "name": "QuiescenceRegistry: Gerenciamento rigoroso das travas FORM_DIRTY, CAMERA_ACTIVE, WEIGHING_ACTIVE e OUTBOX_SYNCING (q7-quiescence-detection.test.ts)",
       "status": "PASS",
-      "duration_ms": 181
+      "duration_ms": 186
     },
     {
       "id": "Q7.3_SAFE_ACTIVATION",
       "name": "UpdateCoordinator: Retenção de atualização durante operações críticas e liberação automática na quiescência (q7-safe-activation.test.ts)",
       "status": "PASS",
-      "duration_ms": 267
+      "duration_ms": 287
     },
     {
       "id": "Q7.4_CHUNK_404_ROLLBACK",
       "name": "RollbackManager & safeDynamicImport: Intercepção de erro 404 em chunks e fallback atômico para N-1 sem WSOD (q7-chunk-404-rollback.test.ts)",
       "status": "PASS",
-      "duration_ms": 109
+      "duration_ms": 121
     },
     {
       "id": "Q7.5_INTEGRITY_CATALOG",
       "name": "Catálogo Zod & Integridade Criptográfica SHA-256 via Web Crypto Subtle com rejeição de adulterações (q7-integrity-catalog.test.ts)",
       "status": "PASS",
-      "duration_ms": 133
+      "duration_ms": 91
     },
     {
       "id": "Q7.6_AST_LITERAL_GUARD",
       "name": "AST QA Guard: Certificação de Zero Literais JSX Hardcoded e Paridade Bilíngue 100% em update.* (q7-ast-literal-guard.test.ts)",
       "status": "PASS",
-      "duration_ms": 374
+      "duration_ms": 440
     },
     {
       "id": "Q7.7_TYPECHECK",
       "name": "Compilação Estrita TypeScript sem Erros em Todo o Workspace next-platform (tsc --noEmit)",
       "status": "PASS",
-      "duration_ms": 5476
+      "duration_ms": 6368
     },
     {
       "id": "Q7.8_REGRESSION_Q1_Q6",
       "name": "Regressão Integral das Suítes Anteriores Q1 a Q6 (zero quebras de contrato)",
       "status": "PASS",
-      "duration_ms": 6994
+      "duration_ms": 7862
     }
   ],
   "summary": {

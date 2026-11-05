@@ -24,6 +24,7 @@
     "qa:q5": "bun run qa/scripts/run-q5-gate.ts",
     "qa:q6": "bun run qa/scripts/run-q6-gate.ts",
     "qa:q7": "bun run qa/scripts/run-q7-gate.ts",
+    "qa:q8": "bun run qa/scripts/run-q8-gate.ts",
     "dev:api": "bun run --cwd api dev",
     "dev:shell": "bun run --cwd apps/fazenda/shell dev",
     "dev:admin": "bun run --cwd apps/admin-global dev"

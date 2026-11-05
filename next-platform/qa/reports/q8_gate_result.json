@@ -1,0 +1,84 @@
+{
+  "gate_id": "GATE_Q8_CONSOLIDATION_MATRICES_AST_REGRESSION_CLOSURE",
+  "task_id": "F23-NEXT-08",
+  "milestone": "FASE 08 (QA Completo, Matrizes Normativas ISO/LF/PORT, AST Literal Guard, Documentação Técnica e Encerramento da Incubação)",
+  "worktree_path": "D:\\MATEUS\\Documentos\\GitHub\\consubov-worktrees\\f23-isolated-next-platform",
+  "branch": "feat/platform/f23-isolated-next-platform",
+  "executed_at": "2026-11-05T12:07:17.369Z",
+  "runtime": {
+    "bun_version": "1.4.2",
+    "node_version": "v26.3.0",
+    "os": "win32 x64"
+  },
+  "checks": [
+    {
+      "id": "Q8.1_ISO_MATRIX_AUDIT",
+      "name": "Matriz de Isolamento e Integridade Normativa ISO-001..010 (suites/q8-consolidation-matrix.test.ts)",
+      "status": "PASS",
+      "duration_ms": 945
+    },
+    {
+      "id": "Q8.2_LOCAL_FIRST_LF_MATRIX",
+      "name": "Matriz Local-First, Resiliência e Barreira de API LF-001..012 (suites/q8-consolidation-matrix.test.ts)",
+      "status": "PASS",
+      "duration_ms": 1291
+    },
+    {
+      "id": "Q8.3_PORTABILITY_PORT_MATRIX",
+      "name": "Matriz de Portabilidade Controlada e Governança PORT-001..005 (suites/q8-consolidation-matrix.test.ts)",
+      "status": "PASS",
+      "duration_ms": 653
+    },
+    {
+      "id": "Q8.4_FULL_AST_I18N_GUARD",
+      "name": "AST QA Guard: Certificação Global de Zero Literais JSX e 100% Paridade Bilíngue pt-BR/en-US (suites/q8-ast-literal-guard.test.ts)",
+      "status": "PASS",
+      "duration_ms": 542
+    },
+    {
+      "id": "Q8.5_HERMETIC_SECURITY_ANTI_EGRESS",
+      "name": "Barreira Anti-Egress de Rede e Confinamento Estrito da Raiz Canônica (suites/q1-anti-egress.test.ts suites/q1-isolation.test.ts)",
+      "status": "PASS",
+      "duration_ms": 264
+    },
+    {
+      "id": "Q8.6_TYPECHECK_GLOBAL",
+      "name": "Compilação Estrita TypeScript sem Erros em Todo o Workspace next-platform (tsc --noEmit)",
+      "status": "PASS",
+      "duration_ms": 5166
+    },
+    {
+      "id": "Q8.7_FULL_MONOREPO_REGRESSION",
+      "name": "Regressão Integral das Suítes Automatizadas do Monorepo (100% testes aprovados sem falhas)",
+      "status": "PASS",
+      "duration_ms": 7397
+    },
+    {
+      "id": "Q8.8_DOCUMENTATION_COMPLETENESS",
+      "name": "Completude dos Documentos Técnicos Canônicos em next-platform/docs/",
+      "status": "PASS",
+      "duration_ms": 0
+    }
+  ],
+  "summary": {
+    "total_checks": 8,
+    "passed": 8,
+    "failed": 0,
+    "blocked": 0
+  },
+  "audit_flags": {
+    "isolation_preserved": true,
+    "canonical_repo_untouched": true,
+    "iso_matrix_10_of_10_verified": true,
+    "local_first_matrix_12_of_12_verified": true,
+    "portability_matrix_5_of_5_verified": true,
+    "ast_literal_guard_zero_violations": true,
+    "bilingual_parity_100_percent": true,
+    "typecheck_zero_errors": true,
+    "monorepo_regression_all_passed": true,
+    "technical_documentation_complete": true,
+    "production_gate": "RELEASE_PROIBIDO_ESTRITAMENTE_NO_GO",
+    "closure_status": "PASS_INCUBACAO_CONCLUIDA_LOCAL_READY"
+  },
+  "verdict": "PASS"
+}
