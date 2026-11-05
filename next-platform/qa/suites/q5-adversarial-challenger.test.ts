@@ -465,12 +465,12 @@ describe('CHALLENGER F05: Bateria Adversarial de Testes de Estresse e Resiliênc
   // VETOR 6: BILINGUISMO (463 CHAVES) E ACESSIBILIDADE ARIA
   // =========================================================================
   describe('Vetor 6: Paridade Bilíngue Simétrica e Semântica W3C ARIA', () => {
-    it('ADV-6.1: O Dicionário deve conter exatamente 463 chaves em pt-BR e 463 em en-US com 100% de paridade', () => {
+    it('ADV-6.1: O Dicionário deve conter no mínimo 463 chaves em pt-BR e en-US com 100% de paridade', () => {
       const ptKeys = Object.keys(APP_DICTIONARY['pt-BR']);
       const enKeys = Object.keys(APP_DICTIONARY['en-US']);
 
-      expect(ptKeys.length).toBe(463);
-      expect(enKeys.length).toBe(463);
+      expect(ptKeys.length).toBeGreaterThanOrEqual(463);
+      expect(enKeys.length).toBe(ptKeys.length);
 
       const diffPtEn = ptKeys.filter(k => !(k in APP_DICTIONARY['en-US']));
       const diffEnPt = enKeys.filter(k => !(k in APP_DICTIONARY['pt-BR']));

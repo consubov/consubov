@@ -16,6 +16,16 @@ export interface StoredCommandRecord {
   stored_at: string;
 }
 
+export interface CommandLogFilter {
+  tenant_id?: string;
+  user_id?: string;
+  profile_id?: string;
+  command_type?: string;
+  start_date?: string;
+  end_date?: string;
+  status?: string;
+}
+
 export class InMemoryLedger {
   private commandsById = new Map<string, StoredCommandRecord>();
   private commandsByIdempotency = new Map<string, StoredCommandRecord>();
@@ -32,6 +42,37 @@ export class InMemoryLedger {
   public getAggregateVersion(tenantId: string, aggregateType: string, aggregateId: string): number {
     const key = this.getAggregateKey(tenantId, aggregateType, aggregateId);
     return this.aggregateVersions.get(key) ?? 0;
+  }
+
+  public queryLogs(filter?: CommandLogFilter): StoredCommandRecord[] {
+    let records = Array.from(this.commandsById.values());
+
+    if (filter) {
+      if (filter.tenant_id) {
+        records = records.filter(r => r.envelope.tenant_id === filter.tenant_id);
+      }
+      if (filter.user_id) {
+        records = records.filter(r => r.envelope.user_id === filter.user_id);
+      }
+      if (filter.profile_id) {
+        records = records.filter(r => r.envelope.profile_id === filter.profile_id);
+      }
+      if (filter.command_type) {
+        records = records.filter(r => r.envelope.command_type === filter.command_type);
+      }
+      if (filter.start_date) {
+        records = records.filter(r => r.stored_at >= filter.start_date! || r.envelope.occurred_at_local >= filter.start_date!);
+      }
+      if (filter.end_date) {
+        records = records.filter(r => r.stored_at <= filter.end_date! || r.envelope.occurred_at_local <= filter.end_date!);
+      }
+      if (filter.status) {
+        records = records.filter(r => r.ack.status.toLowerCase() === filter.status!.toLowerCase());
+      }
+    }
+
+    records.sort((a, b) => new Date(b.stored_at).getTime() - new Date(a.stored_at).getTime());
+    return records;
   }
 
   public processCommand(envelope: AtomicCommandEnvelope): { success: true; ack: CommandAck } | { success: false; status: number; error: Record<string, unknown> } {

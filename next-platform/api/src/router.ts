@@ -3,6 +3,7 @@ import { handleHealthRequest } from './handlers/health';
 import { handleCommandsRequest } from './handlers/commands';
 import { handleAuthRequest } from './handlers/auth';
 import { handleSyncRequest } from './handlers/sync';
+import { handleAdminAuditRequest } from './handlers/audit';
 
 export function createRouter(ledger: InMemoryLedger) {
   return async function router(req: Request): Promise<Response> {
@@ -30,6 +31,8 @@ export function createRouter(ledger: InMemoryLedger) {
       response = await handleAuthRequest(req);
     } else if (url.pathname.startsWith('/api/v1/sync')) {
       response = await handleSyncRequest(req);
+    } else if (url.pathname === '/api/v1/admin/audit') {
+      response = await handleAdminAuditRequest(req, ledger);
     } else {
       response = new Response(
         JSON.stringify({
