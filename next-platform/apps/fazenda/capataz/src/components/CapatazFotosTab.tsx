@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation, Card, Button } from '@consubov/ui';
-import { useQuiescenceLock } from '@consubov/module-release';
+import { globalQuiescenceRegistry, useQuiescenceLock } from '@consubov/module-release';
 import { CapatazStore, CapatazState } from '../store/capatazStore';
 import { compressPhoto, CompressedPhotoResult } from '../sync/photoCompression';
 
@@ -17,17 +17,24 @@ export const CapatazFotosTab: React.FC<CapatazFotosTabProps> = ({ store, state }
   const [isCompressing, setIsCompressing] = useState(false);
   const [lastCompressed, setLastCompressed] = useState<CompressedPhotoResult | null>(null);
   const [successMessage, setSuccessMessage] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const releasePicker = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    const cancel = () => { releasePicker.current?.(); releasePicker.current = null; };
+    const input = fileInput.current;
+    input?.addEventListener('cancel', cancel);
+    return () => { input?.removeEventListener('cancel', cancel); cancel(); };
+  }, []);
 
   // Trava de quiescência: impede autoupdate durante captura ou compressão de fotos de cocho
   useQuiescenceLock('capataz-camera-compress', 'CAMERA_ACTIVE', isCompressing);
 
-  // Simula captura de foto de alta resolução (4MB) e executa compressão client-side
-  const handleSimulateCapture = async () => {
+  const handleCapture = async (capture: File) => {
     setIsCompressing(true);
+    setPhotoError(false);
     try {
-      // Simula uma foto de 4.2 MB (4.404.019 bytes)
-      const fakeHighResBytes = new Uint8Array(4404019);
-      const result = await compressPhoto(fakeHighResBytes, {
+      const result = await compressPhoto(capture, {
         pastoId: selectedPasto,
         cochoId: state.pastos.find(p => p.pasto_id === selectedPasto)?.cocho_id || 'cocho-pasto-01',
         tipoRegistro: photoType,
@@ -36,10 +43,12 @@ export const CapatazFotosTab: React.FC<CapatazFotosTabProps> = ({ store, state }
         quality: 0.75
       });
 
+      await store.anexarFotoCocho(result);
       setLastCompressed(result);
-      store.anexarFotoCocho(result);
       setSuccessMessage(true);
       setTimeout(() => setSuccessMessage(false), 4000);
+    } catch {
+      setPhotoError(true);
     } finally {
       setIsCompressing(false);
     }
@@ -49,10 +58,18 @@ export const CapatazFotosTab: React.FC<CapatazFotosTabProps> = ({ store, state }
 
   return (
     <div data-testid="capataz-fotos-tab">
+      <input ref={fileInput} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+        data-testid="capataz-photo-file" onChange={event => {
+          const selected = event.currentTarget.files?.[0];
+          event.currentTarget.value = '';
+          releasePicker.current?.(); releasePicker.current = null;
+          if (selected) void handleCapture(selected);
+        }} />
       <Card elevation="elevated" style={{ marginBottom: 20 }}>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 16px', color: '#0F172A' }}>
           {t('capataz.fotos.title')}
         </h2>
+        {photoError && <p role="alert">{t('capataz.fotos.error', 'Não foi possível preparar e salvar a foto. Tente novamente.')}</p>}
 
         {successMessage && (
           <div
@@ -117,7 +134,12 @@ export const CapatazFotosTab: React.FC<CapatazFotosTabProps> = ({ store, state }
           <Button
             type="button"
             variant="primary"
-            onClick={handleSimulateCapture}
+            onClick={() => {
+              releasePicker.current?.();
+              releasePicker.current = globalQuiescenceRegistry.acquireLock('capataz-photo-picker', 'CAMERA_ACTIVE');
+              try { fileInput.current?.click(); }
+              catch { releasePicker.current?.(); releasePicker.current = null; setPhotoError(true); }
+            }}
             disabled={isCompressing}
             style={{ minHeight: 48, minWidth: 240, fontSize: '1rem' }}
           >
@@ -137,7 +159,7 @@ export const CapatazFotosTab: React.FC<CapatazFotosTabProps> = ({ store, state }
             }}
           >
             <div style={{ fontWeight: 700, color: '#1E40AF', marginBottom: 6 }}>
-              {t('capataz.fotos.uploadQueue')}
+          {t('capataz.fotos.gallery')}
             </div>
             <div style={{ fontSize: '0.9rem', color: '#1E3A8A' }}>
               {t('capataz.fotos.compressedInfo', {
@@ -189,7 +211,8 @@ export const CapatazFotosTab: React.FC<CapatazFotosTabProps> = ({ store, state }
                       fontWeight: 600
                     }}
                   >
-                    {t('capataz.fotos.photoResolution')}
+                    {photo.dataUrl ? <img src={photo.dataUrl} alt={t('capataz.fotos.photoAlt', { pasture: pastoName ?? '' })}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : t('capataz.fotos.photoResolution')}
                   </div>
                   <div style={{ padding: 10 }}>
                     <div style={{ fontWeight: 700, fontSize: '0.875rem', color: '#0F172A' }}>

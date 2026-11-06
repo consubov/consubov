@@ -1,3 +1,4 @@
+import { loginApi, authorizedEnvelope } from '../harness/api-auth';
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { createApiServer } from '@consubov/platform-api';
 import { allocateAvailablePort } from '../harness/port-allocator';
@@ -63,8 +64,7 @@ describe('Adversarial Security Suite: FASE 03 — Exploração de RBAC, ISO-004 
       const exploitRes = await authService.selectContext('membership-hacker-arbitrary-uuid-999');
 
       expect(exploitRes.success).toBe(false);
-      expect(exploitRes.error).toContain('ACESSO_NEGADO_403');
-      expect(exploitRes.error).toContain('não pertence ao usuário');
+      expect(exploitRes.error).toBe('Vínculo incompatível com o perfil único desta conta.');
 
       // Comprovação defensiva: nenhum contexto foi ativado e nenhum token foi emitido
       expect(authService.getSessionManager().getActiveContext()).toBeNull();
@@ -87,7 +87,7 @@ describe('Adversarial Security Suite: FASE 03 — Exploração de RBAC, ISO-004 
       const crossUserRes = await authService.selectContext(gerenteMemId);
 
       expect(crossUserRes.success).toBe(false);
-      expect(crossUserRes.error).toContain('ACESSO_NEGADO_403');
+      expect(crossUserRes.error).toBe('Vínculo incompatível com o perfil único desta conta.');
       expect(authService.getSessionManager().getActiveContext()).toBeNull();
       expect(authService.getSessionManager().getTokens()).toBeNull();
     });
@@ -100,6 +100,7 @@ describe('Adversarial Security Suite: FASE 03 — Exploração de RBAC, ISO-004 
         user_id: 'usr-revoked',
         user_name: 'Usuário Revogado',
         user_email: 'revogado@consubov.local',
+        profile_id: 'capataz' as UserProfileId,
         memberships: [
           {
             membership_id: 'mem-revoked-001',
@@ -309,7 +310,7 @@ describe('Adversarial Security Suite: FASE 03 — Exploração de RBAC, ISO-004 
         roles: ['capataz'],
         permissions: []
       };
-      const capatazToken = await signSyntheticJwt(capatazClaims, SYNTHETIC_JWT_SECRET_LAB);
+      const capatazToken = (await loginApi(baseUrl, 'capataz')).tokens.access_token;
 
       // Atacante envia envelope válido no schema Zod, mas alterando profile_id para 'gerente'
       const envelopeSpoof = createSyntheticCommandEnvelope({
@@ -331,15 +332,14 @@ describe('Adversarial Security Suite: FASE 03 — Exploração de RBAC, ISO-004 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${capatazToken}`
         },
-        body: JSON.stringify(envelopeSpoof)
+        body: JSON.stringify({ ...authorizedEnvelope(capatazToken, envelopeSpoof), profile_id: 'gerente' })
       });
 
       // API deve barrar com HTTP 403 FORBIDDEN / PROFILE_MISMATCH
       expect(apiRes.status).toBe(403);
       const data: any = await apiRes.json();
-      expect(data.error).toBe('PROFILE_MISMATCH');
-      expect(data.token_profile_id).toBe('capataz');
-      expect(data.envelope_profile_id).toBe('gerente');
+      expect(data.security.error).toBe('FORBIDDEN_403');
+      expect(apiInstance.ledger.queryLogs()).toHaveLength(0);
     });
   });
 
@@ -383,6 +383,7 @@ describe('Adversarial Security Suite: FASE 03 — Exploração de RBAC, ISO-004 
         user_id: 'u-1',
         user_name: 'U',
         user_email: 'u@c.l',
+        profile_id: 'capataz' as UserProfileId,
         memberships: [
           {
             membership_id: 'mem-1',

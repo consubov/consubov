@@ -1,3 +1,4 @@
+import { QuiescentForm } from '@consubov/ui';
 import React, { useState } from 'react';
 import { useTranslation, Card, Button, Input } from '@consubov/ui';
 import { FabricaState, FabricaStore } from '../store/fabricaStore';
@@ -22,13 +23,16 @@ export const FabricaSilosTab: React.FC<FabricaSilosTabProps> = ({ state, store }
   const [loteFornecedor, setLoteFornecedor] = useState('LOTE-2026-NUTR');
 
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleAjustarSilo = (e: React.FormEvent) => {
+  const handleAjustarSilo = async (e: React.FormEvent) => {
     e.preventDefault();
     const silo = state.silos.find(s => s.silo_id === selectedSiloId);
     if (!silo) return;
 
-    store.ajustarEstoque({
+    setErrorMessage(null);
+    try {
+    await store.ajustarEstoque({
       materia_prima_id: silo.materia_prima_id,
       silo_id: selectedSiloId,
       quantidade_anterior_kg: silo.nivel_atual_kg,
@@ -39,14 +43,18 @@ export const FabricaSilosTab: React.FC<FabricaSilosTabProps> = ({ state, store }
     });
 
     setFeedbackMessage(t('fabrica.stock.success', 'Saldo do silo atualizado sob controle de concorrência!'));
+      return true;
+    } catch (error) { setErrorMessage(error instanceof Error ? error.message : String(error)); }
   };
 
-  const handleReceberCarga = (e: React.FormEvent) => {
+  const handleReceberCarga = async (e: React.FormEvent) => {
     e.preventDefault();
     const silo = state.silos.find(s => s.silo_id === destSiloId);
     if (!silo) return;
 
-    store.receberMateriaPrima({
+    setErrorMessage(null);
+    try {
+    await store.receberMateriaPrima({
       recebimento_id: `rec-${Date.now()}`,
       materia_prima_id: silo.materia_prima_id,
       silo_destino_id: destSiloId,
@@ -56,10 +64,13 @@ export const FabricaSilosTab: React.FC<FabricaSilosTabProps> = ({ state, store }
     });
 
     setFeedbackMessage(t('fabrica.receiving.success', 'Carga de matéria-prima estocada no silo!'));
+      return true;
+    } catch (error) { setErrorMessage(error instanceof Error ? error.message : String(error)); }
   };
 
   return (
     <div data-testid="fabrica-silos-tab" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {errorMessage && <Card elevation="elevated" style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA', padding: 12 }}><p role="alert" style={{ margin: 0, color: '#991B1B' }}>{errorMessage}</p></Card>}
       {feedbackMessage && (
         <Card elevation="elevated" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', padding: 12 }}>
           <p style={{ margin: 0, color: '#166534', fontWeight: 600 }}>{feedbackMessage}</p>
@@ -68,15 +79,15 @@ export const FabricaSilosTab: React.FC<FabricaSilosTabProps> = ({ state, store }
 
       {/* Monitoramento dos Silos */}
       <Card elevation="elevated">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
           {t('fabrica.tabs.silos', 'Estoque de Silos')}
-        </h3>
+        </h2>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
           {state.silos.map(s => (
             <Card key={s.silo_id} elevation="flat" style={{ backgroundColor: '#F8FAFC', padding: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#0F172A' }}>{s.nome_silo}</h4>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#0F172A' }}>{s.nome_silo}</h3>
                 <span style={{ fontWeight: 700, fontSize: '1rem', color: '#0369A1' }}>
                   <span>{s.ocupacao_pct}%</span>
                 </span>
@@ -102,17 +113,18 @@ export const FabricaSilosTab: React.FC<FabricaSilosTabProps> = ({ state, store }
 
       {/* Ajuste de Inventário de Silo */}
       <Card elevation="flat">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
           {t('fabrica.stock.adjustTitle', 'Ajuste de Estoque de Silo')}
-        </h3>
+        </h2>
 
-        <form onSubmit={handleAjustarSilo} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <QuiescentForm onSubmit={handleAjustarSilo} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
+              <label htmlFor="fabrica-ajuste-silo" style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
                 {t('fabrica.stock.silo', 'Silo de Armazenagem')}
               </label>
               <select
+                id="fabrica-ajuste-silo"
                 value={selectedSiloId}
                 onChange={e => setSelectedSiloId(e.target.value)}
                 style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #CBD5E1' }}
@@ -144,22 +156,23 @@ export const FabricaSilosTab: React.FC<FabricaSilosTabProps> = ({ state, store }
               {t('fabrica.silo.ajustar', 'Ajustar Inventário do Silo')}
             </Button>
           </div>
-        </form>
+        </QuiescentForm>
       </Card>
 
       {/* Recebimento de Carga */}
       <Card elevation="flat">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
           {t('fabrica.receiving.title', 'Receber Carga de Matéria-Prima')}
-        </h3>
+        </h2>
 
-        <form onSubmit={handleReceberCarga} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <QuiescentForm onSubmit={handleReceberCarga} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
+              <label htmlFor="fabrica-recebimento-silo" style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
                 {t('fabrica.receiving.destSilo', 'Silo de Destino')}
               </label>
               <select
+                id="fabrica-recebimento-silo"
                 value={destSiloId}
                 onChange={e => setDestSiloId(e.target.value)}
                 style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #CBD5E1' }}
@@ -191,7 +204,7 @@ export const FabricaSilosTab: React.FC<FabricaSilosTabProps> = ({ state, store }
               {t('fabrica.materia.receber', 'Receber Carga de Matéria-Prima')}
             </Button>
           </div>
-        </form>
+        </QuiescentForm>
       </Card>
     </div>
   );

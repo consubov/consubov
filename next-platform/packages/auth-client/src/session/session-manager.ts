@@ -109,6 +109,10 @@ export class SessionManager {
   public restoreFromStorage(partitionKey: string): boolean {
     const stored = this.storage.getItem(partitionKey);
     if (!stored) return false;
+    const expiresAt = Date.parse(stored.session?.expires_at ?? '');
+    const issuedAt = Date.parse(stored.session?.issued_at ?? '');
+    if (!Number.isFinite(expiresAt) || !Number.isFinite(issuedAt) ||
+        issuedAt > Date.now() || expiresAt <= Date.now() || expiresAt <= issuedAt) return false;
     this.currentSession = stored.session;
     this.currentTokens = stored.tokens;
     this.notify();

@@ -124,7 +124,7 @@ export const SYNTHETIC_USERS: Record<string, LabUserRecord> = {
     ]
   },
 
-  // 6. Usuário Multi-Papel (Gerente na Fazenda 1 + Capataz na Fazenda 2) — Para teste de ISO-004
+  // 6. Usuário com um perfil e múltiplos vínculos operacionais (Gerente)
   'multirole.lab@consubov.local': {
     user_id: '10000000-0000-4000-8000-000000000006',
     email: 'multirole.lab@consubov.local',
@@ -145,14 +145,14 @@ export const SYNTHETIC_USERS: Record<string, LabUserRecord> = {
         is_active: true
       },
       {
-        membership_id: 'mem-multi-02-capataz',
+        membership_id: 'mem-multi-02-gerente',
         tenant_id: LAB_TENANT_ID,
         tenant_nome: LAB_TENANT_NAME,
         fazenda_id: '44444444-4444-4444-8444-444444444444',
         fazenda_nome: 'Fazenda Pantanal Secundária',
         retiro_id: '55555555-5555-4555-8555-555555555555',
         retiro_nome: 'Retiro Lagoa',
-        profile_id: 'capataz',
+        profile_id: 'gerente',
         is_active: true
       }
     ]

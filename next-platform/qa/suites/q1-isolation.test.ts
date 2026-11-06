@@ -1,50 +1,28 @@
-import { describe, it, expect } from 'bun:test';
-import { spawnSync } from 'child_process';
+import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import { assertOnlyNextPlatformChanges, canonicalRepository, captureGitBaseline, readGit, worktreeDir } from '../harness/workspace-baseline';
 
-describe('Suíte Q1.1: Confinamento Físico e Isolamento da Raiz', () => {
-  const rootDir = 'd:\\MATEUS\\Documentos\\GitHub\\consubov';
-  const worktreeDir = 'd:\\MATEUS\\Documentos\\GitHub\\consubov-worktrees\\f23-isolated-next-platform';
-
-  it('deve confirmar que a raiz principal está 100% limpa (main sem diff)', () => {
-    const gitStatus = spawnSync('git', ['status', '--short', '--branch'], {
-      cwd: rootDir,
-      encoding: 'utf-8',
-      shell: true
-    });
-
-    expect(gitStatus.status).toBe(0);
-    const output = (gitStatus.stdout || '').trim();
-    expect(output.startsWith('## main...origin/main')).toBe(true);
+describe('Suíte Q1.1: Confinamento físico e preservação do baseline observado', () => {
+  let canonicalBefore: ReturnType<typeof captureGitBaseline>;
+  let worktreeBefore: ReturnType<typeof captureGitBaseline>;
+  beforeAll(() => {
+    canonicalBefore = captureGitBaseline(canonicalRepository());
+    worktreeBefore = captureGitBaseline();
+  });
+  afterAll(() => {
+    expect(captureGitBaseline(canonicalBefore.root)).toEqual(canonicalBefore);
+    expect(captureGitBaseline()).toEqual(worktreeBefore);
   });
 
-  it('deve confirmar que todos os arquivos modificados na worktree pertencem estritamente a next-platform/**', () => {
-    const gitDiff = spawnSync('git', ['status', '--short'], {
-      cwd: worktreeDir,
-      encoding: 'utf-8',
-      shell: true
-    });
-
-    expect(gitDiff.status).toBe(0);
-    const lines = (gitDiff.stdout || '')
-      .split('\n')
-      .map((l: string) => l.trim())
-      .filter(Boolean);
-
-    for (const line of lines) {
-      // Ignora arquivos criados/modificados estritamente sob next-platform/
-      const filePath = line.replace(/^[MADRCU?!]{1,2}\s+/, '').trim();
-      expect(filePath.startsWith('next-platform/')).toBe(true);
-    }
+  it('preserva HEAD, branch observada, arquivos dirty/untracked e stashes canônicos', () => {
+    expect(captureGitBaseline(canonicalBefore.root)).toEqual(canonicalBefore);
   });
 
-  it('deve garantir que package.json e bun.lock na raiz da worktree não foram modificados', () => {
-    const gitDiff = spawnSync('git', ['diff', 'HEAD', '--', 'package.json', 'bun.lock'], {
-      cwd: worktreeDir,
-      encoding: 'utf-8',
-      shell: true
-    });
+  it('todos os arquivos staged, unstaged e untracked ficam em next-platform/**', () => {
+    expect(() => assertOnlyNextPlatformChanges(worktreeBefore)).not.toThrow();
+  });
 
-    expect(gitDiff.status).toBe(0);
-    expect((gitDiff.stdout || '').trim()).toBe('');
+  it('package.json e bun.lock da raiz não foram modificados nem adicionados', () => {
+    expect(worktreeBefore.paths.filter(path => ['package.json', 'bun.lock'].includes(path))).toEqual([]);
+    expect(readGit(worktreeDir, ['diff', 'HEAD', '--', 'package.json', 'bun.lock'])).toBe('');
   });
 });

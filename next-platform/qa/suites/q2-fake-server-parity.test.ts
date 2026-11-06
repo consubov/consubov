@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { FakeApiServer } from '@consubov/testing';
-import { CommandAckResponse, CommandConflictError } from '@consubov/contracts';
+import { CommandAckResponse, CommandConflictError, CommandApiResponse } from '@consubov/contracts';
 import { createSyntheticCommandEnvelope } from '../harness/synthetic-data';
 
-describe('Gate Q2.5: Paridade e Resolução do Finding do Challenger 1 no FakeApiServer', () => {
+describe('Q2.5 unit-only failure/version fake, not authenticated server acceptance', () => {
   let fakeServer: FakeApiServer;
 
   beforeEach(() => {
@@ -28,7 +28,7 @@ describe('Gate Q2.5: Paridade e Resolução do Finding do Challenger 1 no FakeAp
     const res1 = await fakeServer.handleCommand(env1);
     expect(res1.status).toBe(200);
     if (res1.status === 200) {
-      const ack = res1.body as CommandAckResponse;
+      const ack = (res1.body as Extract<CommandApiResponse, { success: true }>).ack;
       expect(ack.aggregate_version).toBe(1);
       expect(ack.status).toBe('COMMITTED');
     }
@@ -48,10 +48,10 @@ describe('Gate Q2.5: Paridade e Resolução do Finding do Challenger 1 no FakeAp
     const res2 = await fakeServer.handleCommand(env2);
     expect(res2.status).toBe(200);
     if (res2.status === 200) {
-      const ack = res2.body as CommandAckResponse;
+      const ack = (res2.body as Extract<CommandApiResponse, { success: true }>).ack;
       expect(ack.aggregate_version).toBe(1);
       expect(ack.status).toBe('COMMITTED');
-      expect(ack.idempotent_replay).toBe(false);
+      expect(ack.status).toBe('COMMITTED');
     }
 
     // Comprova que as versões foram gravadas isoladamente
@@ -75,8 +75,8 @@ describe('Gate Q2.5: Paridade e Resolução do Finding do Challenger 1 no FakeAp
     const res1 = await fakeServer.handleCommand(env1);
     expect(res1.status).toBe(200);
     if (res1.status === 200) {
-      const ack = res1.body as CommandAckResponse;
-      expect(ack.idempotent_replay).toBe(false);
+      const ack = (res1.body as Extract<CommandApiResponse, { success: true }>).ack;
+      expect(ack.status).toBe('COMMITTED');
     }
 
     // Tenant 2 envia com a mesma idempotency_key
@@ -91,18 +91,18 @@ describe('Gate Q2.5: Paridade e Resolução do Finding do Challenger 1 no FakeAp
     const res2 = await fakeServer.handleCommand(env2);
     expect(res2.status).toBe(200);
     if (res2.status === 200) {
-      const ack = res2.body as CommandAckResponse;
+      const ack = (res2.body as Extract<CommandApiResponse, { success: true }>).ack;
       expect(ack.command_id).toBe('cmd-t2-idemp');
-      expect(ack.idempotent_replay).toBe(false);
+      expect(ack.status).toBe('COMMITTED');
     }
 
     // Reenvio no Tenant 1 deve ser detectado como replay
     const res1Replay = await fakeServer.handleCommand(env1);
     expect(res1Replay.status).toBe(200);
     if (res1Replay.status === 200) {
-      const ack = res1Replay.body as CommandAckResponse;
+      const ack = (res1Replay.body as Extract<CommandApiResponse, { success: true }>).ack;
       expect(ack.command_id).toBe('cmd-t1-idemp');
-      expect(ack.idempotent_replay).toBe(true);
+      expect(res1Replay.body).toEqual(res1.body);
     }
   });
 
@@ -134,7 +134,7 @@ describe('Gate Q2.5: Paridade e Resolução do Finding do Challenger 1 no FakeAp
     const res2 = await fakeServer.handleCommand(env2);
     expect(res2.status).toBe(409);
     if (res2.status === 409) {
-      const err = res2.body as CommandConflictError;
+      const err = (res2.body as Extract<CommandApiResponse, { conflict: unknown }>).conflict;
       expect(err.error).toBe('CONFLICT_409');
       expect(err.current_version).toBe(1);
       expect(err.base_version).toBe(0);

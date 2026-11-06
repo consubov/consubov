@@ -8,10 +8,14 @@
     "build": "bun build src/index.ts --outdir dist --target browser",
     "typecheck": "tsc --noEmit",
     "lint": "bun run typecheck",
-    "test": "bun test"
+    "test": "bun test",
+    "build:artifact": "bun run ../../../apps/fazenda/shell/scripts/build-module-artifacts.ts fabrica"
   },
   "dependencies": {
     "@consubov/contracts": "workspace:*",
+    "@consubov/domain-projection": "workspace:*",
+    "@consubov/module-release": "workspace:*",
+    "@consubov/local-data": "workspace:*",
     "@consubov/ui": "workspace:*",
     "@consubov/auth-client": "workspace:*"
   },

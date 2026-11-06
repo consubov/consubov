@@ -1,3 +1,6 @@
+import { loginApi, createApiTestAccount } from '../harness/api-auth';
+import { moduleSeedSnapshot } from '../harness/module-seed';
+import { SYNTHETIC_USERS } from '@consubov/auth-client';
 /**
  * SUÍTE DE TESTES ADVERSARIAIS DO CHALLENGER — FASE 06 (M06)
  * Agente: challenger_f06_1 (Critic / Specialist)
@@ -56,89 +59,15 @@ describe('CHALLENGER F06: Bateria Adversarial de Estresse Empírico — ADM Glob
     apiInstance = createApiServer(port, '127.0.0.1');
     baseUrl = `http://127.0.0.1:${port}`;
 
-    // Emissão de tokens para testes da API
-    superAdminToken = await signSyntheticJwt(
-      {
-        sub: 'usr-super-admin-adv',
-        user_id: 'usr-super-admin-adv',
-        email: 'admin.lab@consubov.local',
-        name: 'Super Admin Challenger',
-        profile_id: 'administrador',
-        tenant_id: '00000000-0000-4000-8000-000000000000',
-        fazenda_id: '00000000-0000-4000-8000-000000000000',
-        product_id: 'consubov',
-        roles: ['super_admin'],
-        exp: Math.floor(Date.now() / 1000) + 7200
-      },
-      SYNTHETIC_JWT_SECRET_LAB
-    );
-
-    supportAdminToken = await signSyntheticJwt(
-      {
-        sub: 'usr-support-admin-adv',
-        user_id: 'usr-support-admin-adv',
-        email: 'suporte.lab@consubov.local',
-        name: 'Support Admin Challenger',
-        profile_id: 'administrador',
-        tenant_id: '00000000-0000-4000-8000-000000000000',
-        fazenda_id: '00000000-0000-4000-8000-000000000000',
-        product_id: 'consubov',
-        roles: ['support_admin'],
-        exp: Math.floor(Date.now() / 1000) + 7200
-      },
-      SYNTHETIC_JWT_SECRET_LAB
-    );
-
-    financialAdminToken = await signSyntheticJwt(
-      {
-        sub: 'usr-financial-admin-adv',
-        user_id: 'usr-financial-admin-adv',
-        email: 'financeiro.lab@consubov.local',
-        name: 'Financial Admin Challenger',
-        profile_id: 'administrador',
-        tenant_id: '00000000-0000-4000-8000-000000000000',
-        fazenda_id: '00000000-0000-4000-8000-000000000000',
-        product_id: 'consubov',
-        roles: ['financial_admin'],
-        exp: Math.floor(Date.now() / 1000) + 7200
-      },
-      SYNTHETIC_JWT_SECRET_LAB
-    );
-
-    capatazToken = await signSyntheticJwt(
-      {
-        sub: 'usr-capataz-adv',
-        user_id: 'usr-capataz-adv',
-        email: 'capataz.lab@consubov.local',
-        name: 'Capataz Challenger',
-        profile_id: 'capataz',
-        tenant_id: 'ten-farm-001',
-        fazenda_id: 'faz-001',
-        product_id: 'consubov',
-        roles: ['capataz'],
-        exp: Math.floor(Date.now() / 1000) + 7200
-      },
-      SYNTHETIC_JWT_SECRET_LAB
-    );
-
-    gerenteToken = await signSyntheticJwt(
-      {
-        sub: 'usr-gerente-adv',
-        user_id: 'usr-gerente-adv',
-        email: 'gerente.lab@consubov.local',
-        name: 'Gerente Challenger',
-        profile_id: 'gerente',
-        tenant_id: 'ten-farm-001',
-        fazenda_id: 'faz-001',
-        product_id: 'consubov',
-        roles: ['gerente'],
-        exp: Math.floor(Date.now() / 1000) + 7200
-      },
-      SYNTHETIC_JWT_SECRET_LAB
-    );
+    superAdminToken = (await loginApi(baseUrl, 'administrador')).tokens.access_token;
+    supportAdminToken = (await createApiTestAccount(baseUrl, 'administrador', { email: 'q6-support@test.local', userId: 'usr-support-admin-adv', tenantId: '00000000-0000-4000-8000-000000000000', farmId: '00000000-0000-4000-8000-000000000000' })).tokens.access_token;
+    financialAdminToken = (await createApiTestAccount(baseUrl, 'administrador', { email: 'q6-financial@test.local', userId: 'usr-financial-admin-adv', tenantId: '00000000-0000-4000-8000-000000000000', farmId: '00000000-0000-4000-8000-000000000000' })).tokens.access_token;
+    capatazToken = (await loginApi(baseUrl, 'capataz')).tokens.access_token;
+    gerenteToken = (await loginApi(baseUrl, 'gerente')).tokens.access_token;
   });
 
   afterAll(() => {
+    delete SYNTHETIC_USERS['q6-support@test.local']; delete SYNTHETIC_USERS['q6-financial@test.local'];
     if (apiInstance) apiInstance.stop();
     if (restoreNetwork) restoreNetwork();
   });
@@ -670,18 +599,18 @@ describe('CHALLENGER F06: Bateria Adversarial de Estresse Empírico — ADM Glob
         command_id: id,
         idempotency_key: `idemp-${id}`,
         command_type: cmdType,
-        aggregate_type: 'cocho',
+        aggregate_type: typeof cmdType !== 'undefined' && cmdType.startsWith('gerente.') ? 'lote' : 'cocho',
         aggregate_id: `agg-${id}`,
-        base_version: 0,
+        base_version: cmdType.startsWith('gerente.') ? 0 : 1,
         user_id: 'usr-adv',
         tenant_id: tenantId,
         product_id: 'consubov',
         fazenda_id: 'faz-01',
         retiro_id: null,
-        profile_id: 'capataz',
+        profile_id: cmdType.startsWith('gerente.') ? 'gerente' : 'capataz',
         device_id: 'dev-01',
         schema_version: 1,
-        payload: { sacos: 2 },
+        payload: cmdType.startsWith('gerente.') ? { lote_id: `agg-${id}`, gmd_alvo_kg_dia: 1.5, peso_final_alvo_kg: 500, data_alvo_abate: '2026-12-01T00:00:00.000Z' } : { pasto_id: `agg-${id}`, produto_id: 'prod-01', sacos_fornecidos: 2, escore_cocho: 2 },
         correlation_id: id,
         attachment_refs: [],
         occurred_at_local: ts,
@@ -691,10 +620,11 @@ describe('CHALLENGER F06: Bateria Adversarial de Estresse Empírico — ADM Glob
         error_message: null
       });
 
+      const commit = (envelope: AtomicCommandEnvelope) => { ledger.initialize({ ...envelope, session_id: 'unit-ledger' }, moduleSeedSnapshot(envelope.profile_id as 'capataz' | 'gerente').data, envelope.occurred_at_local); expect(ledger.processCommand(envelope).success).toBe(true); };
       // Popula o ledger com eventos de 3 tenants
-      ledger.processCommand(createEnvelope('00000000-0000-4000-8000-000000000001', 'ten-alfa', 'capataz.salga.lancar', '2026-11-05T08:00:00Z'));
-      ledger.processCommand(createEnvelope('00000000-0000-4000-8000-000000000002', 'ten-beta', 'capataz.salga.lancar', '2026-11-05T08:10:00Z'));
-      ledger.processCommand(createEnvelope('00000000-0000-4000-8000-000000000003', 'ten-gama', 'gerente.metas.definir', '2026-11-05T08:20:00Z'));
+      commit(createEnvelope('00000000-0000-4000-8000-000000000001', 'ten-alfa', 'capataz.salga.lancar', '2026-11-05T08:00:00Z'));
+      commit(createEnvelope('00000000-0000-4000-8000-000000000002', 'ten-beta', 'capataz.salga.lancar', '2026-11-05T08:10:00Z'));
+      commit(createEnvelope('00000000-0000-4000-8000-000000000003', 'ten-gama', 'gerente.metas.definir', '2026-11-05T08:20:00Z'));
 
       expect(ledger.queryLogs().length).toBe(3);
 
@@ -743,7 +673,7 @@ describe('CHALLENGER F06: Bateria Adversarial de Estresse Empírico — ADM Glob
         command_type: 'capataz.salga.lancar',
         aggregate_type: 'cocho',
         aggregate_id: `agg-${id}`,
-        base_version: 0,
+        base_version: 1,
         user_id: 'usr-test',
         tenant_id: tenantId,
         product_id: 'consubov',
@@ -752,7 +682,7 @@ describe('CHALLENGER F06: Bateria Adversarial de Estresse Empírico — ADM Glob
         profile_id: 'capataz',
         device_id: 'dev-01',
         schema_version: 1,
-        payload: { sacos: 1 },
+        payload: { pasto_id: `agg-${id}`, produto_id: 'prod-01', sacos_fornecidos: 1, escore_cocho: 2 },
         correlation_id: id,
         attachment_refs: [],
         occurred_at_local: ts,
@@ -762,11 +692,12 @@ describe('CHALLENGER F06: Bateria Adversarial de Estresse Empírico — ADM Glob
         error_message: null
       });
 
+      const commit = (envelope: AtomicCommandEnvelope) => { ledger.initialize({ ...envelope, session_id: 'unit-ledger' }, moduleSeedSnapshot('capataz').data, envelope.occurred_at_local); expect(ledger.processCommand(envelope).success).toBe(true); };
       // Gravação com timestamps crescentes
-      ledger.processCommand(createEnvelope('00000000-0000-4000-8000-000000000010', 'ten-x', '2026-11-05T07:00:00Z'));
-      ledger.processCommand(createEnvelope('00000000-0000-4000-8000-000000000020', 'ten-x', '2026-11-05T08:00:00Z'));
-      ledger.processCommand(createEnvelope('00000000-0000-4000-8000-000000000030', 'ten-x', '2026-11-05T09:00:00Z'));
-      ledger.processCommand(createEnvelope('00000000-0000-4000-8000-000000000040', 'ten-y', '2026-11-05T09:30:00Z'));
+      commit(createEnvelope('00000000-0000-4000-8000-000000000010', 'ten-x', '2026-11-05T07:00:00Z'));
+      commit(createEnvelope('00000000-0000-4000-8000-000000000020', 'ten-x', '2026-11-05T08:00:00Z'));
+      commit(createEnvelope('00000000-0000-4000-8000-000000000030', 'ten-x', '2026-11-05T09:00:00Z'));
+      commit(createEnvelope('00000000-0000-4000-8000-000000000040', 'ten-y', '2026-11-05T09:30:00Z'));
 
       // Busca para ten-x: nunca deve trazer ten-y
       const tenXLogs = ledger.queryLogs({ tenant_id: 'ten-x' });
@@ -781,8 +712,8 @@ describe('CHALLENGER F06: Bateria Adversarial de Estresse Empírico — ADM Glob
       }
 
       // Filtragem por status insensível a maiúsculas/minúsculas
-      const ackedUpper = ledger.queryLogs({ status: 'ACKED' });
-      const ackedLower = ledger.queryLogs({ status: 'acked' });
+      const ackedUpper = ledger.queryLogs({ status: 'COMMITTED' });
+      const ackedLower = ledger.queryLogs({ status: 'committed' });
       expect(ackedUpper.length).toBe(4);
       expect(ackedLower.length).toBe(4);
 

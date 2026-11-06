@@ -1,3 +1,4 @@
+import { QuiescentForm } from '@consubov/ui';
 import React, { useState } from 'react';
 import { useTranslation, Card, Button, Input } from '@consubov/ui';
 import { FabricaState, FabricaStore } from '../store/fabricaStore';
@@ -17,14 +18,17 @@ export const FabricaCalibracaoTab: React.FC<FabricaCalibracaoTabProps> = ({ stat
   const [certNumero, setCertNumero] = useState('CERT-INMETRO-2026-99');
 
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleCalibrar = (e: React.FormEvent) => {
+  const handleCalibrar = async (e: React.FormEvent) => {
     e.preventDefault();
     const padrao = parseFloat(pesoPadrao) || 1000;
     const medido = parseFloat(pesoMedido) || 1000;
     const desvio = Math.round(((medido - padrao) / padrao) * 10000) / 100;
 
-    store.calibrarBalanca({
+    setErrorMessage(null);
+    try {
+    await store.calibrarBalanca({
       balanca_id: balancaId,
       equipamento_tipo: equipamentoTipo,
       peso_padrao_afericao_kg: padrao,
@@ -37,10 +41,13 @@ export const FabricaCalibracaoTab: React.FC<FabricaCalibracaoTabProps> = ({ stat
     });
 
     setFeedbackMessage(t('fabrica.calibration.success', 'Calibração registrada e balança liberada!'));
+      return true;
+    } catch (error) { setErrorMessage(error instanceof Error ? error.message : String(error)); }
   };
 
   return (
     <div data-testid="fabrica-calibracao-tab" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {errorMessage && <Card elevation="elevated" style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA', padding: 12 }}><p role="alert" style={{ margin: 0, color: '#991B1B' }}>{errorMessage}</p></Card>}
       {feedbackMessage && (
         <Card elevation="elevated" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', padding: 12 }}>
           <p style={{ margin: 0, color: '#166534', fontWeight: 600 }}>{feedbackMessage}</p>
@@ -49,11 +56,11 @@ export const FabricaCalibracaoTab: React.FC<FabricaCalibracaoTabProps> = ({ stat
 
       {/* Formulário de Calibração */}
       <Card elevation="elevated">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
           {t('fabrica.calibration.title', 'Calibração de Balança / Célula')}
-        </h3>
+        </h2>
 
-        <form onSubmit={handleCalibrar} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <QuiescentForm onSubmit={handleCalibrar} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <Input
               label={t('fabrica.calibration.equipment', 'Tipo de Equipamento')}
@@ -91,14 +98,14 @@ export const FabricaCalibracaoTab: React.FC<FabricaCalibracaoTabProps> = ({ stat
               {t('action.confirm', 'Confirmar')}
             </Button>
           </div>
-        </form>
+        </QuiescentForm>
       </Card>
 
       {/* Histórico de Calibrações */}
       <Card elevation="flat">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>
           {t('fabrica.tabs.calibration', 'Balança e Calibração')}
-        </h3>
+        </h2>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {state.calibracoes.map(c => (

@@ -31,7 +31,6 @@ import {
   isAdditiveDomainCommand,
   CapatazStore,
   StorageQuotaExceededError,
-  getCapatazStore,
   resetCapatazStoresForTesting,
   CAPATAZ_MODULE_DESCRIPTOR,
   CapatazView,
@@ -41,17 +40,16 @@ import {
   CapatazFotosTab,
   CapatazHistoricoTab
 } from '../../apps/fazenda/capataz/src';
-import { APP_DICTIONARY, AtomicCommandEnvelope } from '@consubov/contracts';
-import { I18nProvider } from '@consubov/ui';
+import { APP_DICTIONARY, AtomicCommandEnvelope, atomicCommandEnvelopeSchema, attachmentUploadMetadataSchema, fotoCochoPayloadSchema, MAX_ATTACHMENT_BYTES } from '@consubov/contracts';
+import { I18nProvider, ModuleRuntimeProvider } from '@consubov/ui';
+import { createCapatazTestRuntime, createCapatazTestStore, getCapatazTestStore, resetCapatazTestData } from '../harness/capataz-test-runtime';
 
 describe('CHALLENGER F05: Bateria Adversarial de Testes de Estresse e Resiliência Empírica', () => {
   beforeEach(() => {
     resetLeaderElectionForTesting();
     resetSyncMessagingForTesting();
     resetCapatazStoresForTesting();
-    if (typeof localStorage !== 'undefined') {
-      localStorage.clear();
-    }
+    resetCapatazTestData();
   });
 
   // =========================================================================
@@ -146,12 +144,13 @@ describe('CHALLENGER F05: Bateria Adversarial de Testes de Estresse e Resiliênc
   // =========================================================================
   describe('Vetor 2: Circuit Breaker Sob Falha de Rede Extrema e Proteção de Bateria', () => {
     it('ADV-2.1: Rajada hostil: fila de 25 comandos sob falha de rede deve disparar exatamente 1 requisição e abrir o circuito', async () => {
-      const store = new CapatazStore('tenant-burst:user-01:fazenda-01:capataz');
+      const store = createCapatazTestStore('tenant-burst:user-01:fazenda-01:capataz');
+      await store.ready;
       (store as any).state.isLeader = true;
 
       // Enfileira 25 comandos na outbox
       for (let i = 1; i <= 25; i++) {
-        store.registrarLeituraCocho({
+        await store.registrarLeituraCocho({
           pasto_id: `pasto-${(i % 4) + 1}`,
           produto_id: 'prod-sal-mineral-80',
           escore_cocho: (i % 5),
@@ -178,10 +177,11 @@ describe('CHALLENGER F05: Bateria Adversarial de Testes de Estresse e Resiliênc
     });
 
     it('ADV-2.2: Cooldown de 15 segundos: tentativas subsequentes são bloqueadas localmente sem tocar na rede', async () => {
-      const store = new CapatazStore('tenant-cooldown:user-01:fazenda-01:capataz');
+      const store = createCapatazTestStore('tenant-cooldown:user-01:fazenda-01:capataz');
+      await store.ready;
       (store as any).state.isLeader = true;
 
-      store.registrarLeituraCocho({
+      await store.registrarLeituraCocho({
         pasto_id: 'pasto-01',
         produto_id: 'prod-sal-mineral-80',
         escore_cocho: 2,
@@ -262,11 +262,12 @@ describe('CHALLENGER F05: Bateria Adversarial de Testes de Estresse e Resiliênc
       expect(result.originalSizeBytes).toBe(8 * 1024 * 1024);
       expect(result.compressedSizeBytes).toBeLessThanOrEqual(250 * 1024);
       expect(result.compressionRatioPct).toBeGreaterThanOrEqual(85);
-      expect(result.attachment_id).toMatch(/^att-cocho-\d+-[a-z0-9]+$/);
+      expect(attachmentUploadMetadataSchema.shape.attachment_id.safeParse(result.attachment_id).success).toBe(true);
     });
 
     it('ADV-3.3: Dissociação estrita: envelope do comando na outbox possui payload leve (< 1KB) e zero blobs brutos', async () => {
-      const store = new CapatazStore('tenant-attach:user-01:fazenda-01:capataz');
+      const store = createCapatazTestStore('tenant-attach:user-01:fazenda-01:capataz');
+      await store.ready;
       const heavyPhoto = new Uint8Array(5 * 1024 * 1024);
       const compressed = await compressPhoto(heavyPhoto, {
         pastoId: 'pasto-02',
@@ -274,20 +275,48 @@ describe('CHALLENGER F05: Bateria Adversarial de Testes de Estresse e Resiliênc
         tipoRegistro: 'auditoria'
       });
 
-      const { envelope } = store.anexarFotoCocho(compressed);
+      const { envelope } = await store.anexarFotoCocho(compressed);
 
       // 1. O payload do comando transporta apenas metadados leves (< 1KB)
-      const serializedPayload = JSON.stringify(envelope.payload);
-      expect(serializedPayload.length).toBeLessThan(1024);
+      const byteLength = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).byteLength;
+      expect(fotoCochoPayloadSchema.safeParse(envelope.payload).success).toBe(true);
+      expect(byteLength(envelope.payload)).toBeLessThan(1024);
 
       // 2. O envelope completo NÃO embute strings de dados base64 pesadas
       const serializedEnvelope = JSON.stringify(envelope);
-      expect(serializedEnvelope).not.toContain('data:image');
-      expect(serializedEnvelope.length).toBeLessThan(1200);
+      expect(atomicCommandEnvelopeSchema.strict().safeParse(envelope).success).toBe(true);
+      expect(envelope.attachment_refs).toHaveLength(1);
+      const ref = envelope.attachment_refs[0]!;
+      expect(attachmentUploadMetadataSchema.safeParse(ref).success).toBe(true);
+      expect(Object.keys(ref).sort()).toEqual(['attachment_id', 'hash_sha256', 'local_blob_ref', 'mime_type', 'size_bytes']);
+      expect(ref.attachment_id).toBe(compressed.attachment_id);
+      expect(ref.size_bytes).toBe(compressed.blob!.size);
+      expect(ref.mime_type).toBe(compressed.blob!.type);
+      const assertMetadataOnly = (value: unknown): void => {
+        expect(value instanceof Blob || value instanceof ArrayBuffer || ArrayBuffer.isView(value)).toBe(false);
+        if (typeof value === 'string') expect(value).not.toMatch(/^(?:data:|blob:|https?:\/\/)/i);
+        if (value && typeof value === 'object') {
+          for (const [key, child] of Object.entries(value)) {
+            expect(key).not.toMatch(/^(?:blob|bytes|binary|dataUrl|base64|url)$/i);
+            assertMetadataOnly(child);
+          }
+        }
+      };
+      assertMetadataOnly(envelope);
+      // Identity strings have no global maximum in the public envelope contract.
+      // For this fixed context, budget its header plus <1KiB payload and one
+      // strict reference with the public 512-character local key / 20MiB limits.
+      const headerBytes = byteLength({ ...envelope, payload: {}, attachment_refs: [] });
+      const maximumRefBytes = byteLength([{ ...ref, size_bytes: MAX_ATTACHMENT_BYTES, local_blob_ref: 'x'.repeat(512) }]);
+      expect(new TextEncoder().encode(serializedEnvelope).byteLength).toBeLessThan(headerBytes + (1024 - 2) + (maximumRefBytes - 2));
 
       // 3. O blob pesado está armazenado desacoplado no store de fotos
       const state = store.getState();
       expect(state.fotos[compressed.attachment_id]).toBeDefined();
+      const attachment = await createCapatazTestRuntime('tenant-attach:user-01:fazenda-01:capataz').localData.readAttachment(compressed.attachment_id);
+      expect(attachment?.ref).toEqual(ref);
+      expect(attachment?.blob).toBeInstanceOf(Blob);
+      expect(await attachment!.blob.arrayBuffer()).toEqual(await compressed.blob!.arrayBuffer());
     });
 
     it('ADV-3.4: Geração de 100 attachment IDs em loop rápido deve ter zero colisões', () => {
@@ -303,10 +332,11 @@ describe('CHALLENGER F05: Bateria Adversarial de Testes de Estresse e Resiliênc
   // VETOR 4: RESOLUÇÃO DE CONFLITOS SEM LAST-WRITE-WINS (LWW)
   // =========================================================================
   describe('Vetor 4: Resolução de Conflitos Especializada (Anti-LWW)', () => {
-    it('ADV-4.1: Merge Aditivo: 3 operadores no mesmo pasto no mesmo dia coexistem no stream cronológico', () => {
+    it('ADV-4.1: Merge Aditivo: 3 operadores no mesmo pasto no mesmo dia coexistem no stream cronológico', async () => {
       // Chave canônica 4 partes: tenant:user:fazenda:profile
-      const store = new CapatazStore('tenant-multi-op:user-c:fazenda-01:capataz');
-      const { envelope: localCmd } = store.registrarLeituraCocho({
+      const store = createCapatazTestStore('tenant-multi-op:user-c:fazenda-01:capataz');
+      await store.ready;
+      const { envelope: localCmd } = await store.registrarLeituraCocho({
         pasto_id: 'pasto-01',
         produto_id: 'prod-sal-mineral-80',
         escore_cocho: 2,
@@ -400,7 +430,7 @@ describe('CHALLENGER F05: Bateria Adversarial de Testes de Estresse e Resiliênc
   // VETOR 5: PARTICIONAMENTO DE STORAGE E ERRO DE QUOTA (LF-003)
   // =========================================================================
   describe('Vetor 5: Particionamento Multitenant e Tratamento de Quota (LF-003)', () => {
-    it('ADV-5.1: Matriz de 3 Tenants x 2 Usuários: isolamento completo sem contaminação cruzada', () => {
+    it('ADV-5.1: Matriz de 3 Tenants x 2 Usuários: isolamento completo sem contaminação cruzada', async () => {
       const tenants = ['tenant-alpha', 'tenant-beta', 'tenant-gamma'];
       const users = ['user-01', 'user-02'];
       const stores: CapatazStore[] = [];
@@ -408,8 +438,9 @@ describe('CHALLENGER F05: Bateria Adversarial de Testes de Estresse e Resiliênc
       for (const t of tenants) {
         for (const u of users) {
           const key = `${t}:${u}:fazenda-01:capataz`;
-          const store = new CapatazStore(key);
-          store.registrarContagemRebanho({
+          const store = createCapatazTestStore(key);
+          await store.ready;
+          await store.registrarContagemRebanho({
             pasto_id: 'pasto-01',
             lote_id: 'lote-recria-01',
             quantidade_cabecas: 100 + stores.length
@@ -431,18 +462,18 @@ describe('CHALLENGER F05: Bateria Adversarial de Testes de Estresse e Resiliênc
       }
     });
 
-    it('ADV-5.2: Injeção de QuotaExceededError não pode gerar falso ACK e deve expor erro na UI', () => {
+    it('ADV-5.2: Injeção de QuotaExceededError não pode gerar falso ACK e deve expor erro na UI', async () => {
       const partitionKey = 'tenant-quota:user-01:fazenda-01:capataz';
-      const store = getCapatazStore(partitionKey);
+      const { context, localData } = createCapatazTestRuntime(partitionKey);
+      const store = getCapatazTestStore(partitionKey);
+      await store.ready;
       store.injectQuotaFailure(true);
 
-      expect(() => {
-        store.registrarLeituraQrPasto({
+      await expect(store.registrarLeituraQrPasto({
           pasto_id: 'pasto-01',
           qr_code_lido: 'PASTO-01-MOMBACA-SEDE',
           altura_media_cm: 60
-        });
-      }).toThrow(StorageQuotaExceededError);
+        })).rejects.toBeInstanceOf(StorageQuotaExceededError);
 
       const state = store.getState();
       expect(state.quotaExceededError).toContain('StorageQuotaExceededError');
@@ -452,7 +483,7 @@ describe('CHALLENGER F05: Bateria Adversarial de Testes de Estresse e Resiliênc
         React.createElement(
           I18nProvider,
           { language: 'pt-BR' },
-          React.createElement(CapatazView, { partitionKey })
+          React.createElement(ModuleRuntimeProvider, { localData }, React.createElement(CapatazView, { context }))
         )
       );
 
@@ -480,12 +511,12 @@ describe('CHALLENGER F05: Bateria Adversarial de Testes de Estresse e Resiliênc
     });
 
     it('ADV-6.2: CapatazView deve cumprir W3C WAI-ARIA com roles tablist, tab, tabpanel e aria-selected', () => {
-      const store = new CapatazStore('tenant-aria:user-01:fazenda-01:capataz');
+      const { context, localData } = createCapatazTestRuntime('tenant-aria:user-01:fazenda-01:capataz');
       const html = renderToString(
         React.createElement(
           I18nProvider,
           { language: 'pt-BR' },
-          React.createElement(CapatazView, { partitionKey: store.getPartitionKey() })
+          React.createElement(ModuleRuntimeProvider, { localData }, React.createElement(CapatazView, { context }))
         )
       );
 
@@ -496,8 +527,9 @@ describe('CHALLENGER F05: Bateria Adversarial de Testes de Estresse e Resiliênc
       expect(html).toContain('aria-controls="tabpanel-cocho"');
     });
 
-    it('ADV-6.3: Botoeira de Escores de Cocho (0 a 4) deve possuir role="radiogroup" e touch targets ergonômicos', () => {
-      const store = new CapatazStore('tenant-botoeira:user-01:fazenda-01:capataz');
+    it('ADV-6.3: Botoeira de Escores de Cocho (0 a 4) deve possuir role="radiogroup" e touch targets ergonômicos', async () => {
+      const store = createCapatazTestStore('tenant-botoeira:user-01:fazenda-01:capataz');
+      await store.ready;
       const state = store.getState();
 
       const html = renderToString(

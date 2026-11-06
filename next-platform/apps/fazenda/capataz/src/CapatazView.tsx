@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation, SyncStatusBar } from '@consubov/ui';
-import { CommandStatus } from '@consubov/contracts';
+import { useLocalData, useLocalDataChanges, useTranslation, OperationIssuesFeedback, useReportModuleHealth } from '@consubov/ui';
+import type { ModuleExecutionContext } from '@consubov/contracts';
 import { getCapatazStore, CapatazState } from './store/capatazStore';
 import { CapatazCochoTab } from './components/CapatazCochoTab';
 import { CapatazQrTab } from './components/CapatazQrTab';
@@ -11,13 +11,20 @@ import { CapatazHistoricoTab } from './components/CapatazHistoricoTab';
 export type CapatazSubTab = 'cocho' | 'qr' | 'contagem' | 'fotos' | 'historico';
 
 export interface CapatazViewProps {
-  partitionKey?: string;
+  context: ModuleExecutionContext;
 }
 
-export const CapatazView: React.FC<CapatazViewProps> = ({ partitionKey }) => {
+export const CapatazView: React.FC<CapatazViewProps> = ({ context }) => {
   const { t } = useTranslation();
-  const store = getCapatazStore(partitionKey);
+  const localData = useLocalData();
+  const store = getCapatazStore(context, localData);
+  const [ready, setReady] = useState(false);
   const [state, setState] = useState<CapatazState>(() => store.getState());
+  useReportModuleHealth(ready, state.quotaExceededError);
+  useLocalDataChanges(store, error => {
+    setReady(!error);
+    setState({ ...store.getState(), quotaExceededError: error ? t('gerente.storage.error') : null });
+  });
 
   const getInitialTab = (): CapatazSubTab => {
     if (typeof window !== 'undefined' && window.location.hash) {
@@ -38,6 +45,7 @@ export const CapatazView: React.FC<CapatazViewProps> = ({ partitionKey }) => {
     const unsubscribe = store.subscribe(() => {
       setState({ ...store.getState() });
     });
+    void store.ready.then(() => { setReady(true); setState({ ...store.getState() }); }, () => { setReady(false); setState({ ...store.getState() }); });
     return unsubscribe;
   }, [store]);
 
@@ -56,29 +64,10 @@ export const CapatazView: React.FC<CapatazViewProps> = ({ partitionKey }) => {
     { key: 'fotos', labelKey: 'capataz.tabs.fotos' },
     { key: 'historico', labelKey: 'capataz.tabs.historico' }
   ];
-
-  // Determina o status da barra de sincronização
-  let syncStatus: CommandStatus = 'SINCRONIZADO';
-  if (state.conflitos.length > 0) {
-    syncStatus = 'CONFLITO';
-  } else if (state.outbox.length > 0) {
-    syncStatus = 'PENDENTE';
-  }
-
-  const isOnline = state.circuitState === 'CLOSED';
-
   return (
-    <div style={{ padding: 16 }} data-testid="capataz-module-view">
-      {/* Barra de Status de Sincronização Local-First */}
-      <div style={{ marginBottom: 16 }}>
-        <SyncStatusBar
-          status={syncStatus}
-          pendingCount={state.outbox.length}
-          isOnline={isOnline}
-          onActionClick={() => handleSelectTab('historico')}
-        />
-      </div>
-
+      <div style={{ padding: 16 }} data-testid="capataz-module-view">
+      <OperationIssuesFeedback />
+      {!ready && !state.quotaExceededError && <p role="status">{t('state.loading', 'Carregando dados locais…')}</p>}
       {/* Alerta de Quota Excedida se houver falha de disco */}
       {state.quotaExceededError && (
         <div
@@ -138,7 +127,7 @@ export const CapatazView: React.FC<CapatazViewProps> = ({ partitionKey }) => {
                 cursor: 'pointer',
                 fontSize: '0.95rem',
                 fontWeight: isActive ? 700 : 500,
-                color: isActive ? '#0284C7' : '#64748B',
+                color: isActive ? '#0369A1' : '#64748B',
                 borderBottom: isActive ? '3px solid #0284C7' : '3px solid transparent',
                 marginBottom: -4,
                 whiteSpace: 'nowrap',
@@ -158,7 +147,7 @@ export const CapatazView: React.FC<CapatazViewProps> = ({ partitionKey }) => {
         aria-labelledby="tab-cocho"
         hidden={activeTab !== 'cocho'}
       >
-        {activeTab === 'cocho' && <CapatazCochoTab store={store} state={state} />}
+        {ready && activeTab === 'cocho' && <CapatazCochoTab store={store} state={state} />}
       </div>
 
       <div
@@ -167,7 +156,7 @@ export const CapatazView: React.FC<CapatazViewProps> = ({ partitionKey }) => {
         aria-labelledby="tab-qr"
         hidden={activeTab !== 'qr'}
       >
-        {activeTab === 'qr' && <CapatazQrTab store={store} state={state} />}
+        {ready && activeTab === 'qr' && <CapatazQrTab store={store} state={state} />}
       </div>
 
       <div
@@ -176,7 +165,7 @@ export const CapatazView: React.FC<CapatazViewProps> = ({ partitionKey }) => {
         aria-labelledby="tab-contagem"
         hidden={activeTab !== 'contagem'}
       >
-        {activeTab === 'contagem' && <CapatazContagemTab store={store} state={state} />}
+        {ready && activeTab === 'contagem' && <CapatazContagemTab store={store} state={state} />}
       </div>
 
       <div
@@ -185,7 +174,7 @@ export const CapatazView: React.FC<CapatazViewProps> = ({ partitionKey }) => {
         aria-labelledby="tab-fotos"
         hidden={activeTab !== 'fotos'}
       >
-        {activeTab === 'fotos' && <CapatazFotosTab store={store} state={state} />}
+        {ready && activeTab === 'fotos' && <CapatazFotosTab store={store} state={state} />}
       </div>
 
       <div
@@ -194,7 +183,7 @@ export const CapatazView: React.FC<CapatazViewProps> = ({ partitionKey }) => {
         aria-labelledby="tab-historico"
         hidden={activeTab !== 'historico'}
       >
-        {activeTab === 'historico' && <CapatazHistoricoTab store={store} state={state} />}
+        {ready && activeTab === 'historico' && <CapatazHistoricoTab store={store} state={state} />}
       </div>
     </div>
   );

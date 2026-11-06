@@ -17,6 +17,8 @@ export const ShellAppBar: React.FC = () => {
       <header
         style={{
           display: 'flex',
+          flexWrap: 'wrap',
+          gap: 8,
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '8px 16px',
@@ -29,12 +31,12 @@ export const ShellAppBar: React.FC = () => {
           zIndex: 100
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, minWidth: 0, maxWidth: '100%', flex: '1 1 280px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
             <span style={{ fontSize: '1.5rem' }}>🐂</span>
-            <span style={{ fontWeight: 800, fontSize: '1.1rem', color: colorTokens.brand.primary, letterSpacing: '-0.02em' }}>
+            <h1 style={{ margin: 0, fontWeight: 800, fontSize: '1.1rem', color: colorTokens.brand.primary, letterSpacing: '-0.02em' }}>
               CONSUBOV
-            </span>
+            </h1>
           </div>
 
           {activeContext && (
@@ -43,6 +45,8 @@ export const ShellAppBar: React.FC = () => {
               title={hasMultipleMemberships ? t('shell.header.switchContext', 'Trocar Perfil / Fazenda') : undefined}
               style={{
                 display: 'inline-flex',
+                minWidth: 0,
+                maxWidth: '100%',
                 alignItems: 'center',
                 gap: 6,
                 padding: '4px 10px',
@@ -52,10 +56,10 @@ export const ShellAppBar: React.FC = () => {
                 cursor: hasMultipleMemberships ? 'pointer' : 'default',
                 fontSize: '0.825rem',
                 color: colorTokens.text.primary,
-                minHeight: 36
+                minHeight: 44
               }}
             >
-              <span style={{ fontWeight: 700 }}>{activeContext.fazenda_id}</span>
+              <span style={{ fontWeight: 700, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeContext.fazenda_nome}</span>
               <span
                 style={{
                   padding: '2px 6px',
@@ -63,7 +67,8 @@ export const ShellAppBar: React.FC = () => {
                   backgroundColor: '#DCFCE7',
                   color: '#15803D',
                   fontWeight: 700,
-                  fontSize: '0.75rem'
+                  fontSize: '0.75rem',
+                  flexShrink: 0
                 }}
               >
                 {t(`role.${activeContext.profile_id}`, activeContext.profile_id)}
@@ -73,7 +78,7 @@ export const ShellAppBar: React.FC = () => {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, minWidth: 0, maxWidth: '100%', marginInlineStart: 'auto' }}>
           <LanguageSwitch />
 
           {session && (
@@ -81,7 +86,7 @@ export const ShellAppBar: React.FC = () => {
               variant="ghost"
               size="md"
               onClick={() => setIsLogoutModalOpen(true)}
-              style={{ minHeight: 40, padding: '0 12px', fontSize: '0.875rem' }}
+              style={{ minHeight: 44, padding: '0 12px', fontSize: '0.875rem' }}
             >
               {t('shell.logout.button', 'Sair')}
             </Button>
@@ -108,11 +113,11 @@ export const ShellAppBar: React.FC = () => {
           {t('shell.logout.confirmMessage', 'Deseja realmente encerrar a sessão neste dispositivo?')}
         </p>
         <p style={{ margin: '0 0 20px', color: colorTokens.text.secondary, fontSize: '0.85rem' }}>
-          {t('shell.logout.offlineNotice', 'Seus dados salvos localmente e comandos pendentes permanecerão protegidos no banco de dados local.')}
+          {t('shell.logout.savedDataNotice', 'Seus registros salvos serão mantidos neste dispositivo.')}
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
           <Button variant="ghost" onClick={() => setIsLogoutModalOpen(false)}>
-            {t('shell.logout.cancelAction', 'Permanecer Conectado')}
+            {t('shell.logout.cancelAction', 'Continuar no aplicativo')}
           </Button>
           <Button
             variant="danger"

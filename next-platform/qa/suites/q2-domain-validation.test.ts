@@ -1,3 +1,5 @@
+import { validateCommandPayload } from '@consubov/contracts';
+import { loginApi, authorizedEnvelope } from '../harness/api-auth';
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { createApiServer } from '@consubov/platform-api';
 import { allocateAvailablePort } from '../harness/port-allocator';
@@ -18,40 +20,16 @@ describe('Gate Q2.3: Validação Estrita de Schemas Zod de Domínio na API Bun',
     baseUrl = `http://127.0.0.1:${port}`;
 
     const cap = SYNTHETIC_USERS['capataz.lab@consubov.local']!;
-    tokenCapataz = await signSyntheticJwt({
-      user_id: cap.user_id,
-      tenant_id: cap.memberships[0]!.tenant_id,
-      fazenda_id: cap.memberships[0]!.fazenda_id,
-      profile_id: 'capataz',
-      roles: ['capataz']
-    });
+    tokenCapataz = (await loginApi(baseUrl, 'capataz')).tokens.access_token;
 
     const ger = SYNTHETIC_USERS['gerente.lab@consubov.local']!;
-    tokenGerente = await signSyntheticJwt({
-      user_id: ger.user_id,
-      tenant_id: ger.memberships[0]!.tenant_id,
-      fazenda_id: ger.memberships[0]!.fazenda_id,
-      profile_id: 'gerente',
-      roles: ['gerente']
-    });
+    tokenGerente = (await loginApi(baseUrl, 'gerente')).tokens.access_token;
 
     const esc = SYNTHETIC_USERS['escritorio.lab@consubov.local']!;
-    tokenEscritorio = await signSyntheticJwt({
-      user_id: esc.user_id,
-      tenant_id: esc.memberships[0]!.tenant_id,
-      fazenda_id: esc.memberships[0]!.fazenda_id,
-      profile_id: 'escritorio',
-      roles: ['escritorio']
-    });
+    tokenEscritorio = (await loginApi(baseUrl, 'escritorio')).tokens.access_token;
 
     const adm = SYNTHETIC_USERS['admin.lab@consubov.local']!;
-    tokenAdmin = await signSyntheticJwt({
-      user_id: adm.user_id,
-      tenant_id: adm.memberships[0]!.tenant_id,
-      fazenda_id: adm.memberships[0]!.fazenda_id,
-      profile_id: 'administrador',
-      roles: ['administrador']
-    });
+    tokenAdmin = (await loginApi(baseUrl, 'administrador')).tokens.access_token;
   });
 
   afterAll(() => {
@@ -60,7 +38,7 @@ describe('Gate Q2.3: Validação Estrita de Schemas Zod de Domínio na API Bun',
     }
   });
 
-  it('Q2.3.1: deve rejeitar com 400 INVALID_DOMAIN_PAYLOAD quando sacos_fornecidos for negativo', async () => {
+  it('Q2.3.1: deve rejeitar com 422 INVALID_DOMAIN_PAYLOAD quando sacos_fornecidos for negativo', async () => {
     const cap = SYNTHETIC_USERS['capataz.lab@consubov.local']!;
     const envelope = createSyntheticCommandEnvelope({
       user_id: cap.user_id,
@@ -82,15 +60,15 @@ describe('Gate Q2.3: Validação Estrita de Schemas Zod de Domínio na API Bun',
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenCapataz}`
       },
-      body: JSON.stringify(envelope)
+      body: JSON.stringify(authorizedEnvelope(tokenCapataz, envelope))
     });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
     const body: any = await res.json();
-    expect(body.error).toBe('INVALID_DOMAIN_PAYLOAD');
+    expect(body.validation.violations[0].code).toBe('INVALID_DOMAIN_PAYLOAD');
   });
 
-  it('Q2.3.2: deve rejeitar com 400 INVALID_DOMAIN_PAYLOAD quando escore_cocho estiver fora de 0..4', async () => {
+  it('Q2.3.2: deve rejeitar com 422 INVALID_DOMAIN_PAYLOAD quando escore_cocho estiver fora de 0..4', async () => {
     const cap = SYNTHETIC_USERS['capataz.lab@consubov.local']!;
     const envelope = createSyntheticCommandEnvelope({
       user_id: cap.user_id,
@@ -112,15 +90,15 @@ describe('Gate Q2.3: Validação Estrita de Schemas Zod de Domínio na API Bun',
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenCapataz}`
       },
-      body: JSON.stringify(envelope)
+      body: JSON.stringify(authorizedEnvelope(tokenCapataz, envelope))
     });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
     const body: any = await res.json();
-    expect(body.error).toBe('INVALID_DOMAIN_PAYLOAD');
+    expect(body.validation.violations[0].code).toBe('INVALID_DOMAIN_PAYLOAD');
   });
 
-  it('Q2.3.3: deve rejeitar com 400 INVALID_DOMAIN_PAYLOAD quando gmd_alvo for negativo ou zero', async () => {
+  it('Q2.3.3: deve rejeitar com 422 INVALID_DOMAIN_PAYLOAD quando gmd_alvo for negativo ou zero', async () => {
     const ger = SYNTHETIC_USERS['gerente.lab@consubov.local']!;
     const envelope = createSyntheticCommandEnvelope({
       user_id: ger.user_id,
@@ -142,15 +120,15 @@ describe('Gate Q2.3: Validação Estrita de Schemas Zod de Domínio na API Bun',
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenGerente}`
       },
-      body: JSON.stringify(envelope)
+      body: JSON.stringify(authorizedEnvelope(tokenGerente, envelope))
     });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
     const body: any = await res.json();
-    expect(body.error).toBe('INVALID_DOMAIN_PAYLOAD');
+    expect(body.validation.violations[0].code).toBe('INVALID_DOMAIN_PAYLOAD');
   });
 
-  it('Q2.3.4: deve rejeitar com 400 INVALID_DOMAIN_PAYLOAD quando chave NF-e não possuir 44 dígitos', async () => {
+  it('Q2.3.4: deve rejeitar com 422 INVALID_DOMAIN_PAYLOAD quando chave NF-e não possuir 44 dígitos', async () => {
     const esc = SYNTHETIC_USERS['escritorio.lab@consubov.local']!;
     const envelope = createSyntheticCommandEnvelope({
       user_id: esc.user_id,
@@ -185,15 +163,15 @@ describe('Gate Q2.3: Validação Estrita de Schemas Zod de Domínio na API Bun',
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenEscritorio}`
       },
-      body: JSON.stringify(envelope)
+      body: JSON.stringify(authorizedEnvelope(tokenEscritorio, envelope))
     });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
     const body: any = await res.json();
-    expect(body.error).toBe('INVALID_DOMAIN_PAYLOAD');
+    expect(body.validation.violations[0].code).toBe('INVALID_DOMAIN_PAYLOAD');
   });
 
-  it('Q2.3.5: deve rejeitar com 400 INVALID_DOMAIN_PAYLOAD quando CNPJ do tenant não possuir 14 dígitos', async () => {
+  it('Q2.3.5: deve rejeitar com 403 sem grant operacional; CNPJ inválido continua rejeitado pelo domínio', async () => {
     const adm = SYNTHETIC_USERS['admin.lab@consubov.local']!;
     const envelope = createSyntheticCommandEnvelope({
       user_id: adm.user_id,
@@ -220,15 +198,16 @@ describe('Gate Q2.3: Validação Estrita de Schemas Zod de Domínio na API Bun',
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenAdmin}`
       },
-      body: JSON.stringify(envelope)
+      body: JSON.stringify(authorizedEnvelope(tokenAdmin, envelope))
     });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(403);
+    expect(validateCommandPayload(envelope.command_type, envelope.payload).success).toBe(false);
     const body: any = await res.json();
-    expect(body.error).toBe('INVALID_DOMAIN_PAYLOAD');
+    expect(body.security.error).toBe('FORBIDDEN_403');
   });
 
-  it('Q2.3.6: deve rejeitar com 400 INVALID_DOMAIN_PAYLOAD injeção de propriedades extras (.strict)', async () => {
+  it('Q2.3.6: deve rejeitar com 422 INVALID_DOMAIN_PAYLOAD injeção de propriedades extras (.strict)', async () => {
     const cap = SYNTHETIC_USERS['capataz.lab@consubov.local']!;
     const envelope = createSyntheticCommandEnvelope({
       user_id: cap.user_id,
@@ -251,12 +230,12 @@ describe('Gate Q2.3: Validação Estrita de Schemas Zod de Domínio na API Bun',
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenCapataz}`
       },
-      body: JSON.stringify(envelope)
+      body: JSON.stringify(authorizedEnvelope(tokenCapataz, envelope))
     });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
     const body: any = await res.json();
-    expect(body.error).toBe('INVALID_DOMAIN_PAYLOAD');
+    expect(body.validation.violations[0].code).toBe('INVALID_DOMAIN_PAYLOAD');
   });
 
   it('Q2.3.7: deve aprovar com 200 payload válido e estritamente conforme o contrato', async () => {
@@ -269,8 +248,8 @@ describe('Gate Q2.3: Validação Estrita de Schemas Zod de Domínio na API Bun',
       fazenda_id: cap.memberships[0]!.fazenda_id,
       profile_id: 'capataz',
       command_type: 'capataz.cocho.registrar_escore',
-      aggregate_id: 'pasto-conforme-01',
-      base_version: 0,
+      aggregate_type: 'cocho', aggregate_id: 'pasto-conforme-01',
+      base_version: 1,
       payload: {
         pasto_id: 'pasto-conforme-01',
         produto_id: 'prod-mineral-01',
@@ -286,12 +265,12 @@ describe('Gate Q2.3: Validação Estrita de Schemas Zod de Domínio na API Bun',
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenCapataz}`
       },
-      body: JSON.stringify(envelope)
+      body: JSON.stringify(authorizedEnvelope(tokenCapataz, envelope))
     });
 
     expect(res.status).toBe(200);
     const ack: any = await res.json();
-    expect(ack.status).toBe('acked');
-    expect(ack.new_version).toBe(1);
+    expect(ack.ack.status).toBe('COMMITTED');
+    expect(ack.ack.aggregate_version).toBe(2);
   });
 });

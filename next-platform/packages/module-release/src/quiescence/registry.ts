@@ -16,12 +16,41 @@ export interface QuiescenceLockInfo {
 export class QuiescenceRegistry {
   private activeLocks = new Map<string, QuiescenceLockInfo>();
   private listeners = new Set<(isQuiescent: boolean) => void>();
+  private lease: { leaseId: string; expiresAt: number } | null = null;
+  private leaseTimer: ReturnType<typeof setTimeout> | undefined;
+
+  public isFrozen(): boolean {
+    if (this.lease && this.lease.expiresAt <= Date.now()) this.releaseActivation(this.lease.leaseId);
+    return this.lease !== null;
+  }
+
+  public prepareActivation(ttlMs = 30000): { leaseId: string; expiresAt: number } | null {
+    if (!this.isQuiescent() || this.isFrozen()) return null;
+    const boundedTtl = Number.isFinite(ttlMs) ? Math.ceil(Math.max(1, Math.min(ttlMs, 30000))) : 30000;
+    const lease = { leaseId: crypto.randomUUID(), expiresAt: Date.now() + boundedTtl };
+    this.lease = lease;
+    this.leaseTimer = setTimeout(() => this.releaseActivation(lease.leaseId), lease.expiresAt - Date.now());
+    this.notify();
+    return { ...lease };
+  }
+
+  public validateActivationLease(leaseId: string): boolean {
+    return this.isFrozen() && this.lease?.leaseId === leaseId && this.isQuiescent();
+  }
+
+  public releaseActivation(leaseId: string): void {
+    if (this.lease?.leaseId !== leaseId) return;
+    clearTimeout(this.leaseTimer);
+    this.lease = null;
+    this.notify();
+  }
 
   public acquireLock(
     id: string,
     type: CriticalOperationType,
     metadata?: Record<string, unknown>
   ): () => void {
+    if (this.isFrozen()) throw new Error('ACTIVATION_PREPARED');
     this.activeLocks.set(id, {
       id,
       type,

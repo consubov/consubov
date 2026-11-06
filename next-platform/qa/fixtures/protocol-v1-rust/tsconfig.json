@@ -1,0 +1,4 @@
+{
+  "extends": "../../../tsconfig.json",
+  "include": ["host.ts", "../../../packages/local-data/test/run-portable-module.ts"]
+}

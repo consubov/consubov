@@ -16,7 +16,9 @@ export const Input: React.FC<InputProps> = ({
   style,
   ...rest
 }) => {
-  const inputId = id ?? (label ? `input-${label.toLowerCase().replace(/\s+/g, '-')}` : undefined);
+  // Labels repeat in split-lot and formula forms; each instance needs its own link.
+  const generatedId = React.useId();
+  const inputId = id ?? `input-${generatedId}`;
   const errorId = error && inputId ? `${inputId}-error` : undefined;
 
   return (
@@ -46,7 +48,7 @@ export const Input: React.FC<InputProps> = ({
           border: `1.5px solid ${error ? colorTokens.status.danger : colorTokens.surface.borderStrong}`,
           backgroundColor: colorTokens.surface.card,
           color: colorTokens.text.primary,
-          outline: 'none',
+          outline: 'revert',
           boxSizing: 'border-box',
           ...style
         }}

@@ -1,3 +1,4 @@
+import { QuiescentForm } from '@consubov/ui';
 import React, { useState } from 'react';
 import { useTranslation, Card, Button, Input } from '@consubov/ui';
 import { GerenteState, GerenteStore } from '../store/gerenteStore';
@@ -23,10 +24,13 @@ export const GerenteGmdTab: React.FC<GerenteGmdTabProps> = ({ state, store }) =>
   const [motivoAjuste, setMotivoAjuste] = useState('Ajuste para acelerar curva de ganho');
 
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSalvarMetas = (e: React.FormEvent) => {
+  const handleSalvarMetas = async (e: React.FormEvent) => {
     e.preventDefault();
-    store.definirMetas({
+    setErrorMessage(null);
+    try {
+    await store.definirMetas({
       lote_id: selectedLoteId,
       gmd_alvo_kg_dia: parseFloat(gmdAlvo),
       peso_final_alvo_kg: parseFloat(pesoFinalAlvo),
@@ -35,11 +39,15 @@ export const GerenteGmdTab: React.FC<GerenteGmdTabProps> = ({ state, store }) =>
       consumo_esperado_g_cab_dia: parseFloat(consumoEsperado)
     });
     setFeedbackMessage(t('gerente.metas.success', 'Metas zootécnicas atualizadas com sucesso!'));
+      return true;
+    } catch (error) { setErrorMessage(error instanceof Error ? error.message : String(error)); }
   };
 
-  const handleAjustarDieta = (e: React.FormEvent) => {
+  const handleAjustarDieta = async (e: React.FormEvent) => {
     e.preventDefault();
-    store.ajustarDieta({
+    setErrorMessage(null);
+    try {
+    await store.ajustarDieta({
       lote_id: selectedLoteId,
       produto_id: produtoNutricional,
       nova_meta_consumo_g_cab_dia: parseFloat(novaMetaConsumo),
@@ -47,10 +55,13 @@ export const GerenteGmdTab: React.FC<GerenteGmdTabProps> = ({ state, store }) =>
       motivo_ajuste: motivoAjuste
     });
     setFeedbackMessage(t('gerente.gmd.success', 'Ajuste de dieta registrado com sucesso!'));
+      return true;
+    } catch (error) { setErrorMessage(error instanceof Error ? error.message : String(error)); }
   };
 
   return (
     <div data-testid="gerente-gmd-tab" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {errorMessage && <Card elevation="elevated" style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA', padding: 12 }}><p role="alert" style={{ margin: 0, color: '#991B1B' }}>{errorMessage}</p></Card>}
       {feedbackMessage && (
         <Card elevation="elevated" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', padding: 12 }}>
           <p style={{ margin: 0, color: '#166534', fontWeight: 600 }}>{feedbackMessage}</p>
@@ -59,16 +70,17 @@ export const GerenteGmdTab: React.FC<GerenteGmdTabProps> = ({ state, store }) =>
 
       {/* Formulário de Definição de Metas */}
       <Card elevation="elevated">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
           {t('gerente.metas.title', 'Definir Metas do Lote')}
-        </h3>
+        </h2>
 
-        <form onSubmit={handleSalvarMetas} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <QuiescentForm onSubmit={handleSalvarMetas} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
+            <label htmlFor="gerente-gmd-lote" style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
               {t('gerente.lote.nome', 'Identificação do Lote')}
             </label>
             <select
+              id="gerente-gmd-lote"
               value={selectedLoteId}
               onChange={e => setSelectedLoteId(e.target.value)}
               style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #CBD5E1' }}
@@ -111,16 +123,16 @@ export const GerenteGmdTab: React.FC<GerenteGmdTabProps> = ({ state, store }) =>
               {t('action.save', 'Salvar')}
             </Button>
           </div>
-        </form>
+        </QuiescentForm>
       </Card>
 
       {/* Formulário de Ajuste de Dieta e Curva */}
       <Card elevation="flat">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
           {t('gerente.gmd.adjustTitle', 'Ajustar Dieta e Curva de GMD')}
-        </h3>
+        </h2>
 
-        <form onSubmit={handleAjustarDieta} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <QuiescentForm onSubmit={handleAjustarDieta} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
             <Input
               label={t('gerente.gmd.productLabel', 'Produto Nutricional')}
@@ -151,7 +163,7 @@ export const GerenteGmdTab: React.FC<GerenteGmdTabProps> = ({ state, store }) =>
               {t('action.confirm', 'Confirmar')}
             </Button>
           </div>
-        </form>
+        </QuiescentForm>
       </Card>
     </div>
   );

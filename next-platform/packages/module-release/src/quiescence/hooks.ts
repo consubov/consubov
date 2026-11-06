@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useLayoutEffect, useCallback } from 'react';
 import {
   QuiescenceRegistry,
   CriticalOperationType,
@@ -27,7 +27,7 @@ export function useQuiescence(
     registry.getActiveLocks()
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setIsQuiescent(registry.isQuiescent());
     setActiveLocks(registry.getActiveLocks());
 
@@ -88,7 +88,7 @@ export function useQuiescenceLock(
   metadata?: Record<string, unknown>,
   registry: QuiescenceRegistry = globalQuiescenceRegistry
 ): void {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isActive) return;
 
     const release = registry.acquireLock(id, type, metadata);

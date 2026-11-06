@@ -5,15 +5,16 @@ import {
   createSyncMessagingChannel,
   resetSyncMessagingForTesting,
   SyncCircuitBreaker,
-  CapatazStore,
   resetCapatazStoresForTesting
 } from '../../apps/fazenda/capataz/src';
+import { createCapatazTestStore, resetCapatazTestData } from '../harness/capataz-test-runtime';
 
 describe('Q5.4: Resiliência da Fila Outbox, Eleição de Líder Web Locks, BroadcastChannel e Circuit Breaker', () => {
   beforeEach(() => {
     resetLeaderElectionForTesting();
     resetSyncMessagingForTesting();
     resetCapatazStoresForTesting();
+    resetCapatazTestData();
   });
 
   it('Q5.4.1: deve garantir exclusão mútua na eleição de líder Web Locks entre abas concorrentes', async () => {
@@ -58,25 +59,26 @@ describe('Q5.4: Resiliência da Fila Outbox, Eleição de Líder Web Locks, Broa
   });
 
   it('Q5.4.3: Circuit Breaker deve abrir no PRIMEIRO erro de conexão (HTTP 503) e interromper a drenagem', async () => {
-    const store = new CapatazStore('consubov:tenant-cb:user-01:fazenda-01:capataz');
+    const store = createCapatazTestStore('consubov:tenant-cb:user-01:fazenda-01:capataz');
+    await store.ready;
 
     // Força liderança para permitir tentativa de sincronização
     (store as any).state.isLeader = true;
 
     // Enfileira 3 comandos na outbox
-    store.registrarLeituraCocho({
+    await store.registrarLeituraCocho({
       pasto_id: 'pasto-01',
       produto_id: 'prod-sal-mineral-80',
       escore_cocho: 2,
       sacos_fornecidos: 2
     });
-    store.registrarLeituraCocho({
+    await store.registrarLeituraCocho({
       pasto_id: 'pasto-02',
       produto_id: 'prod-sal-mineral-80',
       escore_cocho: 1,
       sacos_fornecidos: 3
     });
-    store.registrarLeituraCocho({
+    await store.registrarLeituraCocho({
       pasto_id: 'pasto-03',
       produto_id: 'prod-sal-mineral-80',
       escore_cocho: 3,
@@ -117,15 +119,16 @@ describe('Q5.4: Resiliência da Fila Outbox, Eleição de Líder Web Locks, Broa
   });
 
   it('Q5.4.4: deve sincronizar com sucesso todos os comandos quando a API responde 200 OK', async () => {
-    const store = new CapatazStore('consubov:tenant-success:user-01:fazenda-01:capataz');
+    const store = createCapatazTestStore('consubov:tenant-success:user-01:fazenda-01:capataz');
+    await store.ready;
     (store as any).state.isLeader = true;
 
-    store.registrarContagemRebanho({
+    await store.registrarContagemRebanho({
       pasto_id: 'pasto-01',
       lote_id: 'lote-recria-01',
       quantidade_cabecas: 120
     });
-    store.registrarLeituraQrPasto({
+    await store.registrarLeituraQrPasto({
       pasto_id: 'pasto-01',
       altura_media_cm: 62,
       qr_code_lido: 'PASTO-01-MOMBACA-SEDE'
@@ -145,10 +148,10 @@ describe('Q5.4: Resiliência da Fila Outbox, Eleição de Líder Web Locks, Broa
 
     const result = await store.sincronizarFila('/api/v1/commands', successFetch);
 
-    expect(result.syncedCount).toBe(2);
+    expect(result.syncedCount).toBe(0); // HTTP 200 do módulo não substitui ACK persistente do shell
     expect(result.errorsCount).toBe(0);
-    expect(store.getState().outbox.length).toBe(0);
-    expect(store.getState().syncedCommands.length).toBe(2);
+    expect(store.getState().outbox.length).toBe(2);
+    expect(store.getState().syncedCommands.length).toBe(0);
     expect(dispatchedCommands.length).toBe(2);
     expect(dispatchedCommands[0].command_type).toBe('capataz.animais.contagem');
     expect(dispatchedCommands[1].command_type).toBe('capataz.pasto.leitura_qr');

@@ -7,7 +7,38 @@ import { GerenteView } from '@consubov/fazenda-gerente';
 import { CapatazView } from '@consubov/fazenda-capataz';
 import { EscritorioView } from '@consubov/fazenda-escritorio';
 import { FabricaView } from '@consubov/fazenda-fabrica';
-import { UserProfileId } from '@consubov/contracts';
+import { UserProfileId, type FazendaModuleId, type ModuleExecutionContext, type ModuleLocalDataAPI } from '@consubov/contracts';
+import { ModuleRuntimeProvider } from '@consubov/ui';
+
+const inaccessibleLocalData = new Proxy({}, {
+  get: () => async () => { throw new Error('LocalDataAPI não deve ser chamado pelo teste de bloqueio.'); }
+}) as ModuleLocalDataAPI;
+const inertLocalData: ModuleLocalDataAPI = {
+  readSnapshot: async () => null,
+  listSnapshots: async () => [],
+  commitMutation: async mutation => ({ commandId: mutation.command.command_id, committed: true }),
+  readAttachment: async () => null,
+  listPendingCommands: async () => [],
+  getCursor: async () => null,
+  getSchemaVersion: async () => 1
+};
+
+function executionContext(moduleId: FazendaModuleId): ModuleExecutionContext {
+  return {
+    userId: 'test-user', tenantId: 'test-tenant', farmId: 'test-farm', retreatId: null,
+    moduleId, profileId: moduleId, deviceId: 'test-device', productId: 'consubov'
+  };
+}
+
+function renderProtected(auth: AuthContextValue, requiredProfile: UserProfileId, child: React.ReactNode, localData = inaccessibleLocalData): string {
+  return renderToString(
+    <AuthContext.Provider value={auth}>
+      <ModuleRuntimeProvider localData={localData}>
+        <ProtectedRoute requiredProfile={requiredProfile}>{child}</ProtectedRoute>
+      </ModuleRuntimeProvider>
+    </AuthContext.Provider>
+  );
+}
 
 function createMockAuthContext(overrides: Partial<AuthContextValue>): AuthContextValue {
   return {
@@ -47,13 +78,7 @@ describe('Adversarial Security: Ataque 1 — Bypass de RBAC em Rotas e Vazamento
     });
 
     // Tentativa de invasão forçando a montagem de GerenteView dentro de rota protegida para gerente
-    const html = renderToString(
-      <AuthContext.Provider value={mockCapatazContext}>
-        <ProtectedRoute requiredProfile="gerente">
-          <GerenteView />
-        </ProtectedRoute>
-      </AuthContext.Provider>
-    );
+    const html = renderProtected(mockCapatazContext, 'gerente', <GerenteView context={executionContext('gerente')} />);
 
     // 1. Deve exibir tela de Acesso Não Autorizado
     expect(html).toContain('Acesso N'); // Acesso Não Autorizado
@@ -74,10 +99,10 @@ describe('Adversarial Security: Ataque 1 — Bypass de RBAC em Rotas e Vazamento
     const profiles: UserProfileId[] = ['gerente', 'capataz', 'escritorio', 'fabrica'];
 
     const componentsByProfile: Record<UserProfileId, React.ReactElement> = {
-      gerente: <GerenteView />,
-      capataz: <CapatazView />,
-      escritorio: <EscritorioView />,
-      fabrica: <FabricaView />,
+      gerente: <GerenteView context={executionContext('gerente')} />,
+      capataz: <CapatazView context={executionContext('capataz')} />,
+      escritorio: <EscritorioView context={executionContext('escritorio')} />,
+      fabrica: <FabricaView context={executionContext('fabrica')} />,
       administrador: <div data-testid="admin-secret">Admin Secret</div>
     };
 
@@ -110,13 +135,7 @@ describe('Adversarial Security: Ataque 1 — Bypass de RBAC em Rotas e Vazamento
           }
         });
 
-        const html = renderToString(
-          <AuthContext.Provider value={authValue}>
-            <ProtectedRoute requiredProfile={targetProfile}>
-              {componentsByProfile[targetProfile]}
-            </ProtectedRoute>
-          </AuthContext.Provider>
-        );
+        const html = renderProtected(authValue, targetProfile, componentsByProfile[targetProfile]);
 
         // Deve barrar o acesso
         expect(html).toContain('Acesso N');
@@ -144,13 +163,7 @@ describe('Adversarial Security: Ataque 1 — Bypass de RBAC em Rotas e Vazamento
       }
     });
 
-    const html = renderToString(
-      <AuthContext.Provider value={adminContext}>
-        <ProtectedRoute requiredProfile="gerente">
-          <GerenteView />
-        </ProtectedRoute>
-      </AuthContext.Provider>
-    );
+    const html = renderProtected(adminContext, 'gerente', <GerenteView context={executionContext('gerente')} />, inertLocalData);
 
     // Administrador deve renderizar diretamente o GerenteView
     expect(html).toContain('gerente-module-view');
@@ -163,13 +176,7 @@ describe('Adversarial Security: Ataque 1 — Bypass de RBAC em Rotas e Vazamento
       activeContext: null
     });
 
-    const html = renderToString(
-      <AuthContext.Provider value={unauthenticatedContext}>
-        <ProtectedRoute requiredProfile="gerente">
-          <GerenteView />
-        </ProtectedRoute>
-      </AuthContext.Provider>
-    );
+    const html = renderProtected(unauthenticatedContext, 'gerente', <GerenteView context={executionContext('gerente')} />);
 
     expect(html).not.toContain('gerente-module-view');
     // LoginView deve renderizar o formulário de login real com o botão traduzido
@@ -184,13 +191,7 @@ describe('Adversarial Security: Ataque 1 — Bypass de RBAC em Rotas e Vazamento
       activeContext: null
     });
 
-    const html = renderToString(
-      <AuthContext.Provider value={pendingContext}>
-        <ProtectedRoute requiredProfile="gerente">
-          <GerenteView />
-        </ProtectedRoute>
-      </AuthContext.Provider>
-    );
+    const html = renderProtected(pendingContext, 'gerente', <GerenteView context={executionContext('gerente')} />);
 
     expect(html).not.toContain('gerente-module-view');
     expect(html).toContain('Selecione o Contexto Operacional');

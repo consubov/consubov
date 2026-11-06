@@ -3,6 +3,7 @@ import { I18nProvider } from '@consubov/ui';
 import { AuthProvider } from './auth/AuthContext';
 import { ShellLayout } from './components/layout/ShellLayout';
 import { AppRouter } from './router/AppRouter';
+import { UpdateConsentNotice } from './pwa/UpdateConsentNotice';
 
 export const App: React.FC = () => {
   return (
@@ -11,6 +12,7 @@ export const App: React.FC = () => {
         <ShellLayout>
           <AppRouter />
         </ShellLayout>
+        <UpdateConsentNotice />
       </AuthProvider>
     </I18nProvider>
   );

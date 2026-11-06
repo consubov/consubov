@@ -59,7 +59,7 @@ export function createSyntheticCommandEnvelope(
     profile_id: 'capataz',
     product_id: 'consubov',
     command_type: 'capataz.cocho.registrar_escore',
-    aggregate_type: 'pasto',
+    aggregate_type: 'cocho',
     aggregate_id: 'pasto-piquete-01',
     base_version: 0,
     schema_version: 1,

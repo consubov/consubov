@@ -1,3 +1,4 @@
+import { loginApi, authorizedEnvelope } from '../harness/api-auth';
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { createApiServer } from '@consubov/platform-api';
 import { allocateAvailablePort } from '../harness/port-allocator';
@@ -25,37 +26,13 @@ describe('Q4.5: Barreira da API Local — Despacho Atômico Multidomínio, Zod, 
     baseUrl = `http://127.0.0.1:${port}`;
 
     // 3. Emite tokens sintéticos para cada perfil de domínio
-    tokenGerente = await signSyntheticJwt({
-      user_id: 'user-gerente-synthetic',
-      tenant_id: 'tenant-lab-001',
-      fazenda_id: 'fazenda-guarani-01',
-      profile_id: 'gerente',
-      roles: ['gerente']
-    });
+    tokenGerente = (await loginApi(baseUrl, 'gerente')).tokens.access_token;
 
-    tokenEscritorio = await signSyntheticJwt({
-      user_id: 'user-escritorio-synthetic',
-      tenant_id: 'tenant-lab-001',
-      fazenda_id: 'fazenda-guarani-01',
-      profile_id: 'escritorio',
-      roles: ['escritorio']
-    });
+    tokenEscritorio = (await loginApi(baseUrl, 'escritorio')).tokens.access_token;
 
-    tokenFabrica = await signSyntheticJwt({
-      user_id: 'user-fabrica-synthetic',
-      tenant_id: 'tenant-lab-001',
-      fazenda_id: 'fazenda-guarani-01',
-      profile_id: 'fabrica',
-      roles: ['fabrica']
-    });
+    tokenFabrica = (await loginApi(baseUrl, 'fabrica')).tokens.access_token;
 
-    tokenCapataz = await signSyntheticJwt({
-      user_id: 'user-capataz-synthetic',
-      tenant_id: 'tenant-lab-001',
-      fazenda_id: 'fazenda-guarani-01',
-      profile_id: 'capataz',
-      roles: ['capataz']
-    });
+    tokenCapataz = (await loginApi(baseUrl, 'capataz')).tokens.access_token;
   });
 
   afterAll(() => {
@@ -104,23 +81,23 @@ describe('Q4.5: Barreira da API Local — Despacho Atômico Multidomínio, Zod, 
       const res1 = await fetch(`${baseUrl}/api/v1/commands`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenGerente}` },
-        body: JSON.stringify(envelope)
+        body: JSON.stringify(authorizedEnvelope(tokenGerente, envelope))
       });
       expect(res1.status).toBe(200);
       const ack1: any = await res1.json();
-      expect(ack1.status).toBe('acked');
-      expect(ack1.new_version).toBe(1);
-      expect(ack1.idempotent_replay).toBe(false);
+      expect(ack1.ack.status).toBe('COMMITTED');
+      expect(ack1.ack.aggregate_version).toBe(1);
+      expect(ack1.success).toBe(true);
 
       // Reenvio com a mesma chave -> replay idempotente 200
       const res2 = await fetch(`${baseUrl}/api/v1/commands`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenGerente}` },
-        body: JSON.stringify(envelope)
+        body: JSON.stringify(authorizedEnvelope(tokenGerente, envelope))
       });
       expect(res2.status).toBe(200);
       const ack2: any = await res2.json();
-      expect(ack2.idempotent_replay).toBe(true);
+      expect(ack2).toEqual(ack1);
     });
 
     it('Q4.5.2: deve processar gerente.leitura_cocho.aprovar com sucesso', async () => {
@@ -159,11 +136,11 @@ describe('Q4.5: Barreira da API Local — Despacho Atômico Multidomínio, Zod, 
       const res = await fetch(`${baseUrl}/api/v1/commands`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenGerente}` },
-        body: JSON.stringify(envelope)
+        body: JSON.stringify(authorizedEnvelope(tokenGerente, envelope))
       });
       expect(res.status).toBe(200);
       const ack: any = await res.json();
-      expect(ack.status).toBe('acked');
+      expect(ack.ack.status).toBe('COMMITTED');
     });
   });
 
@@ -171,7 +148,7 @@ describe('Q4.5: Barreira da API Local — Despacho Atômico Multidomínio, Zod, 
   // CENÁRIO 2: DESPACHO DE COMANDOS DO MÓDULO ESCRITÓRIO
   // ==========================================================================
   describe('Cenário 2: Comandos de Escritório (Entrada de NF-e e Fechamento de Custos)', () => {
-    it('Q4.5.3: deve validar chave 44 dígitos na entrada de NF-e (válida -> 200, inválida -> 400)', async () => {
+    it('Q4.5.3: deve validar chave 44 dígitos na entrada de NF-e (válida -> 200, inválida -> 422)', async () => {
       // NF com chave válida (44 dígitos)
       const validEnvelope: AtomicCommandEnvelope = {
         command_id: 'cmd-escritorio-nf-001',
@@ -219,11 +196,11 @@ describe('Q4.5: Barreira da API Local — Despacho Atômico Multidomínio, Zod, 
       const resValid = await fetch(`${baseUrl}/api/v1/commands`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenEscritorio}` },
-        body: JSON.stringify(validEnvelope)
+        body: JSON.stringify(authorizedEnvelope(tokenEscritorio, validEnvelope))
       });
       expect(resValid.status).toBe(200);
 
-      // NF com chave inválida (42 dígitos) -> Fail-Closed 400 INVALID_DOMAIN_PAYLOAD
+      // NF com chave inválida (42 dígitos) -> Fail-Closed 422 INVALID_DOMAIN_PAYLOAD
       const invalidEnvelope = {
         ...validEnvelope,
         command_id: 'cmd-escritorio-nf-invalid',
@@ -237,11 +214,11 @@ describe('Q4.5: Barreira da API Local — Despacho Atômico Multidomínio, Zod, 
       const resInvalid = await fetch(`${baseUrl}/api/v1/commands`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenEscritorio}` },
-        body: JSON.stringify(invalidEnvelope)
+        body: JSON.stringify(authorizedEnvelope(tokenEscritorio, invalidEnvelope))
       });
-      expect(resInvalid.status).toBe(400);
+      expect(resInvalid.status).toBe(422);
       const err: any = await resInvalid.json();
-      expect(err.error).toBe('INVALID_DOMAIN_PAYLOAD');
+      expect(err.validation.violations[0].code).toBe('INVALID_DOMAIN_PAYLOAD');
     });
 
     it('Q4.5.4: deve processar escritorio.custos.fechar com sucesso', async () => {
@@ -250,7 +227,7 @@ describe('Q4.5: Barreira da API Local — Despacho Atômico Multidomínio, Zod, 
         idempotency_key: 'idemp-escritorio-custos-001',
         command_type: 'escritorio.custos.fechar',
         aggregate_type: 'lote',
-        aggregate_id: 'lote-escritorio-closing-01',
+        aggregate_id: 'lote-recria-01',
         base_version: 0,
         user_id: 'user-escritorio-synthetic',
         tenant_id: 'tenant-lab-001',
@@ -283,11 +260,11 @@ describe('Q4.5: Barreira da API Local — Despacho Atômico Multidomínio, Zod, 
       const res = await fetch(`${baseUrl}/api/v1/commands`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenEscritorio}` },
-        body: JSON.stringify(envelope)
+        body: JSON.stringify(authorizedEnvelope(tokenEscritorio, envelope))
       });
       expect(res.status).toBe(200);
       const ack: any = await res.json();
-      expect(ack.status).toBe('acked');
+      expect(ack.ack.status).toBe('COMMITTED');
     });
   });
 
@@ -333,7 +310,7 @@ describe('Q4.5: Barreira da API Local — Despacho Atômico Multidomínio, Zod, 
       const resIniciar = await fetch(`${baseUrl}/api/v1/commands`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenFabrica}` },
-        body: JSON.stringify(envelopeIniciar)
+        body: JSON.stringify(authorizedEnvelope(tokenFabrica, envelopeIniciar))
       });
       expect(resIniciar.status).toBe(200);
 
@@ -372,11 +349,11 @@ describe('Q4.5: Barreira da API Local — Despacho Atômico Multidomínio, Zod, 
       const resConcluir = await fetch(`${baseUrl}/api/v1/commands`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenFabrica}` },
-        body: JSON.stringify(envelopeConcluir)
+        body: JSON.stringify(authorizedEnvelope(tokenFabrica, envelopeConcluir))
       });
       expect(resConcluir.status).toBe(200);
       const ackConcluir: any = await resConcluir.json();
-      expect(ackConcluir.new_version).toBe(2);
+      expect(ackConcluir.ack.aggregate_version).toBe(2);
     });
 
     it('Q4.5.6: deve processar fabrica.balanca.calibrar com sucesso', async () => {
@@ -417,7 +394,7 @@ describe('Q4.5: Barreira da API Local — Despacho Atômico Multidomínio, Zod, 
       const res = await fetch(`${baseUrl}/api/v1/commands`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenFabrica}` },
-        body: JSON.stringify(envelope)
+        body: JSON.stringify(authorizedEnvelope(tokenFabrica, envelope))
       });
       expect(res.status).toBe(200);
     });
@@ -463,11 +440,11 @@ describe('Q4.5: Barreira da API Local — Despacho Atômico Multidomínio, Zod, 
       const res = await fetch(`${baseUrl}/api/v1/commands`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenCapataz}` },
-        body: JSON.stringify(forbiddenEnvelope)
+        body: JSON.stringify(authorizedEnvelope(tokenCapataz, forbiddenEnvelope))
       });
       expect(res.status).toBe(403);
       const body: any = await res.json();
-      expect(body.error).toBe('FORBIDDEN_COMMAND');
+      expect(body.security.error).toBe('FORBIDDEN_403');
     });
 
     it('Q4.5.8: deve rejeitar com 409 CONCURRENCY_CONFLICT quando base_version divergir da versão do ledger', async () => {
@@ -507,14 +484,14 @@ describe('Q4.5: Barreira da API Local — Despacho Atômico Multidomínio, Zod, 
       const res = await fetch(`${baseUrl}/api/v1/commands`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenFabrica}` },
-        body: JSON.stringify(conflictingEnvelope)
+        body: JSON.stringify(authorizedEnvelope(tokenFabrica, conflictingEnvelope))
       });
 
       expect(res.status).toBe(409);
       const err: any = await res.json();
-      expect(err.error).toBe('CONCURRENCY_CONFLICT');
-      expect(err.expected_base_version).toBe(2);
-      expect(err.received_base_version).toBe(0);
+      expect(err.conflict.error).toBe('CONFLICT_409');
+      expect(err.conflict.current_version).toBe(2);
+      expect(err.conflict.base_version).toBe(0);
     });
   });
 });

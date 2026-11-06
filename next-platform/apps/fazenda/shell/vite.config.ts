@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
+import { shellAssetManifest } from './scripts/shell-asset-publisher';
 
 export default defineConfig({
   root: '.',
@@ -18,16 +19,14 @@ export default defineConfig({
     alias: {
       '@consubov/contracts': path.resolve(__dirname, '../../../packages/contracts/src/index.ts'),
       '@consubov/ui': path.resolve(__dirname, '../../../packages/ui/src/index.ts'),
-      '@consubov/auth-client': path.resolve(__dirname, '../../../packages/auth-client/src/index.ts'),
-      '@consubov/module-release': path.resolve(__dirname, '../../../packages/module-release/src/index.ts'),
-      '@consubov/fazenda-gerente': path.resolve(__dirname, '../gerente/src/index.ts'),
-      '@consubov/fazenda-capataz': path.resolve(__dirname, '../capataz/src/index.ts'),
-      '@consubov/fazenda-escritorio': path.resolve(__dirname, '../escritorio/src/index.ts'),
-      '@consubov/fazenda-fabrica': path.resolve(__dirname, '../fabrica/src/index.ts')
+      '@consubov/auth-client/browser': path.resolve(__dirname, '../../../packages/auth-client/src/browser.ts'),
+      '@consubov/auth-client': path.resolve(__dirname, '../../../packages/auth-client/src/index.ts')
     }
   },
   build: {
     outDir: 'dist',
+    // Preserve immutable generations; the publisher excludes stale root assets.
+    emptyOutDir: false,
     target: 'esnext',
     sourcemap: true,
     rollupOptions: {
@@ -39,5 +38,5 @@ export default defineConfig({
       }
     }
   },
-  plugins: [react()]
+  plugins: [react(), shellAssetManifest()]
 });

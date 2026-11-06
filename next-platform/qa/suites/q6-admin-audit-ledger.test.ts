@@ -1,3 +1,6 @@
+import { loginApi, authorizedEnvelope } from '../harness/api-auth';
+import { moduleSeedSnapshot } from '../harness/module-seed';
+import { decodeSyntheticJwt } from '@consubov/auth-client';
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { createApiServer } from '@consubov/platform-api';
 import { InMemoryLedger } from '../../api/src/ledger/in-memory-ledger';
@@ -21,8 +24,8 @@ describe('Gate Q6: Auditoria Global do Ledger de Comandos & Endpoint Administrat
     idempotency_key: 'idemp-audit-ledger-test-00001',
     command_type: 'capataz.salga.lancar',
     aggregate_type: 'cocho',
-    aggregate_id: '00000000-0000-4000-8000-000000000099',
-    base_version: 0,
+    aggregate_id: 'pasto-01',
+    base_version: 1,
     user_id: 'usr-capataz',
     tenant_id: 'ten-audit-001',
     product_id: 'consubov',
@@ -51,12 +54,13 @@ describe('Gate Q6: Auditoria Global do Ledger de Comandos & Endpoint Administrat
     command_id: '00000000-0000-4000-8000-000000000012',
     idempotency_key: 'idemp-audit-ledger-test-00002',
     command_type: 'gerente.metas.definir',
-    aggregate_type: 'meta',
+    aggregate_type: 'lote',
     aggregate_id: '00000000-0000-4000-8000-000000000098',
     base_version: 0,
     user_id: '10000000-0000-4000-8000-000000000001',
     tenant_id: 'ten-audit-002',
     profile_id: 'gerente',
+    payload: { lote_id: '00000000-0000-4000-8000-000000000098', gmd_alvo_kg_dia: 1.5, peso_final_alvo_kg: 500, data_alvo_abate: '2026-12-01T00:00:00.000Z' },
     occurred_at_local: '2026-11-05T09:00:00Z'
   };
 
@@ -66,37 +70,8 @@ describe('Gate Q6: Auditoria Global do Ledger de Comandos & Endpoint Administrat
     apiInstance = createApiServer(port, '127.0.0.1');
     baseUrl = `http://127.0.0.1:${port}`;
 
-    // Token Administrador Global
-    adminToken = await signSyntheticJwt(
-      {
-        sub: 'usr-admin',
-        user_id: 'usr-admin',
-        email: 'admin.lab@consubov.local',
-        name: 'Super Admin',
-        profile_id: 'administrador',
-        tenant_id: '00000000-0000-4000-8000-000000000000',
-        fazenda_id: '00000000-0000-4000-8000-000000000000',
-        product_id: 'consubov',
-        roles: ['super_admin']
-      },
-      SYNTHETIC_JWT_SECRET_LAB
-    );
-
-    // Token Capataz (não administrativo)
-    capatazToken = await signSyntheticJwt(
-      {
-        sub: 'usr-capataz',
-        user_id: 'usr-capataz',
-        email: 'capataz.lab@consubov.local',
-        name: 'Capataz de Campo',
-        profile_id: 'capataz',
-        tenant_id: 'ten-audit-001',
-        fazenda_id: 'faz-audit-001',
-        product_id: 'consubov',
-        roles: ['capataz']
-      },
-      SYNTHETIC_JWT_SECRET_LAB
-    );
+    adminToken = (await loginApi(baseUrl, 'administrador')).tokens.access_token;
+    capatazToken = (await loginApi(baseUrl, 'capataz')).tokens.access_token;
   });
 
   afterAll(() => {
@@ -107,8 +82,10 @@ describe('Gate Q6: Auditoria Global do Ledger de Comandos & Endpoint Administrat
   it('Q6.3.1: InMemoryLedger deve registrar comandos e permitir consulta filtrada via queryLogs()', () => {
     const ledger = new InMemoryLedger();
 
-    ledger.processCommand(sampleEnvelope1);
-    ledger.processCommand(sampleEnvelope2);
+    ledger.initialize({ ...sampleEnvelope1, session_id: 'direct-unit' }, moduleSeedSnapshot('capataz').data, sampleEnvelope1.occurred_at_local);
+    ledger.initialize({ ...sampleEnvelope2, session_id: 'direct-unit' }, moduleSeedSnapshot('gerente').data, sampleEnvelope2.occurred_at_local);
+    expect(ledger.processCommand(sampleEnvelope1).success).toBe(true);
+    expect(ledger.processCommand(sampleEnvelope2).success).toBe(true);
 
     // Consulta sem filtro -> retorna todos
     const all = ledger.queryLogs();
@@ -129,7 +106,7 @@ describe('Gate Q6: Auditoria Global do Ledger de Comandos & Endpoint Administrat
     expect(salga.length).toBe(1);
 
     // Filtro por status
-    const acked = ledger.queryLogs({ status: 'acked' });
+    const acked = ledger.queryLogs({ status: 'COMMITTED' });
     expect(acked.length).toBe(2);
   });
 
@@ -164,7 +141,7 @@ describe('Gate Q6: Auditoria Global do Ledger de Comandos & Endpoint Administrat
         'Content-Type': 'application/json',
         Authorization: `Bearer ${capatazToken}`
       },
-      body: JSON.stringify(sampleEnvelope1)
+      body: JSON.stringify(authorizedEnvelope(capatazToken, sampleEnvelope1))
     });
 
     // Agora consulta o ledger como administrador
@@ -187,7 +164,7 @@ describe('Gate Q6: Auditoria Global do Ledger de Comandos & Endpoint Administrat
 
   it('Q6.3.5: endpoint GET /api/v1/admin/audit deve filtrar corretamente por command_type e tenant_id via query params', async () => {
     const res = await fetch(
-      `${baseUrl}/api/v1/admin/audit?command_type=capataz.salga.lancar&tenant_id=ten-audit-001`,
+      `${baseUrl}/api/v1/admin/audit?command_type=capataz.salga.lancar&tenant_id=${decodeSyntheticJwt(capatazToken)!.tenant_id}`,
       {
         method: 'GET',
         headers: {

@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.consubov.invalid/f23/v1/atomic-command.schema.json",
+  "title": "Atomic command input v1",
+  "description": "Input shape accepted by atomicCommandEnvelopeSchema; unknown fields are accepted then stripped. Domain payload checks, claims and RBAC are additional runtime checks. Defaults: retiro_id/last_attempt_at/error_message=null, attachment_refs=[].",
+  "type": "object",
+  "properties": {
+    "command_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 16
+    },
+    "command_type": {
+      "enum": [
+        "capataz.salga.lancar",
+        "capataz.cocho.registrar_escore",
+        "capataz.cocho.foto_adicionar",
+        "capataz.pasto.leitura_qr",
+        "capataz.animais.contagem",
+        "gerente.metas.definir",
+        "gerente.gmd.ajustar_curva",
+        "gerente.lote.transferir_pasto",
+        "gerente.custos.apropriar",
+        "gerente.leitura_cocho.aprovar",
+        "escritorio.compras.criar_pedido",
+        "escritorio.notas.registrar_entrada",
+        "escritorio.lotes.cadastrar",
+        "escritorio.lotes.particionar",
+        "escritorio.custos.fechar",
+        "escritorio.relatorios.emitir",
+        "fabrica.formulas.salvar",
+        "fabrica.batidas.iniciar",
+        "fabrica.batidas.concluir",
+        "fabrica.estoque.ajustar",
+        "fabrica.materia_prima.receber",
+        "fabrica.ingrediente.dar_baixa",
+        "fabrica.balanca.calibrar",
+        "admin.tenants.criar",
+        "admin.tenants.suspender",
+        "admin.licencas.atualizar",
+        "admin.usuarios.vincular"
+      ]
+    },
+    "aggregate_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "aggregate_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "base_version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "user_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "product_id": {
+      "enum": [
+        "consubov",
+        "relatto",
+        "syncvet",
+        "mais_arrobas"
+      ]
+    },
+    "fazenda_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "retiro_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "profile_id": {
+      "enum": [
+        "capataz",
+        "gerente",
+        "escritorio",
+        "fabrica",
+        "administrador"
+      ]
+    },
+    "device_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "payload": {
+      "type": "object"
+    },
+    "correlation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attachment_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "attachment_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mime_type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "hash_sha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "local_blob_ref": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "attachment_id",
+          "mime_type",
+          "size_bytes",
+          "hash_sha256",
+          "local_blob_ref"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "occurred_at_local": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "status": {
+      "enum": [
+        "PENDENTE",
+        "ENVIANDO",
+        "SINCRONIZADO",
+        "CONFLITO",
+        "ERRO_FATAL"
+      ]
+    },
+    "attempts": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "last_attempt_at": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "error_message": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "command_id",
+    "idempotency_key",
+    "command_type",
+    "aggregate_type",
+    "aggregate_id",
+    "base_version",
+    "user_id",
+    "tenant_id",
+    "product_id",
+    "fazenda_id",
+    "profile_id",
+    "device_id",
+    "schema_version",
+    "payload",
+    "correlation_id",
+    "occurred_at_local",
+    "status",
+    "attempts"
+  ],
+  "additionalProperties": true
+}

@@ -20,9 +20,9 @@ export const FabricaDashboardTab: React.FC<FabricaDashboardTabProps> = ({
       {/* Grade de KPIs da Fábrica */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
         <Card elevation="elevated">
-          <h3 style={{ margin: '0 0 8px', fontSize: '1.05rem', color: '#475569' }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: '1.05rem', color: '#475569' }}>
             {t('domain.batida', 'Batida de Ração')}
-          </h3>
+          </h2>
           <p style={{ fontSize: '1.85rem', fontWeight: 800, margin: 0, color: '#334155' }}>
             {t('fabrica.dashboard.batchNumber', { number: '42' })}
           </p>
@@ -32,9 +32,9 @@ export const FabricaDashboardTab: React.FC<FabricaDashboardTabProps> = ({
         </Card>
 
         <Card elevation="elevated">
-          <h3 style={{ margin: '0 0 8px', fontSize: '1.05rem', color: '#475569' }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: '1.05rem', color: '#475569' }}>
             {t('domain.formula', 'Fórmula Nutricional')}
-          </h3>
+          </h2>
           <p style={{ fontSize: '1.85rem', fontWeight: 800, margin: 0, color: '#15803D' }}>
             {t('fabrica.dashboard.formulaFinishing', 'Terminação 22%')}
           </p>
@@ -44,9 +44,9 @@ export const FabricaDashboardTab: React.FC<FabricaDashboardTabProps> = ({
         </Card>
 
         <Card elevation="elevated">
-          <h3 style={{ margin: '0 0 8px', fontSize: '1.05rem', color: '#475569' }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: '1.05rem', color: '#475569' }}>
             {t('domain.silo', 'Silo de Armazenagem')}
-          </h3>
+          </h2>
           <p style={{ fontSize: '1.85rem', fontWeight: 800, margin: 0, color: '#0369A1' }}>
             {t('fabrica.dashboard.siloCapacityPercent', { percent: '84.5' })}
           </p>
@@ -59,9 +59,9 @@ export const FabricaDashboardTab: React.FC<FabricaDashboardTabProps> = ({
       {/* Status dos Misturadores Industriais */}
       <Card elevation="flat">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h3 style={{ margin: 0, fontSize: '1.15rem' }}>
+          <h2 style={{ margin: 0, fontSize: '1.15rem' }}>
             {t('fabrica.tabs.batches', 'Batidas e Misturadores')}
-          </h3>
+          </h2>
           <Button variant="secondary" onClick={() => onNavigateTab('batches')}>
             {t('action.search', 'Buscar...')}
           </Button>
@@ -71,7 +71,7 @@ export const FabricaDashboardTab: React.FC<FabricaDashboardTabProps> = ({
           {state.misturadores.map(m => (
             <Card key={m.misturador_id} elevation="elevated" style={{ backgroundColor: '#F8FAFC' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#0F172A' }}>{m.nome}</h4>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#0F172A' }}>{m.nome}</h3>
                 <span
                   style={{
                     padding: '2px 8px',

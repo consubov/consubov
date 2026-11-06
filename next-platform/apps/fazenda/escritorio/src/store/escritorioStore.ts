@@ -1,3 +1,4 @@
+import { applyModuleCommand, type NotaFiscalRecord, type PedidoCompraRecord, type LoteEscritorioRecord, type FechamentoCustoRecord, type EscritorioState } from '@consubov/domain-projection/escritorio';
 import {
   AtomicCommandEnvelope,
   RegistrarNotaFiscalPayload,
@@ -7,175 +8,153 @@ import {
   FecharCustoLotePayload,
   EmitirRelatorioFinanceiroPayload,
   ItemNotaFiscal,
-  UserProfileId
+  type ModuleExecutionContext,
+  type ModuleLocalDataAPI,
+  type LocalSnapshot
 } from '@consubov/contracts';
 
-export interface NotaFiscalRecord {
-  nota_fiscal_id: string;
-  numero_nf: string;
-  serie: string;
-  chave_acesso_nfe: string;
-  fornecedor_nome: string;
-  fornecedor_cnpj_cpf: string;
-  valor_total_brl: number;
-  data_emissao: string;
-  itens: ItemNotaFiscal[];
-}
-
-export interface PedidoCompraRecord {
-  pedido_compra_id: string;
-  fornecedor_id: string;
-  fornecedor_nome: string;
-  produto_insumo_id: string;
-  produto_nome: string;
-  quantidade_pedida: number;
-  unidade: 'kg' | 'sc' | 'ton' | 'litro';
-  preco_unitario_brl: number;
-  condicao_pagamento: string;
-  previsao_entrega: string;
-  status: 'aprovado' | 'pendente' | 'entregue';
-}
-
-export interface LoteEscritorioRecord {
-  lote_id: string;
-  fazenda_id: string;
-  pasto_id: string;
-  nome_lote: string;
-  categoria_animal: string;
-  quantidade_cabecas: number;
-  peso_medio_inicial_kg: number;
-  data_entrada: string;
-}
-
-export interface FechamentoCustoRecord {
-  lote_id: string;
-  periodo_mes: number;
-  periodo_ano: number;
-  custo_nutricao_brl: number;
-  custo_sanidade_brl: number;
-  custo_pastagem_brl: number;
-  custo_operacional_brl: number;
-  valor_total_apropriado_brl: number;
-  fechado_em: string;
-}
-
-export interface EscritorioState {
-  kpis: {
-    pendentesConferencia: number;
-    comprasAprovadas: number;
-    totalComprometidoBrl: number;
-  };
-  notasFiscais: NotaFiscalRecord[];
-  pedidosCompra: PedidoCompraRecord[];
-  lotes: LoteEscritorioRecord[];
-  fechamentos: FechamentoCustoRecord[];
-  outbox: AtomicCommandEnvelope<any>[];
-  baseVersions: Record<string, number>;
-}
+export type { NotaFiscalRecord, PedidoCompraRecord, LoteEscritorioRecord, FechamentoCustoRecord, EscritorioState } from '@consubov/domain-projection/escritorio';
 
 export class EscritorioStore {
   private state: EscritorioState;
-  private partitionKey: string;
+  private context: ModuleExecutionContext;
+  private localData: ModuleLocalDataAPI;
+  private operationQueue: Promise<void> = Promise.resolve();
+  private hydrationFailed = false;
+  public readonly ready: Promise<void>;
   private listeners: Set<() => void> = new Set();
 
-  constructor(partitionKey = 'consubov:tenant-default:user-escritorio:fazenda-01:escritorio') {
-    this.partitionKey = partitionKey;
-    this.state = this.loadInitialState();
+  constructor(context: ModuleExecutionContext, localData: ModuleLocalDataAPI) {
+    this.context = context;
+    this.localData = localData;
+    this.state = this.createInitialState();
+    this.ready = this.hydrate();
+    void this.ready.catch(() => undefined);
   }
 
-  private loadInitialState(): EscritorioState {
-    if (typeof localStorage !== 'undefined') {
-      try {
-        const cached = localStorage.getItem(this.partitionKey);
-        if (cached) {
-          return JSON.parse(cached);
-        }
-      } catch {
-        // Fallback
-      }
-    }
-
+  private createInitialState(): EscritorioState {
     return {
-      kpis: {
-        pendentesConferencia: 3,
-        comprasAprovadas: 8,
-        totalComprometidoBrl: 148500
-      },
-      notasFiscais: [
-        {
-          nota_fiscal_id: 'nfe-001-2026',
-          numero_nf: '10482',
-          serie: '1',
-          chave_acesso_nfe: '35261112345678000195550010000104821234567890',
-          fornecedor_nome: 'NutriAgro Nutrição Animal Ltda',
-          fornecedor_cnpj_cpf: '12345678000195',
-          valor_total_brl: 45000,
-          data_emissao: '2026-11-03T10:00:00.000Z',
-          itens: [
-            {
-              produto_descricao: 'Milho Grão Padrão',
-              quantidade: 30000,
-              unidade_medida: 'kg',
-              valor_unitario_brl: 1.2,
-              valor_total_item_brl: 36000
-            },
-            {
-              produto_descricao: 'Núcleo Mineral Confinamento',
-              quantidade: 1500,
-              unidade_medida: 'kg',
-              valor_unitario_brl: 6.0,
-              valor_total_item_brl: 9000
-            }
-          ]
-        }
-      ],
-      pedidosCompra: [
-        {
-          pedido_compra_id: 'oc-2026-081',
-          fornecedor_id: 'forn-01',
-          fornecedor_nome: 'NutriAgro Nutrição Animal',
-          produto_insumo_id: 'insumo-farelo-soja',
-          produto_nome: 'Farelo de Soja 46%',
-          quantidade_pedida: 25,
-          unidade: 'ton',
-          preco_unitario_brl: 2200,
-          condicao_pagamento: '30_dias',
-          previsao_entrega: '2026-11-10T00:00:00.000Z',
-          status: 'aprovado'
-        }
-      ],
-      lotes: [
-        {
-          lote_id: 'lote-adm-01',
-          fazenda_id: 'fazenda-01',
-          pasto_id: 'pasto-04',
-          nome_lote: 'Lote 01 - Recria 2026',
-          categoria_animal: 'garrote',
-          quantidade_cabecas: 320,
-          peso_medio_inicial_kg: 280,
-          data_entrada: '2026-10-01T00:00:00.000Z'
-        }
-      ],
-      fechamentos: [],
-      outbox: [],
-      baseVersions: {
-        'nfe-001-2026': 0,
-        'oc-2026-081': 0,
-        'lote-adm-01': 0
-      }
+      kpis: { pendentesConferencia: 0, comprasAprovadas: 0, totalComprometidoBrl: 0 },
+      notasFiscais: [], pedidosCompra: [], lotes: [], fechamentos: [],
+      outbox: [], baseVersions: {}, localRevision: 0, persistenceError: null
     };
   }
 
-  private persist(): void {
-    if (typeof localStorage !== 'undefined') {
-      try {
-        localStorage.setItem(this.partitionKey, JSON.stringify(this.state));
-      } catch {
-        // storage fallback
+  private async hydrate(): Promise<void> {
+    try {
+      const [snapshots, pending] = await Promise.all([
+        this.localData.listSnapshots(),
+        this.localData.listPendingCommands(500)
+      ]);
+      const latest = [...snapshots]
+        .filter(snapshot => snapshot.data?.schema === 'escritorio-state-v1' && snapshot.data.state && typeof snapshot.data.state === 'object')
+        .sort((a, b) => Number(b.data.revision ?? 0) - Number(a.data.revision ?? 0) || b.modifiedAt.localeCompare(a.modifiedAt))
+        .slice(0, 500)[0];
+      if (latest) {
+        const stored = latest.data.state as EscritorioState;
+        if (!this.isValidState(stored) || latest.data.revision !== stored.localRevision) throw new Error('Snapshot local inválido.');
+        this.state = { ...stored, outbox: pending.map(item => item.command), persistenceError: null };
+        this.hydrationFailed = false;
+      } else {
+        throw new Error('Snapshot local ausente.');
       }
+    } catch {
+      this.hydrationFailed = true;
+      this.state = {
+        kpis: { pendentesConferencia: 0, comprasAprovadas: 0, totalComprometidoBrl: 0 },
+        notasFiscais: [], pedidosCompra: [], lotes: [], fechamentos: [], outbox: [], baseVersions: {}, localRevision: 0,
+        persistenceError: 'Não foi possível carregar os dados locais. Conecte-se e autentique-se novamente para preparar o aplicativo.'
+      };
+      this.notify();
+      throw new Error(this.state.persistenceError!);
     }
     this.notify();
   }
+
+  private isValidState(value: unknown): value is EscritorioState {
+    if (!value || typeof value !== 'object') return false;
+    const state = value as Partial<EscritorioState>;
+    return Boolean(state.kpis && Array.isArray(state.notasFiscais) && Array.isArray(state.pedidosCompra) &&
+      Array.isArray(state.lotes) && Array.isArray(state.fechamentos) && Array.isArray(state.outbox) &&
+      state.baseVersions && typeof state.baseVersions === 'object' && Number.isSafeInteger(state.localRevision) && Number(state.localRevision) >= 0);
+  }
+
+  private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.operationQueue.then(operation, operation);
+    this.operationQueue = result.then(() => undefined, () => undefined);
+    return result;
+  }
+
+  private async commit<T>(
+    commandType: string,
+    aggregateType: string,
+    aggregateId: string,
+    payload: T
+  ): Promise<AtomicCommandEnvelope<T>> {
+    return this.enqueue(async () => {
+      await this.ready;
+      if (this.hydrationFailed) throw new Error('Dados locais indisponíveis; alteração não gravada.');
+      const next = structuredClone(this.state);
+      const baseVersion = next.baseVersions[aggregateId] ?? 0;
+      const commandId = crypto.randomUUID();
+      const occurredAt = new Date().toISOString();
+      const envelope: AtomicCommandEnvelope<T> = {
+        command_id: commandId,
+        idempotency_key: `idemp-${commandId}-${Date.now()}`,
+        command_type: commandType,
+        aggregate_type: aggregateType,
+        aggregate_id: aggregateId,
+        base_version: baseVersion,
+        user_id: this.context.userId,
+        tenant_id: this.context.tenantId,
+        product_id: this.context.productId,
+        fazenda_id: this.context.farmId,
+        retiro_id: this.context.retreatId,
+        profile_id: this.context.profileId,
+        device_id: this.context.deviceId,
+        schema_version: 1,
+        payload,
+        correlation_id: commandId,
+        attachment_refs: [],
+        occurred_at_local: occurredAt,
+        status: 'PENDENTE',
+        attempts: 0,
+        last_attempt_at: null,
+        error_message: null
+      };
+      Object.assign(next, applyModuleCommand('escritorio', next, envelope));
+      next.baseVersions[aggregateId] = baseVersion + 1;
+      next.localRevision = this.state.localRevision + 1;
+      next.outbox.push(envelope);
+      next.persistenceError = null;
+      const snapshot: LocalSnapshot = {
+        aggregateType,
+        aggregateId,
+        version: baseVersion + 1,
+        data: { schema: 'escritorio-state-v1', revision: next.localRevision, state: next as unknown as Record<string, unknown> },
+        modifiedAt: occurredAt
+      };
+      try {
+        await this.localData.commitMutation({
+          expectedModuleRevision: this.state.localRevision,
+          command: envelope,
+          snapshot,
+          attachments: []
+        });
+      } catch (error) {
+        if (error instanceof Error && /Estado local desatualizado/.test(error.message)) await this.hydrate();
+        const errorMessage = 'Falha ao gravar dados locais. Nenhuma alteração foi confirmada.';
+        this.state = { ...this.state, persistenceError: errorMessage };
+        this.notify();
+        throw new Error(errorMessage);
+      }
+      this.state = next;
+      this.notify();
+      return envelope;
+    });
+  }
+
+  public refreshFromLocalData(): Promise<void> { return this.enqueue(() => this.hydrate()); }
 
   public subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
@@ -192,191 +171,61 @@ export class EscritorioStore {
     return this.state;
   }
 
-  private createEnvelope<T>(
-    commandType: string,
-    aggregateType: string,
-    aggregateId: string,
-    payload: T,
-    profileId: UserProfileId = 'escritorio'
-  ): AtomicCommandEnvelope<T> {
-    const currentVersion = this.state.baseVersions[aggregateId] ?? 0;
-    const commandId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const idempotencyKey = `idemp-${commandId}-${Date.now()}`;
-
-    const envelope: AtomicCommandEnvelope<T> = {
-      command_id: commandId,
-      idempotency_key: idempotencyKey,
-      command_type: commandType,
-      aggregate_type: aggregateType,
-      aggregate_id: aggregateId,
-      base_version: currentVersion,
-      user_id: 'user-escritorio-synthetic',
-      tenant_id: 'tenant-default',
-      product_id: 'consubov',
-      fazenda_id: 'fazenda-01',
-      retiro_id: null,
-      profile_id: profileId,
-      device_id: 'device-local-pwa',
-      schema_version: 1,
-      payload,
-      correlation_id: commandId,
-      attachment_refs: [],
-      occurred_at_local: new Date().toISOString(),
-      status: 'PENDENTE',
-      attempts: 0,
-      last_attempt_at: null,
-      error_message: null
-    };
-
-    this.state.baseVersions[aggregateId] = currentVersion + 1;
-    this.state.outbox.push(envelope);
-    return envelope;
-  }
-
-  public registrarNotaFiscal(payload: RegistrarNotaFiscalPayload): AtomicCommandEnvelope<RegistrarNotaFiscalPayload> {
-    const envelope = this.createEnvelope(
+  public registrarNotaFiscal(payload: RegistrarNotaFiscalPayload): Promise<AtomicCommandEnvelope<RegistrarNotaFiscalPayload>> {
+    return this.commit(
       'escritorio.notas.registrar_entrada',
       'nota_fiscal',
       payload.nota_fiscal_id,
       payload
     );
-
-    this.state.notasFiscais.unshift({
-      nota_fiscal_id: payload.nota_fiscal_id,
-      numero_nf: payload.numero_nf,
-      serie: payload.serie,
-      chave_acesso_nfe: payload.chave_acesso_nfe,
-      fornecedor_nome: payload.fornecedor_nome,
-      fornecedor_cnpj_cpf: payload.fornecedor_cnpj_cpf,
-      valor_total_brl: payload.valor_total_brl,
-      data_emissao: payload.data_emissao,
-      itens: payload.itens
-    });
-
-    this.state.kpis.pendentesConferencia = Math.max(0, this.state.kpis.pendentesConferencia - 1);
-    this.persist();
-    return envelope;
   }
 
-  public criarPedidoCompra(payload: RegistrarCompraInsumoPayload): AtomicCommandEnvelope<RegistrarCompraInsumoPayload> {
-    const envelope = this.createEnvelope(
+  public criarPedidoCompra(payload: RegistrarCompraInsumoPayload): Promise<AtomicCommandEnvelope<RegistrarCompraInsumoPayload>> {
+    return this.commit(
       'escritorio.compras.criar_pedido',
       'pedido_compra',
       payload.pedido_compra_id,
       payload
     );
-
-    this.state.pedidosCompra.unshift({
-      pedido_compra_id: payload.pedido_compra_id,
-      fornecedor_id: payload.fornecedor_id,
-      fornecedor_nome: payload.fornecedor_id,
-      produto_insumo_id: payload.produto_insumo_id,
-      produto_nome: payload.produto_insumo_id,
-      quantidade_pedida: payload.quantidade_pedida,
-      unidade: payload.unidade,
-      preco_unitario_brl: payload.preco_unitario_brl,
-      condicao_pagamento: payload.condicao_pagamento,
-      previsao_entrega: payload.previsao_entrega,
-      status: 'pendente'
-    });
-
-    this.state.kpis.comprasAprovadas += 1;
-    this.persist();
-    return envelope;
   }
 
-  public cadastrarLote(payload: CriarLotePayload): AtomicCommandEnvelope<CriarLotePayload> {
-    const envelope = this.createEnvelope(
+  public cadastrarLote(payload: CriarLotePayload): Promise<AtomicCommandEnvelope<CriarLotePayload>> {
+    return this.commit(
       'escritorio.lotes.cadastrar',
       'lote',
       payload.lote_id,
       payload
     );
-
-    this.state.lotes.push({
-      lote_id: payload.lote_id,
-      fazenda_id: payload.fazenda_id,
-      pasto_id: payload.pasto_id,
-      nome_lote: payload.nome_lote,
-      categoria_animal: payload.categoria_animal,
-      quantidade_cabecas: payload.quantidade_cabecas,
-      peso_medio_inicial_kg: payload.peso_medio_inicial_kg,
-      data_entrada: payload.data_entrada
-    });
-
-    this.persist();
-    return envelope;
   }
 
-  public particionarLote(payload: ParticionarLotePayload): AtomicCommandEnvelope<ParticionarLotePayload> {
-    const envelope = this.createEnvelope(
+  public particionarLote(payload: ParticionarLotePayload): Promise<AtomicCommandEnvelope<ParticionarLotePayload>> {
+    return this.commit(
       'escritorio.lotes.particionar',
       'lote',
       payload.lote_origem_id,
       payload
     );
-
-    // Adiciona os novos lotes desdobrados
-    for (let i = 0; i < payload.novos_lotes.length; i++) {
-      const nl = payload.novos_lotes[i]!;
-      this.state.lotes.push({
-        lote_id: `lote-part-${Date.now()}-${i}`,
-        fazenda_id: 'fazenda-01',
-        pasto_id: nl.pasto_destino_id,
-        nome_lote: nl.nome_lote,
-        categoria_animal: 'garrote',
-        quantidade_cabecas: nl.quantidade_cabecas,
-        peso_medio_inicial_kg: nl.peso_medio_kg,
-        data_entrada: payload.data_particao
-      });
-    }
-
-    this.persist();
-    return envelope;
   }
 
-  public fecharCustoLote(payload: FecharCustoLotePayload): AtomicCommandEnvelope<FecharCustoLotePayload> {
-    const envelope = this.createEnvelope(
+  public fecharCustoLote(payload: FecharCustoLotePayload): Promise<AtomicCommandEnvelope<FecharCustoLotePayload>> {
+    return this.commit(
       'escritorio.custos.fechar',
       'lote',
       payload.lote_id,
       payload
     );
-
-    this.state.fechamentos.push({
-      lote_id: payload.lote_id,
-      periodo_mes: payload.periodo_mes,
-      periodo_ano: payload.periodo_ano,
-      custo_nutricao_brl: payload.custo_nutricao_brl,
-      custo_sanidade_brl: payload.custo_sanidade_brl,
-      custo_pastagem_brl: payload.custo_pastagem_brl,
-      custo_operacional_brl: payload.custo_operacional_brl,
-      valor_total_apropriado_brl: payload.valor_total_apropriado_brl,
-      fechado_em: payload.fechado_em
-    });
-
-    this.persist();
-    return envelope;
   }
 
-  public emitirRelatorio(payload: EmitirRelatorioFinanceiroPayload): AtomicCommandEnvelope<EmitirRelatorioFinanceiroPayload> {
-    const envelope = this.createEnvelope(
+  public emitirRelatorio(payload: EmitirRelatorioFinanceiroPayload): Promise<AtomicCommandEnvelope<EmitirRelatorioFinanceiroPayload>> {
+    return this.commit(
       'escritorio.relatorios.emitir',
       'relatorio',
       payload.relatorio_id,
       payload
     );
-
-    this.persist();
-    return envelope;
   }
 }
 
-let defaultEscritorioStore: EscritorioStore | null = null;
-
-export function getEscritorioStore(partitionKey?: string): EscritorioStore {
-  if (!defaultEscritorioStore || partitionKey) {
-    defaultEscritorioStore = new EscritorioStore(partitionKey);
-  }
-  return defaultEscritorioStore;
+export function getEscritorioStore(context: ModuleExecutionContext, localData: ModuleLocalDataAPI): EscritorioStore {
+  return new EscritorioStore(context, localData);
 }

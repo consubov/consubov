@@ -1,3 +1,4 @@
+import { QuiescentForm } from '@consubov/ui';
 import React, { useState } from 'react';
 import { useTranslation, Card, Button, Input } from '@consubov/ui';
 import { EscritorioState, EscritorioStore } from '../store/escritorioStore';
@@ -32,7 +33,7 @@ export const EscritorioFinanceiroTab: React.FC<EscritorioFinanceiroTabProps> = (
     const o = parseFloat(cOperacional) || 0;
     const total = n + s + p + o;
 
-    store.fecharCustoLote({
+    return store.fecharCustoLote({
       lote_id: loteId,
       periodo_mes: parseInt(periodoMes, 10),
       periodo_ano: parseInt(periodoAno, 10),
@@ -42,23 +43,21 @@ export const EscritorioFinanceiroTab: React.FC<EscritorioFinanceiroTabProps> = (
       custo_operacional_brl: o,
       valor_total_apropriado_brl: total,
       fechado_em: new Date().toISOString()
-    });
-
-    setFeedbackMessage(t('gerente.costs.success', 'Apropriação de custos registrada no ledger!'));
+    }).then(() => { setFeedbackMessage(t('gerente.costs.success', 'Apropriação de custos registrada no ledger!')); return true; })
+      .catch(() => undefined);
   };
 
   const handleEmitirRelatorio = (e: React.FormEvent) => {
     e.preventDefault();
-    store.emitirRelatorio({
+    return store.emitirRelatorio({
       relatorio_id: `rel-${Date.now()}`,
       tipo_relatorio: relatorioTipo,
       data_inicio: '2026-11-01T00:00:00.000Z',
       data_fim: '2026-11-30T23:59:59.000Z',
       incluir_projecoes: true,
       formato_exportacao: formato
-    });
-
-    setFeedbackMessage(t('escritorio.report.downloadReady', 'Relatório gerado com sucesso!'));
+    }).then(() => { setFeedbackMessage(t('escritorio.report.downloadReady', 'Solicitação de relatório registrada.')); return true; })
+      .catch(() => undefined);
   };
 
   return (
@@ -71,17 +70,18 @@ export const EscritorioFinanceiroTab: React.FC<EscritorioFinanceiroTabProps> = (
 
       {/* Formulário de Fechamento de Custos */}
       <Card elevation="elevated">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
           {t('escritorio.tabs.closing', 'Fechamento Financeiro')}
-        </h3>
+        </h2>
 
-        <form onSubmit={handleFecharCusto} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <QuiescentForm onSubmit={handleFecharCusto} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
+              <label htmlFor="escritorio-fechamento-lote" style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
                 {t('escritorio.lots.name', 'Identificação do Lote')}
               </label>
               <select
+                id="escritorio-fechamento-lote"
                 value={loteId}
                 onChange={e => setLoteId(e.target.value)}
                 style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #CBD5E1' }}
@@ -137,70 +137,23 @@ export const EscritorioFinanceiroTab: React.FC<EscritorioFinanceiroTabProps> = (
               {t('action.confirm', 'Confirmar')}
             </Button>
           </div>
-        </form>
+        </QuiescentForm>
       </Card>
 
       {/* Emissão de Relatório */}
       <Card elevation="flat">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>
           {t('escritorio.report.generateTitle', 'Emitir Relatório Financeiro')}
-        </h3>
+        </h2>
 
-        <form onSubmit={handleEmitirRelatorio} style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <QuiescentForm onSubmit={handleEmitirRelatorio} style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <Button variant="secondary" type="submit">
             {t('escritorio.report.generateTitle', 'Emitir Relatório Financeiro')}
           </Button>
-        </form>
+        </QuiescentForm>
       </Card>
 
-      {/* Fila Outbox Local */}
-      <Card elevation="flat">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>
-          {t('escritorio.outbox.titulo', 'Fila Outbox de Conciliação')}
-        </h3>
 
-        <p style={{ margin: '0 0 12px', fontSize: '0.875rem', color: '#64748B' }}>
-          <span>{t('escritorio.outbox.pendentes', 'Pendentes de Envio')}: </span>
-          <strong>{state.outbox.length}</strong>
-        </p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {state.outbox.map(env => (
-            <div
-              key={env.command_id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                padding: '10px 14px',
-                backgroundColor: '#F8FAFC',
-                borderRadius: 6,
-                border: '1px solid #E2E8F0',
-                fontSize: '0.875rem'
-              }}
-            >
-              <div>
-                <strong style={{ color: '#0F172A' }}>{env.command_type}</strong>
-                <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#64748B' }}>
-                  <span>{env.command_id}</span>
-                </p>
-              </div>
-
-              <span
-                style={{
-                  padding: '2px 8px',
-                  borderRadius: 12,
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  backgroundColor: env.status === 'SINCRONIZADO' ? '#DCFCE7' : '#FEF3C7',
-                  color: env.status === 'SINCRONIZADO' ? '#166534' : '#92400E'
-                }}
-              >
-                {env.status}
-              </span>
-            </div>
-          ))}
-        </div>
-      </Card>
     </div>
   );
 };

@@ -17,6 +17,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@consubov/module-release": "workspace:*",
     "@consubov/contracts": "workspace:*"
   },
   "peerDependencies": {

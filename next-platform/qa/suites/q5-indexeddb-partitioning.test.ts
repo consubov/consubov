@@ -1,28 +1,26 @@
 import { describe, it, expect, beforeEach } from 'bun:test';
 import {
-  CapatazStore,
   StorageQuotaExceededError,
   getCapatazStore,
   resetCapatazStoresForTesting
 } from '../../apps/fazenda/capataz/src';
+import { createCapatazTestRuntime, createCapatazTestStore, getCapatazTestStore, resetCapatazTestData } from '../harness/capataz-test-runtime';
 
 describe('Q5.2: Particionamento Estrito de Armazenamento Local por Contexto e Falha de Quota (LF-003)', () => {
   beforeEach(() => {
     resetCapatazStoresForTesting();
-    if (typeof localStorage !== 'undefined') {
-      localStorage.clear();
-    }
+    resetCapatazTestData();
   });
 
-  it('Q5.2.1: deve isolar estritamente outbox e leituras entre dois usuários diferentes no mesmo tenant e fazenda', () => {
+  it('Q5.2.1: deve isolar estritamente outbox e leituras entre dois usuários diferentes no mesmo tenant e fazenda', async () => {
     const key1 = 'tenant-alfa:user-joao:fazenda-01:capataz';
     const key2 = 'tenant-alfa:user-maria:fazenda-01:capataz';
 
-    const storeJoao = new CapatazStore(key1);
-    const storeMaria = new CapatazStore(key2);
+    const storeJoao = createCapatazTestStore(key1);
+    const storeMaria = createCapatazTestStore(key2);
 
     // João registra leitura no pasto-01
-    storeJoao.registrarLeituraCocho({
+    await storeJoao.registrarLeituraCocho({
       pasto_id: 'pasto-01',
       produto_id: 'prod-sal-mineral-80',
       escore_cocho: 1,
@@ -30,7 +28,7 @@ describe('Q5.2: Particionamento Estrito de Armazenamento Local por Contexto e Fa
     });
 
     // Maria registra leitura no pasto-02
-    storeMaria.registrarLeituraCocho({
+    await storeMaria.registrarLeituraCocho({
       pasto_id: 'pasto-02',
       produto_id: 'prod-proteinado-aguas',
       escore_cocho: 3,
@@ -60,14 +58,14 @@ describe('Q5.2: Particionamento Estrito de Armazenamento Local por Contexto e Fa
     expect(stateMaria.leiturasCocho[0]!.pasto_id).toBe('pasto-02');
   });
 
-  it('Q5.2.2: deve isolar estritamente dados entre tenants distintos (Multi-Tenant Isolation)', () => {
+  it('Q5.2.2: deve isolar estritamente dados entre tenants distintos (Multi-Tenant Isolation)', async () => {
     const keyTenantA = 'tenant-agro-norte:user-pedro:fazenda-01:capataz';
     const keyTenantB = 'tenant-boi-gordo:user-pedro:fazenda-01:capataz';
 
-    const storeTenantA = new CapatazStore(keyTenantA);
-    const storeTenantB = new CapatazStore(keyTenantB);
+    const storeTenantA = createCapatazTestStore(keyTenantA);
+    const storeTenantB = createCapatazTestStore(keyTenantB);
 
-    storeTenantA.registrarContagemRebanho({
+    await storeTenantA.registrarContagemRebanho({
       pasto_id: 'pasto-01',
       lote_id: 'lote-recria-01',
       quantidade_cabecas: 150
@@ -81,16 +79,17 @@ describe('Q5.2: Particionamento Estrito de Armazenamento Local por Contexto e Fa
     expect(storeTenantB.getState().contagens.length).toBe(0);
   });
 
-  it('Q5.2.3: deve tratar StorageQuotaExceededError sem falso ACK e com erro explícito (LF-003)', () => {
+  it('Q5.2.3: deve tratar StorageQuotaExceededError sem falso ACK e com erro explícito (LF-003)', async () => {
     const key = 'tenant-alfa:user-carlos:fazenda-01:capataz';
-    const store = new CapatazStore(key);
+    const store = createCapatazTestStore(key);
+    await store.ready;
 
     // Injeta falha de quota de disco
     store.injectQuotaFailure(true);
 
     let errorThrown = false;
     try {
-      store.registrarLeituraCocho({
+      await store.registrarLeituraCocho({
         pasto_id: 'pasto-01',
         produto_id: 'prod-sal-mineral-80',
         escore_cocho: 2,
@@ -110,18 +109,21 @@ describe('Q5.2: Particionamento Estrito de Armazenamento Local por Contexto e Fa
     expect(state.quotaExceededError).toContain('StorageQuotaExceededError');
   });
 
-  it('Q5.2.4: deve persistir e recuperar estado particionado via singleton getCapatazStore', () => {
+  it('Q5.2.4: deve persistir e recuperar estado particionado via singleton getCapatazStore', async () => {
     const key = 'tenant-omega:user-marcos:fazenda-sul:capataz';
-    const storeInst1 = getCapatazStore(key);
+    const runtimeStore = getCapatazTestStore(key);
+    const storeInst1 = runtimeStore;
 
-    storeInst1.registrarLeituraQrPasto({
+    await storeInst1.registrarLeituraQrPasto({
       pasto_id: 'pasto-03',
       altura_media_cm: 58,
       qr_code_lido: 'PASTO-03-PIATA-SUL'
     });
 
     // Reobter a mesma partição retorna o mesmo store com os dados íntegros
-    const storeInst2 = getCapatazStore(key);
+    const { context, localData } = createCapatazTestRuntime(key);
+    const storeInst2 = getCapatazStore(context, localData);
+    await storeInst2.ready;
     expect(storeInst2.getState().outbox.length).toBe(1);
     expect(storeInst2.getState().leiturasQr.length).toBe(1);
     expect(storeInst2.getState().leiturasQr[0]!.altura_media_cm).toBe(58);

@@ -1,9 +1,11 @@
+import { loginApi, authorizedEnvelope } from '../harness/api-auth';
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { createApiServer } from '@consubov/platform-api';
 import { allocateAvailablePort } from '../harness/port-allocator';
 import { createSyntheticCommandEnvelope } from '../harness/synthetic-data';
 import {
   signSyntheticJwt,
+  verifySyntheticJwt,
   SYNTHETIC_JWT_SECRET_LAB,
   SYNTHETIC_USERS
 } from '@consubov/auth-client';
@@ -19,21 +21,9 @@ describe('Gate Q2.1: Barreira de Autenticação Bearer e Proteção Anti-Spoofin
     apiInstance = createApiServer(port, '127.0.0.1');
     baseUrl = `http://127.0.0.1:${port}`;
 
-    validTokenCapataz = await signSyntheticJwt({
-      user_id: SYNTHETIC_USERS['capataz.lab@consubov.local']!.user_id,
-      tenant_id: 'tenant-lab-001',
-      fazenda_id: 'fazenda-guarani-01',
-      profile_id: 'capataz',
-      roles: ['capataz']
-    });
+    validTokenCapataz = (await loginApi(baseUrl, 'capataz')).tokens.access_token;
 
-    validTokenGerente = await signSyntheticJwt({
-      user_id: SYNTHETIC_USERS['gerente.lab@consubov.local']!.user_id,
-      tenant_id: 'tenant-lab-001',
-      fazenda_id: 'fazenda-guarani-01',
-      profile_id: 'gerente',
-      roles: ['gerente']
-    });
+    validTokenGerente = (await loginApi(baseUrl, 'gerente')).tokens.access_token;
   });
 
   afterAll(() => {
@@ -117,22 +107,45 @@ describe('Gate Q2.1: Barreira de Autenticação Bearer e Proteção Anti-Spoofin
     expect(body.error).toBe('TOKEN_EXPIRED');
   });
 
-  it('Q2.1.5: deve autenticar credenciais sintéticas via POST /api/v1/auth/login emitindo token assinado', async () => {
-    const res = await fetch(`${baseUrl}/api/v1/auth/login`, {
+  it('Q2.1.5: API valida a conta primeiro e só emite token após seleção explícita de vínculo', async () => {
+    const login = await fetch(`${baseUrl}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: 'gerente.lab@consubov.local',
-        password: 'lab@123456'
+        password: 'lab@123456',
+        device_id: 'qa-device-q2'
       })
     });
 
-    expect(res.status).toBe(200);
-    const body: any = await res.json();
-    expect(body.token).toBeDefined();
-    expect(body.token_type).toBe('Bearer');
-    expect(body.user.email).toBe('gerente.lab@consubov.local');
-    expect(body.user.primary_profile).toBe('gerente');
+    expect(login.status).toBe(200);
+    const initial: any = await login.json();
+    expect(initial.session.user_email).toBe('gerente.lab@consubov.local');
+    expect(initial.session.active_context).toBeNull();
+    expect(initial.requires_context_selection).toBe(true);
+    expect(initial.tokens).toBeUndefined();
+    expect(initial.available_memberships.length).toBeGreaterThan(0);
+
+    const selected = await fetch(`${baseUrl}/api/v1/auth/login`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'gerente.lab@consubov.local', password: 'lab@123456', device_id: 'qa-device-q2',
+        membership_id: initial.available_memberships[0].membership_id
+      })
+    });
+    expect(selected.status).toBe(200);
+    const scoped: any = await selected.json();
+    expect(scoped.session.active_context.profile_id).toBe('gerente');
+    expect(scoped.tokens.access_token).toBeDefined();
+    expect(scoped.tokens.token_type).toBe('Bearer');
+    expect(scoped.session.device_id).toBe('qa-device-q2');
+    const verified = await verifySyntheticJwt(scoped.tokens.access_token);
+    expect(verified.valid).toBe(true);
+    if (verified.valid) {
+      expect(verified.payload.user_id).toBe(scoped.session.user_id);
+      expect(verified.payload.profile_id).toBe('gerente');
+      expect(verified.payload.device_id).toBe('qa-device-q2');
+    }
   });
 
   it('Q2.1.6: deve barrar Cross-Tenant Spoofing com HTTP 403 CONTEXT_MISMATCH', async () => {
@@ -148,12 +161,12 @@ describe('Gate Q2.1: Barreira de Autenticação Bearer e Proteção Anti-Spoofin
         'Content-Type': 'application/json',
         Authorization: `Bearer ${validTokenCapataz}`
       },
-      body: JSON.stringify(spoofedEnvelope)
+      body: JSON.stringify({ ...authorizedEnvelope(validTokenCapataz, spoofedEnvelope), tenant_id: 'tenant-alheio-hack-999' })
     });
 
     expect(res.status).toBe(403);
     const body: any = await res.json();
-    expect(body.error).toBe('CONTEXT_MISMATCH');
+    expect(body.security.error).toBe('FORBIDDEN_403');
   });
 
   it('Q2.1.7: deve barrar Profile Spoofing com HTTP 403 PROFILE_MISMATCH', async () => {
@@ -170,11 +183,11 @@ describe('Gate Q2.1: Barreira de Autenticação Bearer e Proteção Anti-Spoofin
         'Content-Type': 'application/json',
         Authorization: `Bearer ${validTokenCapataz}`
       },
-      body: JSON.stringify(spoofedEnvelope)
+      body: JSON.stringify({ ...authorizedEnvelope(validTokenCapataz, spoofedEnvelope), profile_id: 'gerente' })
     });
 
     expect(res.status).toBe(403);
     const body: any = await res.json();
-    expect(body.error).toBe('PROFILE_MISMATCH');
+    expect(body.security.error).toBe('FORBIDDEN_403');
   });
 });

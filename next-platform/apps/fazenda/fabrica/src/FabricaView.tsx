@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation, StateBoundary } from '@consubov/ui';
+import { useTranslation, StateBoundary, useLocalData, useLocalDataChanges, OperationIssuesFeedback, useReportModuleHealth } from '@consubov/ui';
 import { getFabricaStore, FabricaState } from './store/fabricaStore';
+import type { ModuleExecutionContext } from '@consubov/contracts';
 import { FabricaDashboardTab } from './components/FabricaDashboardTab';
 import { FabricaBatidasTab } from './components/FabricaBatidasTab';
 import { FabricaFormulasTab } from './components/FabricaFormulasTab';
@@ -9,10 +10,18 @@ import { FabricaCalibracaoTab } from './components/FabricaCalibracaoTab';
 
 export type FabricaSubTab = 'overview' | 'batches' | 'formulas' | 'silos' | 'calibration';
 
-export const FabricaView: React.FC = () => {
+export const FabricaView: React.FC<{ context: ModuleExecutionContext }> = ({ context }) => {
   const { t } = useTranslation();
-  const store = getFabricaStore();
+  const localData = useLocalData();
+  const store = getFabricaStore(context, localData);
   const [state, setState] = useState<FabricaState>(() => store.getState());
+  const [ready, setReady] = useState(false);
+  const [storageError, setStorageError] = useState<string | null>(null);
+  useReportModuleHealth(ready, storageError);
+  useLocalDataChanges(store, error => {
+    setReady(!error);
+    setStorageError(error ? t('gerente.storage.error') : null);
+  });
 
   // Recupera sub-aba da URL hash (#/fazenda/fabrica?tab=xxx)
   const getInitialTab = (): FabricaSubTab => {
@@ -33,6 +42,9 @@ export const FabricaView: React.FC = () => {
   useEffect(() => {
     const unsubscribe = store.subscribe(() => {
       setState({ ...store.getState() });
+    });
+    store.ready.then(() => setReady(true), error => {
+      setStorageError(error instanceof Error ? error.message : String(error));
     });
     return unsubscribe;
   }, [store]);
@@ -55,6 +67,9 @@ export const FabricaView: React.FC = () => {
 
   return (
     <div style={{ padding: 16 }} data-testid="fabrica-module-view">
+      <OperationIssuesFeedback />
+      {!ready && !storageError && <p role="status">{t('common.loading', 'Carregando dados locais…')}</p>}
+      {storageError && <p role="alert">{t('fabrica.storage.error', 'Não foi possível abrir os dados locais.')} {storageError}</p>}
       {/* Cabeçalho do Módulo */}
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, color: '#0F172A' }}>
@@ -95,7 +110,7 @@ export const FabricaView: React.FC = () => {
                 cursor: 'pointer',
                 fontSize: '0.925rem',
                 fontWeight: isActive ? 700 : 500,
-                color: isActive ? '#0284C7' : '#64748B',
+                color: isActive ? '#0369A1' : '#64748B',
                 borderBottom: isActive ? '3px solid #0284C7' : '3px solid transparent',
                 marginBottom: -4,
                 whiteSpace: 'nowrap',
@@ -114,7 +129,7 @@ export const FabricaView: React.FC = () => {
         id={`tabpanel-${activeTab}`}
         aria-labelledby={`tab-${activeTab}`}
       >
-        <StateBoundary state={state.silos.length === 0 ? 'empty' : 'success'}>
+        <StateBoundary state={storageError ? 'error' : !ready ? 'loading' : state.silos.length === 0 ? 'empty' : 'success'}>
           {activeTab === 'overview' && (
             <FabricaDashboardTab
               state={state}

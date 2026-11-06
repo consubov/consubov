@@ -14,7 +14,7 @@ describe('Suíte Q1.4: Contratos Zod e AtomicCommandEnvelope', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.command_type).toBe('capataz.cocho.registrar_escore');
-      expect(result.data.aggregate_type).toBe('pasto');
+      expect(result.data.aggregate_type).toBe('cocho');
       expect(result.data.base_version).toBe(0);
     }
   });

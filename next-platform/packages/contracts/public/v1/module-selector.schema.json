@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:consubov:module-selector:v2",
+  "title": "Atomic module release selector (discovery only)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "moduleId", "generation", "releaseUrl"],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "moduleId": { "enum": ["capataz", "gerente", "escritorio", "fabrica"] },
+    "generation": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "releaseUrl": { "type": "string", "pattern": "^/modules/(capataz|gerente|escritorio|fabrica)/releases/[a-f0-9]{64}/module\\.json$" }
+  },
+  "$comment": "Consumers also require exact equality of moduleId with URL profile and generation with URL directory and SHA-256 of the raw immutable manifest bytes. JSON Schema alone does not compare these values."
+}

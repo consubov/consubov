@@ -1,3 +1,4 @@
+import { QuiescentForm } from '@consubov/ui';
 import React, { useState } from 'react';
 import { useTranslation, Card, Button, Input } from '@consubov/ui';
 import { EscritorioState, EscritorioStore } from '../store/escritorioStore';
@@ -50,7 +51,7 @@ export const EscritorioNotasTab: React.FC<EscritorioNotasTabProps> = ({ state, s
       valor_total_item_brl: itemTotal
     };
 
-    store.registrarNotaFiscal({
+    return store.registrarNotaFiscal({
       nota_fiscal_id: `nfe-${Date.now()}`,
       numero_nf: numeroNf,
       serie: serie,
@@ -60,9 +61,8 @@ export const EscritorioNotasTab: React.FC<EscritorioNotasTabProps> = ({ state, s
       valor_total_brl: parseFloat(valorTotal) || itemTotal,
       data_emissao: new Date().toISOString(),
       itens: [item]
-    });
-
-    setFeedbackMessage(t('escritorio.invoice.success', 'Nota fiscal registrada com sucesso no ledger!'));
+    }).then(() => { setFeedbackMessage(t('escritorio.invoice.success', 'Nota fiscal registrada com sucesso no ledger!')); return true; })
+      .catch(error => setErrorMessage(error instanceof Error ? error.message : t('state.error', 'Não foi possível gravar os dados locais.')));
   };
 
   return (
@@ -81,11 +81,11 @@ export const EscritorioNotasTab: React.FC<EscritorioNotasTabProps> = ({ state, s
 
       {/* Formulário de Registro de Entrada */}
       <Card elevation="elevated">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
           {t('escritorio.invoice.title', 'Registrar Entrada de Nota Fiscal')}
-        </h3>
+        </h2>
 
-        <form onSubmit={handleRegistrarNota} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <QuiescentForm onSubmit={handleRegistrarNota} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <Input
               label={t('escritorio.invoice.number', 'Número da NF')}
@@ -134,9 +134,9 @@ export const EscritorioNotasTab: React.FC<EscritorioNotasTabProps> = ({ state, s
 
           {/* Dados do Item */}
           <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 14 }}>
-            <h4 style={{ margin: '0 0 12px', fontSize: '1.05rem', color: '#334155' }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: '1.05rem', color: '#334155' }}>
               {t('escritorio.invoice.itemsTitle', 'Itens da Nota Fiscal')}
-            </h4>
+            </h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
               <Input
@@ -170,24 +170,24 @@ export const EscritorioNotasTab: React.FC<EscritorioNotasTabProps> = ({ state, s
               {t('escritorio.invoice.title', 'Registrar Entrada de Nota Fiscal')}
             </Button>
           </div>
-        </form>
+        </QuiescentForm>
       </Card>
 
       {/* Relação de Notas Cadastradas */}
       <Card elevation="flat">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>
           {t('escritorio.tabs.invoices', 'Notas Fiscais (NF-e)')}
-        </h3>
+        </h2>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {state.notasFiscais.map(nf => (
             <Card key={nf.nota_fiscal_id} elevation="elevated" style={{ backgroundColor: '#F8FAFC', padding: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                 <div>
-                  <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#0F172A' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#0F172A' }}>
                     <span>#{nf.numero_nf} - </span>
                     <span>{nf.fornecedor_nome}</span>
-                  </h4>
+                  </h3>
                   <p style={{ margin: '4px 0 0', fontSize: '0.825rem', color: '#64748B', wordBreak: 'break-all' }}>
                     <span>{t('escritorio.invoice.accessKey', 'Chave de Acesso (44 dígitos)')}: </span>
                     <code>{nf.chave_acesso_nfe}</code>

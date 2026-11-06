@@ -1,3 +1,4 @@
+import { QuiescentForm } from '@consubov/ui';
 import React, { useState } from 'react';
 import { useTranslation, Card, Button, Input } from '@consubov/ui';
 import { EscritorioState, EscritorioStore } from '../store/escritorioStore';
@@ -30,7 +31,7 @@ export const EscritorioLotesTab: React.FC<EscritorioLotesTabProps> = ({ state, s
 
   const handleCadastrarLote = (e: React.FormEvent) => {
     e.preventDefault();
-    store.cadastrarLote({
+    return store.cadastrarLote({
       lote_id: `lote-${Date.now()}`,
       fazenda_id: 'fazenda-01',
       pasto_id: pastoId,
@@ -39,14 +40,13 @@ export const EscritorioLotesTab: React.FC<EscritorioLotesTabProps> = ({ state, s
       quantidade_cabecas: parseInt(quantidadeCabecas, 10),
       peso_medio_inicial_kg: parseFloat(pesoMedio),
       data_entrada: new Date().toISOString()
-    });
-
-    setFeedbackMessage(t('escritorio.lots.success', 'Lote cadastrado e pronto para manejo!'));
+    }).then(() => { setFeedbackMessage(t('escritorio.lots.success', 'Lote cadastrado e pronto para manejo!')); return true; })
+      .catch(() => undefined);
   };
 
   const handleParticionarLote = (e: React.FormEvent) => {
     e.preventDefault();
-    store.particionarLote({
+    return store.particionarLote({
       lote_origem_id: origemLoteId,
       novos_lotes: [
         {
@@ -63,9 +63,8 @@ export const EscritorioLotesTab: React.FC<EscritorioLotesTabProps> = ({ state, s
         }
       ],
       data_particao: new Date().toISOString()
-    });
-
-    setFeedbackMessage(t('escritorio.lots.splitSuccess', 'Particionamento de lote concluído com sucesso!'));
+    }).then(() => { setFeedbackMessage(t('escritorio.lots.splitSuccess', 'Particionamento de lote concluído com sucesso!')); return true; })
+      .catch(() => undefined);
   };
 
   return (
@@ -78,11 +77,11 @@ export const EscritorioLotesTab: React.FC<EscritorioLotesTabProps> = ({ state, s
 
       {/* Cadastro de Novo Lote */}
       <Card elevation="elevated">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
           {t('escritorio.lots.createTitle', 'Cadastrar Novo Lote')}
-        </h3>
+        </h2>
 
-        <form onSubmit={handleCadastrarLote} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <QuiescentForm onSubmit={handleCadastrarLote} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <Input
               label={t('escritorio.lots.name', 'Identificação do Lote')}
@@ -120,24 +119,25 @@ export const EscritorioLotesTab: React.FC<EscritorioLotesTabProps> = ({ state, s
               {t('action.save', 'Salvar')}
             </Button>
           </div>
-        </form>
+        </QuiescentForm>
       </Card>
 
       {/* Desdobramento / Particionamento */}
       <Card elevation="flat">
-        <h3 style={{ margin: '0 0 8px', fontSize: '1.2rem' }}>
+        <h2 style={{ margin: '0 0 8px', fontSize: '1.2rem' }}>
           {t('escritorio.lots.splitTitle', 'Particionar / Desdobrar Lote')}
-        </h3>
+        </h2>
         <p style={{ margin: '0 0 16px', fontSize: '0.875rem', color: '#64748B' }}>
           {t('escritorio.lots.splitNotice', 'A partição cria novos lotes filhos e encerra ou reduz o lote pai.')}
         </p>
 
-        <form onSubmit={handleParticionarLote} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <QuiescentForm onSubmit={handleParticionarLote} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
+            <label htmlFor="escritorio-particao-lote-origem" style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
               {t('gerente.transfer.originLabel', 'Pasto de Origem')}
             </label>
             <select
+              id="escritorio-particao-lote-origem"
               value={origemLoteId}
               onChange={e => setOrigemLoteId(e.target.value)}
               style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #CBD5E1' }}
@@ -185,7 +185,7 @@ export const EscritorioLotesTab: React.FC<EscritorioLotesTabProps> = ({ state, s
               {t('action.confirm', 'Confirmar')}
             </Button>
           </div>
-        </form>
+        </QuiescentForm>
       </Card>
     </div>
   );

@@ -1,3 +1,4 @@
+import { QuiescentForm } from '@consubov/ui';
 import React, { useState } from 'react';
 import { useTranslation, Card, Button, Input } from '@consubov/ui';
 import { GerenteState, GerenteStore } from '../store/gerenteStore';
@@ -19,8 +20,9 @@ export const GerenteCustosTab: React.FC<GerenteCustosTabProps> = ({ state, store
   const [custoOperacional, setCustoOperacional] = useState('10000');
 
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleApropriarCustos = (e: React.FormEvent) => {
+  const handleApropriarCustos = async (e: React.FormEvent) => {
     e.preventDefault();
     const vNutricao = parseFloat(custoNutricao) || 0;
     const vSanidade = parseFloat(custoSanidade) || 0;
@@ -28,7 +30,9 @@ export const GerenteCustosTab: React.FC<GerenteCustosTabProps> = ({ state, store
     const vOperacional = parseFloat(custoOperacional) || 0;
     const vTotal = vNutricao + vSanidade + vPastagem + vOperacional;
 
-    store.apropriarCustos({
+    setErrorMessage(null);
+    try {
+    await store.apropriarCustos({
       lote_id: selectedLoteId,
       periodo_mes: parseInt(periodoMes, 10),
       periodo_ano: parseInt(periodoAno, 10),
@@ -43,12 +47,15 @@ export const GerenteCustosTab: React.FC<GerenteCustosTabProps> = ({ state, store
     });
 
     setFeedbackMessage(t('gerente.costs.success', 'Apropriação de custos registrada no ledger!'));
+      return true;
+    } catch (error) { setErrorMessage(error instanceof Error ? error.message : String(error)); }
   };
 
   const totalCustos = state.custos.reduce((acc, c) => acc + c.valor, 0);
 
   return (
     <div data-testid="gerente-custos-tab" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {errorMessage && <Card elevation="elevated" style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA', padding: 12 }}><p role="alert" style={{ margin: 0, color: '#991B1B' }}>{errorMessage}</p></Card>}
       {feedbackMessage && (
         <Card elevation="elevated" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', padding: 12 }}>
           <p style={{ margin: 0, color: '#166534', fontWeight: 600 }}>{feedbackMessage}</p>
@@ -57,17 +64,18 @@ export const GerenteCustosTab: React.FC<GerenteCustosTabProps> = ({ state, store
 
       {/* Formulário de Apropriação Mensal */}
       <Card elevation="elevated">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
           {t('gerente.costs.title', 'Apropriação Mensal de Custos')}
-        </h3>
+        </h2>
 
-        <form onSubmit={handleApropriarCustos} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <QuiescentForm onSubmit={handleApropriarCustos} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
+              <label htmlFor="gerente-custos-lote" style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
                 {t('gerente.lote.nome', 'Identificação do Lote')}
               </label>
               <select
+                id="gerente-custos-lote"
                 value={selectedLoteId}
                 onChange={e => setSelectedLoteId(e.target.value)}
                 style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #CBD5E1' }}
@@ -123,19 +131,19 @@ export const GerenteCustosTab: React.FC<GerenteCustosTabProps> = ({ state, store
               {t('gerente.custos.apropriar', 'Apropriar Custos Mensais')}
             </Button>
           </div>
-        </form>
+        </QuiescentForm>
       </Card>
 
       {/* Relação de Centros de Custo Apropriados */}
       <Card elevation="flat">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>
           {t('gerente.tabs.custos', 'Apropriação de Custos')}
-        </h3>
+        </h2>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
           {state.custos.map(item => (
             <Card key={item.centro_custo} elevation="elevated" style={{ backgroundColor: '#F8FAFC' }}>
-              <h4 style={{ margin: '0 0 8px', fontSize: '1rem', color: '#334155' }}>{item.centro_custo}</h4>
+              <h3 style={{ margin: '0 0 8px', fontSize: '1rem', color: '#334155' }}>{item.centro_custo}</h3>
               <p style={{ margin: 0, fontSize: '1.4rem', fontWeight: 700, color: '#0F172A' }}>
                 <span>R$ {item.valor.toLocaleString()}</span>
               </p>

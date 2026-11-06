@@ -1,20 +1,21 @@
+import { applyModuleCommand } from '@consubov/domain-projection/capataz';
 /**
  * Store Durável Particionado do Módulo Capataz (Local-First + Offline)
- * Particionado estritamente pela chave canônica:
- *   ${tenantId}:${userId}:${fazendaId}:${profileId}
+ * Particionado pelo ModuleExecutionContext e pelo LocalDataAPI autorizado do Shell.
  * Gerencia pastos, cochos, lotes, fotos locais dissociadas, contagens,
  * outbox append-only com Web Locks, Circuit Breaker e resolução de conflitos sem LWW.
  */
 
 import {
   AtomicCommandEnvelope,
-  AttachmentRef,
   LancamentoCochoPayload,
   ContagemRebanhoPayload,
   LeituraPastoPayload,
   FotoCochoPayload,
-  UserProfileId,
-  ProductId
+  type AttachmentRef,
+  type LocalMutation,
+  type ModuleExecutionContext,
+  type ModuleLocalDataAPI
 } from '@consubov/contracts';
 import {
   startLeaderElection,
@@ -124,6 +125,7 @@ export interface CapatazState {
   circuitState: CircuitState;
   quotaExceededError: string | null;
   baseVersions: Record<string, number>;
+  localRevision: number;
 }
 
 export class StorageQuotaExceededError extends Error {
@@ -135,17 +137,22 @@ export class StorageQuotaExceededError extends Error {
 
 export class CapatazStore {
   private partitionKey: string;
-  private storageKey: string;
+  private context: ModuleExecutionContext;
+  private localData: ModuleLocalDataAPI;
   private state: CapatazState;
+  private mutationQueue: Promise<void> = Promise.resolve();
+  public readonly ready: Promise<void>;
+  private hydrationFailed = false;
   private leaderController: LeaderElectionController | null = null;
   private syncChannel: SyncChannelController | null = null;
   private circuitBreaker: SyncCircuitBreaker;
   private listeners: Set<() => void> = new Set();
   private simulateQuotaFailure = false;
 
-  constructor(partitionKey = 'consubov:tenant-default:user-capataz:fazenda-01:capataz') {
-    this.partitionKey = partitionKey;
-    this.storageKey = `consubov:capataz:${partitionKey}`;
+  constructor(context: ModuleExecutionContext, localData: ModuleLocalDataAPI) {
+    this.context = context;
+    this.localData = localData;
+    this.partitionKey = getCapatazPartitionKey(context);
     this.circuitBreaker = new SyncCircuitBreaker({
       failureThreshold: 1,
       cooldownPeriodMs: 15000,
@@ -155,7 +162,14 @@ export class CapatazStore {
       }
     });
 
-    this.state = this.loadInitialState();
+    this.state = this.createInitialState();
+    this.ready = this.hydrate().catch(error => {
+      this.reportStorageError(error);
+      throw error;
+    });
+    // Keep the rejection available to callers without letting a startup read failure
+    // become an unhandled rejection before the view or first mutation awaits `ready`.
+    void this.ready.catch(() => undefined);
     this.initCrossTabCoordination();
   }
 
@@ -170,179 +184,132 @@ export class CapatazStore {
     this.syncChannel = createSyncMessagingChannel(this.partitionKey);
     this.syncChannel.onMessage((msg: SyncMessage) => {
       if (msg.type === 'OUTBOX_UPDATED' || msg.type === 'SYNC_COMPLETED') {
-        // Recarrega estado persistido por outra aba
-        const refreshed = this.loadFromStorage();
-        if (refreshed) {
-          this.state = {
-            ...refreshed,
-            isLeader: this.state.isLeader,
-            circuitState: this.circuitBreaker.getState()
-          };
-          this.notify();
-        }
+        // Queue cross-tab reads with local writes so an older snapshot cannot replace
+        // state committed by a mutation in this tab.
+        this.enqueueHydration();
       }
     });
   }
 
-  private loadInitialState(): CapatazState {
-    const loaded = this.loadFromStorage();
-    if (loaded) {
-      return loaded;
-    }
-
-    return {
-      pastos: [
-        {
-          pasto_id: 'pasto-01',
-          nome_pasto: 'Pasto 01 - Mombaça Sede',
-          setor: 'Sede',
-          qr_code_esperado: 'PASTO-01-MOMBACA-SEDE',
-          lote_id: 'lote-recria-01',
-          lote_nome: 'Lote Recria 01 (Nelore)',
-          cocho_id: 'cocho-pasto-01',
-          status_cocho: 'limpo',
-          altura_media_cm: 65
-        },
-        {
-          pasto_id: 'pasto-02',
-          nome_pasto: 'Pasto 02 - Braquiária Baixada',
-          setor: 'Baixada',
-          qr_code_esperado: 'PASTO-02-BRAQUIARIA-BX',
-          lote_id: 'lote-terminacao-02',
-          lote_nome: 'Lote Terminação 02 (Cruzamento Industrial)',
-          cocho_id: 'cocho-pasto-02',
-          status_cocho: 'com_sobra',
-          altura_media_cm: 38
-        },
-        {
-          pasto_id: 'pasto-03',
-          nome_pasto: 'Pasto 03 - Piatã Piquete Sul',
-          setor: 'Retiro Sul',
-          qr_code_esperado: 'PASTO-03-PIATA-SUL',
-          lote_id: 'lote-novilhas-03',
-          lote_nome: 'Lote Novilhas 03 (Fêmeas Precoces)',
-          cocho_id: 'cocho-pasto-03',
-          status_cocho: 'limpo',
-          altura_media_cm: 45
-        },
-        {
-          pasto_id: 'pasto-04',
-          nome_pasto: 'Pasto 04 - Mombaça Confinamento',
-          setor: 'Confinamento',
-          qr_code_esperado: 'PASTO-04-MOMBACA-CONF',
-          lote_id: 'lote-boi-gordo-04',
-          lote_nome: 'Lote Boi Gordo 04 (Giro Rápido)',
-          cocho_id: 'cocho-pasto-04',
-          status_cocho: 'limpo',
-          altura_media_cm: 72
-        }
-      ],
-      lotes: [
-        {
-          lote_id: 'lote-recria-01',
-          nome_lote: 'Lote Recria 01 (Nelore)',
-          categoria: 'Garrotes Nelore',
-          quantidade_cabecas: 120,
-          peso_medio_kg: 345
-        },
-        {
-          lote_id: 'lote-terminacao-02',
-          nome_lote: 'Lote Terminação 02 (Cruzamento Industrial)',
-          categoria: 'Bois Angus x Nelore',
-          quantidade_cabecas: 95,
-          peso_medio_kg: 480
-        },
-        {
-          lote_id: 'lote-novilhas-03',
-          nome_lote: 'Lote Novilhas 03 (Fêmeas Precoces)',
-          categoria: 'Novilhas Nelore',
-          quantidade_cabecas: 80,
-          peso_medio_kg: 310
-        },
-        {
-          lote_id: 'lote-boi-gordo-04',
-          nome_lote: 'Lote Boi Gordo 04 (Giro Rápido)',
-          categoria: 'Boi Gordo 18+',
-          quantidade_cabecas: 110,
-          peso_medio_kg: 535
-        }
-      ],
-      produtos: [
-        {
-          produto_id: 'prod-sal-mineral-80',
-          nome_produto: 'Sal Mineral Fosfatado 80',
-          tipo: 'sal_mineral',
-          peso_saco_padrao_kg: 25
-        },
-        {
-          produto_id: 'prod-proteinado-aguas',
-          nome_produto: 'Suplemento Proteinado Águas 0.1%',
-          tipo: 'proteinado',
-          peso_saco_padrao_kg: 30
-        },
-        {
-          produto_id: 'prod-racao-terminacao-22',
-          nome_produto: 'Ração de Terminação Alta Energia 22%',
-          tipo: 'racao_terminacao',
-          peso_saco_padrao_kg: 40
-        }
-      ],
-      leiturasCocho: [],
-      leiturasQr: [],
-      contagens: [],
-      fotos: {},
-      outbox: [],
-      syncedCommands: [],
-      conflitos: [],
-      isLeader: false,
-      circuitState: 'CLOSED',
-      quotaExceededError: null,
-      baseVersions: {
-        'pasto-01': 1,
-        'pasto-02': 1,
-        'pasto-03': 1,
-        'pasto-04': 1
+  private enqueueHydration(): void {
+    const operation = this.mutationQueue.then(async () => {
+      await this.ready;
+      await this.hydrate();
+    });
+    this.mutationQueue = operation.then(
+      () => undefined,
+      error => {
+        this.reportStorageError(error);
       }
+    );
+  }
+
+  private createInitialState(): CapatazState {
+    return {
+      pastos: [], lotes: [], produtos: [], leiturasCocho: [], leiturasQr: [], contagens: [], fotos: {},
+      outbox: [], syncedCommands: [], conflitos: [], isLeader: false, circuitState: 'CLOSED',
+      quotaExceededError: null, localRevision: 0, baseVersions: {}
     };
   }
 
-  private loadFromStorage(): CapatazState | null {
-    if (typeof localStorage !== 'undefined') {
-      try {
-        const raw = localStorage.getItem(this.storageKey);
-        if (raw) {
-          return JSON.parse(raw);
+  private async hydrate(): Promise<void> {
+    try {
+      const [snapshots, pending] = await Promise.all([
+        this.localData.listSnapshots(),
+        this.localData.listPendingCommands(500)
+      ]);
+      const loaded = snapshots
+        .map(snapshot => snapshot.data as Partial<CapatazState>)
+        .filter((data): data is CapatazState => Array.isArray(data.pastos) && Array.isArray(data.lotes) && Array.isArray(data.produtos) &&
+          Array.isArray(data.leiturasCocho) && Array.isArray(data.leiturasQr) && Array.isArray(data.contagens) &&
+          Array.isArray(data.syncedCommands) && Array.isArray(data.conflitos) &&
+          Boolean(data.fotos && typeof data.fotos === 'object') && Boolean(data.baseVersions && typeof data.baseVersions === 'object') && Number.isSafeInteger(data.localRevision) && Number(data.localRevision) >= 0)
+        .sort((a, b) => b.localRevision - a.localRevision)[0];
+      if (loaded && Array.isArray(loaded.pastos) && Array.isArray(loaded.lotes)) {
+        const fotos = { ...loaded.fotos };
+        for (const [attachmentId, metadata] of Object.entries(fotos)) {
+          const stored = await this.localData.readAttachment(attachmentId);
+          if (!stored) throw new Error(`Foto ${attachmentId} referencia um anexo ausente no armazenamento local.`);
+          fotos[attachmentId] = { ...metadata, blob: stored.blob, dataUrl: '' };
         }
-      } catch {
-        // Fallback
+        this.state = {
+          ...this.state,
+          ...loaded,
+          fotos,
+          outbox: pending.map(item => item.command),
+          isLeader: this.state.isLeader,
+          circuitState: this.circuitBreaker.getState(),
+          quotaExceededError: null
+        };
+      } else {
+        throw new Error('Dados locais ausentes ou inválidos. Conecte-se e autentique-se novamente para preparar o aplicativo.');
       }
+      this.notify();
+      this.hydrationFailed = false;
+    } catch (error) {
+      this.hydrationFailed = true;
+      this.state = this.createInitialState();
+      this.notify();
+      throw error;
     }
-    return null;
   }
 
-  private saveToStorage(): void {
-    if (this.simulateQuotaFailure) {
-      this.state.quotaExceededError = 'StorageQuotaExceededError: Espaço de disco local esgotado (LF-003).';
-      this.notify();
-      throw new StorageQuotaExceededError('Erro simulado de quota de armazenamento local esgotada.');
-    }
+  private async commitCommand<T>(command: AtomicCommandEnvelope<T>, attachments: LocalMutation<T>['attachments'] = []): Promise<void> {
+    if (this.simulateQuotaFailure) throw new StorageQuotaExceededError('Erro simulado de quota de armazenamento local esgotada.');
+    const { fotos, ...snapshotState } = this.state;
+    const persistedPhotos = Object.fromEntries(Object.entries(fotos).map(([id, photo]) => {
+      const { blob: _blob, dataUrl: _dataUrl, ...metadata } = photo;
+      return [id, metadata];
+    }));
+    const persistedState = { ...snapshotState, fotos: persistedPhotos, outbox: [] };
+    const mutation: LocalMutation<T> = {
+      expectedModuleRevision: this.state.localRevision - 1,
+      command,
+      snapshot: {
+        aggregateType: command.aggregate_type,
+        aggregateId: command.aggregate_id,
+        version: command.base_version + 1,
+        data: persistedState,
+        modifiedAt: command.occurred_at_local
+      },
+      attachments
+    };
+    await this.localData.commitMutation(mutation);
+  }
 
-    if (typeof localStorage !== 'undefined') {
+  private reportStorageError(error: unknown): void {
+    const name = error instanceof Error ? error.name : 'LocalDataError';
+    const message = error instanceof Error ? error.message : String(error);
+    const quotaFailure = name === 'QuotaExceededError' || name === 'StorageQuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED' || /quota/i.test(message);
+    this.state.quotaExceededError = quotaFailure
+      ? `StorageQuotaExceededError: ${message || 'Limite de armazenamento local atingido.'}`
+      : `Falha ao salvar dados locais (${name}): ${message}`;
+    this.notify();
+  }
+
+  private mutate<T, P>(action: () => Promise<{ result: T; command: AtomicCommandEnvelope<P>; attachments?: LocalMutation<P>['attachments'] }> | { result: T; command: AtomicCommandEnvelope<P>; attachments?: LocalMutation<P>['attachments'] }): Promise<T> {
+    const operation = this.mutationQueue.then(async () => {
+      await this.ready;
+      if (this.hydrationFailed) throw new Error('Dados locais indisponíveis; alteração não gravada.');
+      const previous = this.state;
+      this.state = structuredClone(previous);
       try {
-        localStorage.setItem(this.storageKey, JSON.stringify(this.state));
+        const mutation = await action();
+        this.state.localRevision = previous.localRevision + 1;
+        await this.commitCommand(mutation.command, mutation.attachments as LocalMutation<P>['attachments'] | undefined);
         this.state.quotaExceededError = null;
-      } catch (err: any) {
-        if (
-          err?.name === 'QuotaExceededError' ||
-          err?.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
-          err?.message?.includes('quota')
-        ) {
-          this.state.quotaExceededError = 'StorageQuotaExceededError: Limite de armazenamento local atingido.';
-          this.notify();
-          throw new StorageQuotaExceededError();
-        }
+        this.notify();
+        this.syncChannel?.postMessage('OUTBOX_UPDATED', { pendingCount: this.state.outbox.length, command_id: mutation.command.command_id });
+        return mutation.result;
+      } catch (error) {
+        this.state = previous;
+        if (error instanceof Error && /Estado local desatualizado/.test(error.message)) await this.hydrate();
+        this.reportStorageError(error);
+        throw error;
       }
-    }
+    });
+    this.mutationQueue = operation.then(() => undefined, () => undefined);
+    return operation;
   }
 
   getState(): CapatazState {
@@ -365,6 +332,12 @@ export class CapatazStore {
     this.simulateQuotaFailure = shouldFail;
   }
 
+  public refreshFromLocalData(): Promise<void> {
+    const operation = this.mutationQueue.then(() => this.hydrate());
+    this.mutationQueue = operation.then(() => undefined, () => undefined);
+    return operation;
+  }
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => {
@@ -383,12 +356,11 @@ export class CapatazStore {
   }
 
   private parsePartitionClaims() {
-    const parts = this.partitionKey.split(':');
     return {
-      tenant_id: parts[0] || 'tenant-default',
-      user_id: parts[1] || 'user-capataz',
-      fazenda_id: parts[2] || 'fazenda-01',
-      profile_id: (parts[3] || 'capataz') as UserProfileId
+      tenant_id: this.context.tenantId,
+      user_id: this.context.userId,
+      fazenda_id: this.context.farmId,
+      profile_id: this.context.profileId
     };
   }
 
@@ -417,11 +389,11 @@ export class CapatazStore {
       base_version: currentVersion,
       user_id: claims.user_id,
       tenant_id: claims.tenant_id,
-      product_id: 'consubov' as ProductId,
+      product_id: this.context.productId,
       fazenda_id: claims.fazenda_id,
-      retiro_id: null,
+      retiro_id: this.context.retreatId,
       profile_id: claims.profile_id,
-      device_id: 'device-capataz-pwa',
+      device_id: this.context.deviceId,
       schema_version: 1,
       payload,
       correlation_id: commandId,
@@ -452,7 +424,8 @@ export class CapatazStore {
     foto_attachment_id?: string;
     justificativa_falha_qr?: string;
     observacao?: string;
-  }): { envelope: AtomicCommandEnvelope<LancamentoCochoPayload>; leitura: LeituraCochoRecord } {
+  }): Promise<{ envelope: AtomicCommandEnvelope<LancamentoCochoPayload>; leitura: LeituraCochoRecord }> {
+    return this.mutate(async () => {
     const now = new Date().toISOString();
 
     const payload: LancamentoCochoPayload = {
@@ -469,16 +442,9 @@ export class CapatazStore {
       observacao: params.observacao
     };
 
-    const attachmentRefs: AttachmentRef[] = [];
-    if (params.foto_attachment_id) {
-      attachmentRefs.push({
-        attachment_id: params.foto_attachment_id,
-        mime_type: 'image/jpeg',
-        size_bytes: 150000,
-        hash_sha256: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-        local_blob_ref: `local-blob-${params.foto_attachment_id}`
-      });
-    }
+    const storedAttachment = params.foto_attachment_id ? await this.localData.readAttachment(params.foto_attachment_id) : null;
+    if (params.foto_attachment_id && !storedAttachment) throw new Error('A foto vinculada não está disponível no armazenamento local.');
+    const attachmentRefs: AttachmentRef[] = storedAttachment ? [storedAttachment.ref] : [];
 
     const envelope = this.createEnvelope<LancamentoCochoPayload>(
       'capataz.cocho.registrar_escore',
@@ -488,34 +454,15 @@ export class CapatazStore {
       attachmentRefs
     );
 
-    const leitura: LeituraCochoRecord = {
-      leitura_id: `leit-${Date.now()}`,
-      pasto_id: params.pasto_id,
-      lote_id: params.lote_id,
-      produto_id: params.produto_id,
-      escore_cocho: params.escore_cocho,
-      sacos_fornecidos: params.sacos_fornecidos,
-      peso_saco_kg: params.peso_saco_kg || 25,
-      cocho_limpo: params.cocho_limpo ?? true,
-      foto_attachment_id: params.foto_attachment_id,
-      justificativa_falha_qr: params.justificativa_falha_qr,
-      observacao: params.observacao,
-      registrado_em: now
+    this.state = applyModuleCommand('capataz', this.state, envelope);
+    const leitura = this.state.leiturasCocho[0]!;
+
+    return {
+      result: { envelope, leitura },
+      command: envelope,
+      attachments: storedAttachment ? [{ ref: storedAttachment.ref, blob: storedAttachment.blob }] : []
     };
-
-    this.state.leiturasCocho.unshift(leitura);
-
-    // Atualiza status do pasto local
-    const pasto = this.state.pastos.find(p => p.pasto_id === params.pasto_id);
-    if (pasto) {
-      pasto.status_cocho = params.escore_cocho === 0 ? 'lambido' : params.escore_cocho <= 2 ? 'limpo' : 'com_sobra';
-    }
-
-    this.saveToStorage();
-    this.syncChannel?.postMessage('OUTBOX_UPDATED', { pendingCount: this.state.outbox.length, command_id: envelope.command_id });
-    this.notify();
-
-    return { envelope, leitura };
+    });
   }
 
   /**
@@ -530,7 +477,8 @@ export class CapatazStore {
     condicao_cocho?: 'otimo' | 'bom' | 'danificado' | 'precisa_reparo';
     justificativa_falha_qr?: string;
     foto_attachment_id?: string;
-  }): { envelope: AtomicCommandEnvelope<LeituraPastoPayload>; leitura: LeituraQrRecord } {
+  }): Promise<{ envelope: AtomicCommandEnvelope<LeituraPastoPayload>; leitura: LeituraQrRecord }> {
+    return this.mutate(async () => {
     const now = new Date().toISOString();
 
     const payload: LeituraPastoPayload = {
@@ -540,20 +488,14 @@ export class CapatazStore {
       condicao_aguada: params.condicao_aguada || 'boa',
       condicao_cocho: params.condicao_cocho || 'bom',
       qr_code_lido: params.qr_code_lido,
+      justificativa_falha_qr: params.justificativa_falha_qr,
       data_leitura: now,
       foto_attachment_id: params.foto_attachment_id
     };
 
-    const attachmentRefs: AttachmentRef[] = [];
-    if (params.foto_attachment_id) {
-      attachmentRefs.push({
-        attachment_id: params.foto_attachment_id,
-        mime_type: 'image/jpeg',
-        size_bytes: 150000,
-        hash_sha256: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-        local_blob_ref: `local-blob-${params.foto_attachment_id}`
-      });
-    }
+    const storedAttachment = params.foto_attachment_id ? await this.localData.readAttachment(params.foto_attachment_id) : null;
+    if (params.foto_attachment_id && !storedAttachment) throw new Error('A foto vinculada não está disponível no armazenamento local.');
+    const attachmentRefs: AttachmentRef[] = storedAttachment ? [storedAttachment.ref] : [];
 
     const envelope = this.createEnvelope<LeituraPastoPayload>(
       'capataz.pasto.leitura_qr',
@@ -563,30 +505,15 @@ export class CapatazStore {
       attachmentRefs
     );
 
-    const leitura: LeituraQrRecord = {
-      leitura_id: `qr-leit-${Date.now()}`,
-      pasto_id: params.pasto_id,
-      qr_code_lido: params.qr_code_lido,
-      altura_media_cm: params.altura_media_cm,
-      escore_massa_forragem: params.escore_massa_forragem,
-      condicao_aguada: params.condicao_aguada,
-      condicao_cocho: params.condicao_cocho,
-      justificativa_falha_qr: params.justificativa_falha_qr,
-      data_leitura: now
+    this.state = applyModuleCommand('capataz', this.state, envelope);
+    const leitura = this.state.leiturasQr[0]!;
+
+    return {
+      result: { envelope, leitura },
+      command: envelope,
+      attachments: storedAttachment ? [{ ref: storedAttachment.ref, blob: storedAttachment.blob }] : []
     };
-
-    this.state.leiturasQr.unshift(leitura);
-
-    const pasto = this.state.pastos.find(p => p.pasto_id === params.pasto_id);
-    if (pasto) {
-      pasto.altura_media_cm = params.altura_media_cm;
-    }
-
-    this.saveToStorage();
-    this.syncChannel?.postMessage('OUTBOX_UPDATED', { pendingCount: this.state.outbox.length, command_id: envelope.command_id });
-    this.notify();
-
-    return { envelope, leitura };
+    });
   }
 
   /**
@@ -600,7 +527,8 @@ export class CapatazStore {
     quantidade_mortos?: number;
     causa_mortalidade?: string;
     observacoes?: string;
-  }): { envelope: AtomicCommandEnvelope<ContagemRebanhoPayload>; contagem: ContagemRecord } {
+  }): Promise<{ envelope: AtomicCommandEnvelope<ContagemRebanhoPayload>; contagem: ContagemRecord }> {
+    return this.mutate(async () => {
     const now = new Date().toISOString();
 
     const payload: ContagemRebanhoPayload = {
@@ -621,46 +549,34 @@ export class CapatazStore {
       payload
     );
 
-    const contagem: ContagemRecord = {
-      contagem_id: `cont-${Date.now()}`,
-      pasto_id: params.pasto_id,
-      lote_id: params.lote_id,
-      quantidade_cabecas: params.quantidade_cabecas,
-      quantidade_bezerros: params.quantidade_bezerros || 0,
-      quantidade_mortos: params.quantidade_mortos || 0,
-      causa_mortalidade: params.causa_mortalidade,
-      observacoes: params.observacoes,
-      data_contagem: now
-    };
+    this.state = applyModuleCommand('capataz', this.state, envelope);
+    const contagem = this.state.contagens[0]!;
 
-    this.state.contagens.unshift(contagem);
-
-    const lote = this.state.lotes.find(l => l.lote_id === params.lote_id);
-    if (lote) {
-      lote.quantidade_cabecas = params.quantidade_cabecas;
-    }
-
-    this.saveToStorage();
-    this.syncChannel?.postMessage('OUTBOX_UPDATED', { pendingCount: this.state.outbox.length, command_id: envelope.command_id });
-    this.notify();
-
-    return { envelope, contagem };
+    return { result: { envelope, contagem }, command: envelope };
+    });
   }
 
   /**
    * 4. ANEXAR FOTO DE COCHO DISSOCIADA
    */
-  anexarFotoCocho(photo: CompressedPhotoResult): { envelope: AtomicCommandEnvelope<FotoCochoPayload> } {
+  anexarFotoCocho(photo: CompressedPhotoResult): Promise<{ envelope: AtomicCommandEnvelope<FotoCochoPayload> }> {
+    return this.mutate(async () => {
     const now = new Date().toISOString();
+    if (!photo.blob) throw new Error('A foto comprimida não possui dados binários para armazenamento.');
+    const hashBuffer = await crypto.subtle.digest('SHA-256', await photo.blob.arrayBuffer());
+    const hashSha256 = Array.from(new Uint8Array(hashBuffer), byte => byte.toString(16).padStart(2, '0')).join('');
 
-    // 1. Armazena a imagem comprimida no store de fotos local
-    this.state.fotos[photo.attachment_id] = photo;
-
-    // 2. Cria comando de metadados dissociado
+    // Binary bytes and durable compression metadata commit with the same command.
     const payload: FotoCochoPayload = {
       pasto_id: photo.pastoId || 'pasto-01',
       cocho_id: photo.cochoId || 'cocho-pasto-01',
       foto_attachment_id: photo.attachment_id,
+      photo_metadata: {
+        originalSizeBytes: photo.originalSizeBytes, compressedSizeBytes: photo.compressedSizeBytes,
+        width: photo.width, height: photo.height, compressionRatioPct: photo.compressionRatioPct,
+        mimeType: photo.mimeType, pastoId: photo.pastoId, cochoId: photo.cochoId,
+        tipoRegistro: photo.tipoRegistro, createdAt: photo.createdAt
+      },
       tipo_registro: (photo.tipoRegistro as any) || 'leitura_matutina',
       escore_estimado: 2,
       registrado_em: now
@@ -669,9 +585,9 @@ export class CapatazStore {
     const attachmentRefs: AttachmentRef[] = [
       {
         attachment_id: photo.attachment_id,
-        mime_type: photo.mimeType,
-        size_bytes: photo.compressedSizeBytes,
-        hash_sha256: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+        mime_type: photo.blob.type || photo.mimeType,
+        size_bytes: photo.blob.size,
+        hash_sha256: hashSha256,
         local_blob_ref: `local-blob-${photo.attachment_id}`
       }
     ];
@@ -684,11 +600,12 @@ export class CapatazStore {
       attachmentRefs
     );
 
-    this.saveToStorage();
-    this.syncChannel?.postMessage('OUTBOX_UPDATED', { pendingCount: this.state.outbox.length, command_id: envelope.command_id });
-    this.notify();
-
-    return { envelope };
+    this.state = applyModuleCommand('capataz', this.state, envelope);
+    this.state.fotos[photo.attachment_id]!.blob = photo.blob;
+    this.state.fotos[photo.attachment_id]!.dataUrl = photo.dataUrl;
+    const attachmentRef = attachmentRefs[0]!;
+    return { result: { envelope }, command: envelope, attachments: [{ ref: attachmentRef, blob: photo.blob }] };
+    });
   }
 
   /**
@@ -698,6 +615,8 @@ export class CapatazStore {
     apiEndpoint = '/api/v1/commands',
     fetchFn?: typeof fetch
   ): Promise<{ syncedCount: number; errorsCount: number; conflictCount: number }> {
+    await this.ready;
+    await this.mutationQueue;
     // 1. Proteção: Apenas a aba Líder sincroniza
     if (!this.state.isLeader) {
       return { syncedCount: 0, errorsCount: 0, conflictCount: 0 };
@@ -733,14 +652,7 @@ export class CapatazStore {
         });
 
         if (response.ok) {
-          // Sucesso 200 OK
-          this.state.outbox = this.state.outbox.filter(c => c.command_id !== cmd.command_id);
-          this.state.syncedCommands.unshift({
-            command_id: cmd.command_id,
-            synced_at: new Date().toISOString(),
-            command_type: cmd.command_type
-          });
-          syncedCount += 1;
+          // A resposta HTTP do módulo não confirma o ACK durável do shell.
           this.circuitBreaker.recordSuccess();
         } else if (response.status === 409) {
           // Conflito de Concorrência OCC 409
@@ -753,23 +665,17 @@ export class CapatazStore {
           });
 
           if (resolution.strategy === 'ADDITIVE_MERGE' && resolution.resolved) {
-            // Merge Aditivo para Cocho: resolvido automaticamente sem LWW
-            this.state.outbox = this.state.outbox.filter(c => c.command_id !== cmd.command_id);
-            this.state.syncedCommands.unshift({
-              command_id: cmd.command_id,
-              synced_at: new Date().toISOString(),
-              command_type: cmd.command_type
-            });
-            syncedCount += 1;
+            // O comando permanece pendente até o ACK persistente do shell.
           } else {
-            // OCC físico: move para lista de conflitos retidos
-            this.state.outbox = this.state.outbox.filter(c => c.command_id !== cmd.command_id);
-            this.state.conflitos.push({
-              command: cmd,
-              detectedAt: new Date().toISOString(),
-              reason: resolution.message,
-              serverVersion: conflictData.server_version
-            });
+            // A avaliação do conflito não confirma a remoção da outbox local.
+            if (!this.state.conflitos.some(item => item.command.command_id === cmd.command_id)) {
+              this.state.conflitos.push({
+                command: cmd,
+                detectedAt: new Date().toISOString(),
+                reason: resolution.message,
+                serverVersion: conflictData.server_version
+              });
+            }
             this.syncChannel?.postMessage('CONFLICT_DETECTED', {
               commandId: cmd.command_id,
               error: resolution.message
@@ -792,7 +698,6 @@ export class CapatazStore {
       }
     }
 
-    this.saveToStorage();
     this.syncChannel?.postMessage('SYNC_COMPLETED', { syncedCount });
     this.notify();
 
@@ -821,7 +726,6 @@ export class CapatazStore {
 
     // Remove da lista de conflitos pendentes
     this.state.conflitos.splice(conflictIndex, 1);
-    this.saveToStorage();
     this.notify();
   }
 
@@ -835,11 +739,26 @@ export class CapatazStore {
 // Singleton Map de stores por partição
 const storesMap: Map<string, CapatazStore> = new Map();
 
+function getCapatazPartitionKey(context: ModuleExecutionContext): string {
+  return JSON.stringify([
+    context.productId,
+    context.moduleId,
+    context.profileId,
+    context.userId,
+    context.tenantId,
+    context.farmId,
+    context.retreatId,
+    context.deviceId
+  ]);
+}
+
 export function getCapatazStore(
-  partitionKey = 'consubov:tenant-default:user-capataz:fazenda-01:capataz'
+  context: ModuleExecutionContext,
+  localData: ModuleLocalDataAPI
 ): CapatazStore {
+  const partitionKey = getCapatazPartitionKey(context);
   if (!storesMap.has(partitionKey)) {
-    storesMap.set(partitionKey, new CapatazStore(partitionKey));
+    storesMap.set(partitionKey, new CapatazStore(context, localData));
   }
   return storesMap.get(partitionKey)!;
 }

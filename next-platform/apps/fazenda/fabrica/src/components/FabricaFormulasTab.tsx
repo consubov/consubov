@@ -1,3 +1,4 @@
+import { QuiescentForm } from '@consubov/ui';
 import React, { useState } from 'react';
 import { useTranslation, Card, Button, Input } from '@consubov/ui';
 import { FabricaState, FabricaStore } from '../store/fabricaStore';
@@ -27,7 +28,7 @@ export const FabricaFormulasTab: React.FC<FabricaFormulasTabProps> = ({ state, s
   const totalInclusao = (parseFloat(ing1Pct) || 0) + (parseFloat(ing2Pct) || 0) + (parseFloat(ing3Pct) || 0) + (parseFloat(ing4Pct) || 0);
   const is100Percent = Math.abs(totalInclusao - 100) < 0.01;
 
-  const handleSalvarFormula = (e: React.FormEvent) => {
+  const handleSalvarFormula = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -44,7 +45,7 @@ export const FabricaFormulasTab: React.FC<FabricaFormulasTabProps> = ({ state, s
     ];
 
     try {
-      store.salvarFormula({
+      await store.salvarFormula({
         formula_id: `form-${Date.now()}`,
         nome_formula: nomeFormula,
         tipo_raca_destino: tipoRaca,
@@ -53,6 +54,7 @@ export const FabricaFormulasTab: React.FC<FabricaFormulasTabProps> = ({ state, s
         ingredientes
       });
       setFeedbackMessage(t('fabrica.formula.success', 'Fórmula nutricional salva no catálogo!'));
+      return true;
     } catch (err: any) {
       setErrorMessage(err.message);
     }
@@ -74,11 +76,11 @@ export const FabricaFormulasTab: React.FC<FabricaFormulasTabProps> = ({ state, s
 
       {/* Formulário de Nova Fórmula */}
       <Card elevation="elevated">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
           {t('fabrica.formula.newTitle', 'Cadastrar Nova Fórmula')}
-        </h3>
+        </h2>
 
-        <form onSubmit={handleSalvarFormula} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <QuiescentForm onSubmit={handleSalvarFormula} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <Input
               label={t('fabrica.formula.name', 'Nome da Fórmula')}
@@ -99,9 +101,9 @@ export const FabricaFormulasTab: React.FC<FabricaFormulasTabProps> = ({ state, s
           {/* Composição Percentual com Validação Matemática */}
           <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#334155' }}>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#334155' }}>
                 {t('fabrica.formula.ingredients', 'Composição de Ingredientes')}
-              </h4>
+              </h3>
 
               <span
                 style={{
@@ -157,19 +159,19 @@ export const FabricaFormulasTab: React.FC<FabricaFormulasTabProps> = ({ state, s
               {t('fabrica.formula.salvar', 'Salvar Fórmula Nutricional')}
             </Button>
           </div>
-        </form>
+        </QuiescentForm>
       </Card>
 
       {/* Relação de Fórmulas no Catálogo */}
       <Card elevation="flat">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>
           {t('fabrica.tabs.formulas', 'Fórmulas Nutricionais')}
-        </h3>
+        </h2>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
           {state.formulas.map(f => (
             <Card key={f.formula_id} elevation="elevated" style={{ backgroundColor: '#F8FAFC' }}>
-              <h4 style={{ margin: '0 0 6px', fontSize: '1.05rem', color: '#0F172A' }}>{f.nome_formula}</h4>
+              <h3 style={{ margin: '0 0 6px', fontSize: '1.05rem', color: '#0F172A' }}>{f.nome_formula}</h3>
               <p style={{ margin: '0 0 8px', fontSize: '0.85rem', color: '#64748B' }}>
                 <span>{t('fabrica.formula.batchSize', 'Batida Padrão (kg)')}: </span>
                 <strong>{f.tamanho_batida_padrao_kg}</strong>

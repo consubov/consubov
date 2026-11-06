@@ -52,41 +52,64 @@ describe('Gate Q3: Shell Fazendas, Login, Roteamento por Perfil, i18n & PWA', ()
   // CENÁRIO 1: AUTENTICAÇÃO DE CREDENCIAIS SINTÉTICAS LOCAIS
   // ==========================================================================
   describe('Cenário 1: Autenticação de credenciais sintéticas locais (Gerente & Capataz)', () => {
-    it('Q3.1.1: deve autenticar gerente.lab@consubov.local via API local com sucesso', async () => {
-      const res = await fetch(`${baseUrl}/api/v1/auth/login`, {
+    it('Q3.1.1: valida gerente pela API e exige seleção explícita antes de conceder contexto', async () => {
+      const login = await fetch(`${baseUrl}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: 'gerente.lab@consubov.local',
-          password: LAB_DEFAULT_PASSWORD
+          password: LAB_DEFAULT_PASSWORD,
+          device_id: 'qa-device-q3-gerente'
         })
       });
 
-      expect(res.status).toBe(200);
-      const data: any = await res.json();
-      expect(data.token).toBeDefined();
-      expect(data.token_type).toBe('Bearer');
-      expect(data.user.email).toBe('gerente.lab@consubov.local');
-      expect(data.user.primary_profile).toBe('gerente');
-      expect(data.context.profile_id).toBe('gerente');
+      expect(login.status).toBe(200);
+      const initial: any = await login.json();
+      expect(initial.session.user_email).toBe('gerente.lab@consubov.local');
+      expect(initial.session.active_context).toBeNull();
+      expect(initial.requires_context_selection).toBe(true);
+      expect(initial.tokens).toBeUndefined();
+
+      const selected = await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'gerente.lab@consubov.local', password: LAB_DEFAULT_PASSWORD,
+          device_id: 'qa-device-q3-gerente', membership_id: initial.available_memberships[0].membership_id })
+      });
+      const scoped: any = await selected.json();
+      expect(selected.status).toBe(200);
+      expect(scoped.session.active_context.profile_id).toBe('gerente');
+      expect(scoped.tokens.access_token).toBeDefined();
+      expect(scoped.session.device_id).toBe('qa-device-q3-gerente');
     });
 
-    it('Q3.1.2: deve autenticar capataz.lab@consubov.local via API local com sucesso', async () => {
-      const res = await fetch(`${baseUrl}/api/v1/auth/login`, {
+    it('Q3.1.2: exige seleção explícita de vínculo Capataz antes de emitir token', async () => {
+      const login = await fetch(`${baseUrl}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: 'capataz.lab@consubov.local',
-          password: LAB_DEFAULT_PASSWORD
+          password: LAB_DEFAULT_PASSWORD,
+          device_id: 'qa-device-q3-capataz'
         })
       });
 
-      expect(res.status).toBe(200);
-      const data: any = await res.json();
-      expect(data.token).toBeDefined();
-      expect(data.user.email).toBe('capataz.lab@consubov.local');
-      expect(data.user.primary_profile).toBe('capataz');
-      expect(data.context.profile_id).toBe('capataz');
+      expect(login.status).toBe(200);
+      const initial: any = await login.json();
+      expect(initial.session.user_email).toBe('capataz.lab@consubov.local');
+      expect(initial.session.active_context).toBeNull();
+      expect(initial.requires_context_selection).toBe(true);
+      expect(initial.tokens).toBeUndefined();
+
+      const selected = await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'capataz.lab@consubov.local', password: LAB_DEFAULT_PASSWORD,
+          device_id: 'qa-device-q3-capataz', membership_id: initial.available_memberships[0].membership_id })
+      });
+      const scoped: any = await selected.json();
+      expect(selected.status).toBe(200);
+      expect(scoped.session.active_context.profile_id).toBe('capataz');
+      expect(scoped.tokens.access_token).toBeDefined();
+      expect(scoped.session.device_id).toBe('qa-device-q3-capataz');
     });
 
     it('Q3.1.3: deve autenticar via LocalAuthService aplicando ISO-004 (Anti-First-Match)', async () => {
@@ -123,7 +146,7 @@ describe('Gate Q3: Shell Fazendas, Login, Roteamento por Perfil, i18n & PWA', ()
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: 'gerente.lab@consubov.local',
-          password: 'senha_incorreta_total'
+          password: 'senha_incorreta_total', device_id: 'qa-device-q3-invalid'
         })
       });
 
@@ -138,7 +161,7 @@ describe('Gate Q3: Shell Fazendas, Login, Roteamento por Perfil, i18n & PWA', ()
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: 'fantasma@consubov.local',
-          password: LAB_DEFAULT_PASSWORD
+          password: LAB_DEFAULT_PASSWORD, device_id: 'qa-device-q3-unknown'
         })
       });
 
@@ -153,7 +176,7 @@ describe('Gate Q3: Shell Fazendas, Login, Roteamento por Perfil, i18n & PWA', ()
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: 'inativo.lab@consubov.local',
-          password: LAB_DEFAULT_PASSWORD
+          password: LAB_DEFAULT_PASSWORD, device_id: 'qa-device-q3-inactive'
         })
       });
 
@@ -162,7 +185,21 @@ describe('Gate Q3: Shell Fazendas, Login, Roteamento por Perfil, i18n & PWA', ()
       expect(data.error).toBe('FORBIDDEN');
     });
 
-    it('Q3.2.4: deve garantir que LocalAuthService não armazene sessão em caso de rejeição', async () => {
+    it('Q3.2.4: rejeita senha ou device_id ausentes sem usar credencial padrão', async () => {
+      const noPassword = await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'gerente.lab@consubov.local', device_id: 'qa-device-q3-missing-password' })
+      });
+      expect(noPassword.status).toBe(400);
+
+      const noDevice = await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'gerente.lab@consubov.local', password: LAB_DEFAULT_PASSWORD })
+      });
+      expect(noDevice.status).toBe(400);
+    });
+
+    it('Q3.2.5: deve garantir que LocalAuthService não armazene sessão em caso de rejeição', async () => {
       const failRes = await authService.login({
         email: 'inativo.lab@consubov.local',
         password: LAB_DEFAULT_PASSWORD

@@ -42,6 +42,7 @@ export const contagemRebanhoPayloadSchema = z.object({
 
 export const leituraPastoPayloadSchema = z.object({
   pasto_id: z.string().min(1, 'ID do pasto é obrigatório'),
+  justificativa_falha_qr: z.string().max(255).optional(),
   altura_media_cm: z.number().positive('Altura do pasto deve ser positiva').max(300, 'Altura máxima de 300 cm'),
   escore_massa_forragem: z.number().int().min(1).max(5).optional(),
   condicao_aguada: z.enum(['otima', 'boa', 'regular', 'ruim', 'seca']).optional(),
@@ -61,7 +62,18 @@ export const movimentacaoLotePayloadSchema = z.object({
   responsavel_nome: z.string().min(2).max(100)
 }).strict();
 
+// Durable compression metadata travels with the photo command; binary bytes remain attachments.
+export const photoProjectionMetadataSchema = z.object({
+  originalSizeBytes: z.number().int().nonnegative(),
+  compressedSizeBytes: z.number().int().nonnegative(),
+  width: z.number().int().positive(), height: z.number().int().positive(),
+  compressionRatioPct: z.number().finite(), mimeType: z.string().min(1).max(128),
+  pastoId: z.string().min(1).optional(), cochoId: z.string().min(1).optional(),
+  tipoRegistro: z.string().max(64).optional(), createdAt: z.string().datetime()
+}).strict();
+
 export const fotoCochoPayloadSchema = z.object({
+  photo_metadata: photoProjectionMetadataSchema.optional(),
   pasto_id: z.string().min(1, 'ID do pasto é obrigatório'),
   cocho_id: z.string().min(1).optional(),
   foto_attachment_id: z.string().min(1, 'ID do anexo de foto é obrigatório'),

@@ -21,6 +21,8 @@
     "paths": {
       "@consubov/contracts": ["./packages/contracts/src/index.ts"],
       "@consubov/contracts/*": ["./packages/contracts/src/*"],
+      "@consubov/domain-projection": ["./packages/domain-projection/src/index.ts"],
+      "@consubov/domain-projection/*": ["./packages/domain-projection/src/*"],
       "@consubov/ui": ["./packages/ui/src/index.ts"],
       "@consubov/ui/*": ["./packages/ui/src/*"],
       "@consubov/auth-client": ["./packages/auth-client/src/index.ts"],

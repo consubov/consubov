@@ -1,0 +1,1426 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "CONSUBOV F23 local laboratory HTTP API",
+    "version": "1.0.0",
+    "description": "Implemented local laboratory API: synthetic selected-context grants, transactional process-memory domain projections, stable idempotent ACK, scoped incremental full-module pull and validated image attachments. No production provider, durable server storage or remote database."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:3333",
+      "description": "Local synthetic laboratory only; a future remote service requires HTTPS."
+    }
+  ],
+  "x-implementation-status": "LOCAL_LAB_ONLY",
+  "x-router-behavior": {
+    "options": "All paths OPTIONS 204 with wildcard CORS. Exact command/auth/sync/audit routes; attachment route has one ID segment. Wrong methods rejected; unknown suffixes return404. CORS is not an authorization boundary.",
+    "security": "Bearer synthetic JWT only; no remote auth/provider. CORS is not an authorization boundary."
+  },
+  "x-planned-t04": {
+    "status": "LOCAL_HANDLERS_IMPLEMENTED_TESTED",
+    "future": "Durable central adapter, production identity provider, real remote endpoints and persistent storage remain PROPOSED and are not implemented."
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "operationId": "getHealth",
+        "x-implementation-status": "IMPLEMENTED_LOCAL",
+        "responses": {
+          "200": {
+            "description": "Process health",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "loginSyntheticAccount",
+        "x-implementation-status": "IMPLEMENTED_SYNTHETIC",
+        "description": "Email is trimmed/lowercased; device_id trimmed, 1..128. membership_id is optional; without selection returns session with null active_context and no tokens. Selecting an owned active membership returns 24-hour lab bearer and empty refresh_token. Unknown input fields are ignored.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Synthetic session; tokens only for selected membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Local handler error; see error code and optional details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Local handler error; see error code and optional details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Local handler error; see error code and optional details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unsupported auth path or method.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/commands": {
+      "post": {
+        "operationId": "submitCommandToLocalLedger",
+        "x-implementation-status": "IMPLEMENTED_IN_MEMORY",
+        "security": [
+          {
+            "LabBearer": []
+          }
+        ],
+        "description": "Bearer verified before parsing. Current server-issued session, active membership, full account/device/product/tenant/farm/retreat/profile scope, sync.push capability and RBAC required. Only supported domain-projection commands apply. Atomic projection/version/command/ACK/event commit; immutable identical retry returns original ACK unchanged. Changed payload, ID or key returns409 without mutation. Every referenced attachment must already be verified and persisted. Process-memory lifetime only.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtomicCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandApiResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandApiResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sync": {
+      "get": {
+        "operationId": "pullAuthorizedModuleProjection",
+        "x-implementation-status": "IMPLEMENTED_IN_MEMORY",
+        "security": [
+          {
+            "LabBearer": []
+          }
+        ],
+        "description": "GET exact route only. All scope comes from current server-issued grant. Query identity must match token. Cursor is opaque and bound to account, device, session and server lifetime; unknown/cross-context/restarted cursor returns400 INVALID_CURSOR. Request without cursor starts replay. Changes since the cursor coalesce into the latest COMPLETE module-state/bootstrap projections, not command payloads; version is monotonic server module revision, separate from local CAS. At most one latest complete delta is returned, has_more is false; old full snapshots are not replayed after newer login seeds. attachment_refs contains exact photo refs for this snapshot. Clients defer full-state application and cursor advancement while any local outbox is pending. No generic merge/LWW.",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fazenda_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "profile_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "since_cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncPull"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/audit": {
+      "get": {
+        "operationId": "queryLocalAuditLedger",
+        "x-implementation-status": "IMPLEMENTED_IN_MEMORY",
+        "security": [
+          {
+            "LabBearer": []
+          }
+        ],
+        "description": "Active server-issued administrador grant with audit:view capability required. Reads only local process-memory audit records; no production audit service.",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "profile_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "command_type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Filtered in-memory command records",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "logs": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/StoredCommand"
+                      }
+                    }
+                  },
+                  "required": [
+                    "total",
+                    "logs"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Local handler error; see error code and optional details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Local handler error; see error code and optional details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Local handler error; see error code and optional details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/attachments/{attachment_id}": {
+      "parameters": [
+        {
+          "name": "attachment_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "put": {
+        "operationId": "uploadVerifiedImage",
+        "x-implementation-status": "IMPLEMENTED_IN_MEMORY",
+        "security": [
+          {
+            "LabBearer": []
+          }
+        ],
+        "description": "Raw image bytes, max20MiB. Current sync.push grant required and rechecked after streaming/hash await. Enforces exact size, SHA256, MIME allowlist and image signature. Identical ID/ref/content retry succeeds; immutable ID reuse with changed metadata returns409. Scope is authorized account/module/product/tenant/farm/retreat, shared across its devices. Does not perform complete image decoding or content scanning.",
+        "parameters": [
+          {
+            "name": "X-Attachment-Size",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Attachment-Sha256",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Attachment-Local-Ref",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/webp": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentRef"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "downloadAuthorizedImage",
+        "x-implementation-status": "IMPLEMENTED_IN_MEMORY",
+        "security": [
+          {
+            "LabBearer": []
+          }
+        ],
+        "description": "Current sync.pull grant and account ACL. Other account/module/farm/retreat cannot read;404. Returns raw verified bytes, Content-Type/Length and X-Attachment-Sha256.",
+        "responses": {
+          "200": {
+            "description": "Verified image bytes",
+            "headers": {
+              "X-Attachment-Sha256": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Local response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "LabBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Synthetic JWT (lab only)"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "const": "ok"
+          },
+          "service": {
+            "const": "consubov-mock-api"
+          },
+          "version": {
+            "const": "0.1.0-incubated"
+          },
+          "environment": {
+            "const": "local_isolated_lab"
+          },
+          "uptime_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "status",
+          "service",
+          "version",
+          "environment",
+          "uptime_seconds",
+          "timestamp"
+        ]
+      },
+      "AtomicCommand": {
+        "$ref": "atomic-command.schema.json"
+      },
+      "LoginInput": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          },
+          "device_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "membership_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "device_id"
+        ]
+      },
+      "Membership": {
+        "type": "object",
+        "properties": {
+          "membership_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "tenant_nome": {
+            "type": "string"
+          },
+          "fazenda_id": {
+            "type": "string"
+          },
+          "fazenda_nome": {
+            "type": "string"
+          },
+          "retiro_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retiro_nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "profile_id": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "membership_id",
+          "tenant_id",
+          "tenant_nome",
+          "fazenda_id",
+          "fazenda_nome",
+          "retiro_id",
+          "retiro_nome",
+          "profile_id",
+          "is_active"
+        ]
+      },
+      "AuthorizedContext": {
+        "type": "object",
+        "properties": {
+          "context_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "tenant_nome": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "fazenda_id": {
+            "type": "string"
+          },
+          "fazenda_nome": {
+            "type": "string"
+          },
+          "retiro_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retiro_nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "profile_id": {
+            "type": "string"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "context_id",
+          "tenant_id",
+          "tenant_nome",
+          "product_id",
+          "fazenda_id",
+          "fazenda_nome",
+          "retiro_id",
+          "retiro_nome",
+          "profile_id",
+          "capabilities"
+        ]
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "user_name": {
+            "type": "string"
+          },
+          "user_email": {
+            "type": "string"
+          },
+          "profile_id": {
+            "type": "string"
+          },
+          "memberships": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Membership"
+            }
+          },
+          "active_context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorizedContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "device_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "user_id",
+          "user_name",
+          "user_email",
+          "profile_id",
+          "memberships",
+          "active_context",
+          "issued_at",
+          "expires_at",
+          "device_id"
+        ]
+      },
+      "TokenPair": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "refresh_token": {
+            "const": ""
+          },
+          "token_type": {
+            "const": "Bearer"
+          },
+          "expires_in": {
+            "const": 86400
+          }
+        },
+        "required": [
+          "access_token",
+          "refresh_token",
+          "token_type",
+          "expires_in"
+        ]
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "session": {
+            "$ref": "#/components/schemas/Session"
+          },
+          "available_memberships": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Membership"
+            }
+          },
+          "requires_context_selection": {
+            "type": "boolean"
+          },
+          "tokens": {
+            "$ref": "#/components/schemas/TokenPair"
+          },
+          "initial_data": {
+            "$ref": "#/components/schemas/ModuleProvisioning"
+          }
+        },
+        "required": [
+          "session",
+          "available_memberships",
+          "requires_context_selection"
+        ]
+      },
+      "ModuleProvisioning": {
+        "description": "Current authorized account projection on successful selected-context login; version is server module revision. Download and verify referenced attachment bytes before durable device provisioning. Repeated login must preserve existing pending local work.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "protocolVersion",
+          "context",
+          "snapshot"
+        ],
+        "properties": {
+          "protocolVersion": {
+            "const": 1
+          },
+          "context": {
+            "$ref": "module-protocol.schema.json#/$defs/ExecutionContext"
+          },
+          "snapshot": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "aggregateType",
+              "aggregateId",
+              "version",
+              "data",
+              "modifiedAt"
+            ],
+            "properties": {
+              "aggregateType": {
+                "const": "module-state"
+              },
+              "aggregateId": {
+                "const": "bootstrap"
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "data": {
+                "type": "object"
+              },
+              "modifiedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "attachment_refs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttachmentRef"
+            }
+          }
+        }
+      },
+      "LedgerAck": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "status": {
+            "const": "COMMITTED"
+          },
+          "aggregate_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "aggregate_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "committed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlation_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "idempotent_replay": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "command_id",
+          "status",
+          "aggregate_id",
+          "aggregate_version",
+          "committed_at",
+          "correlation_id"
+        ]
+      },
+      "StoredCommand": {
+        "type": "object",
+        "properties": {
+          "envelope": {
+            "$ref": "#/components/schemas/AtomicCommand"
+          },
+          "ack": {
+            "$ref": "#/components/schemas/LedgerAck"
+          },
+          "stored_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "envelope",
+          "ack",
+          "stored_at"
+        ]
+      },
+      "CommandConflict": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "const": "CONFLICT_409"
+          },
+          "command_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "aggregate_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "base_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "current_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "conflict_reason": {
+            "type": "string"
+          },
+          "resolution_strategy": {
+            "enum": [
+              "MANUAL_RESOLUTION_REQUIRED",
+              "RETRY_WITH_NEW_BASE_VERSION"
+            ]
+          },
+          "details": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "error",
+          "command_id",
+          "aggregate_id",
+          "base_version",
+          "current_version",
+          "conflict_reason",
+          "resolution_strategy"
+        ]
+      },
+      "CommandValidation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "const": "UNPROCESSABLE_ENTITY_422"
+          },
+          "command_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "violations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "field": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "message": {
+                  "type": "string"
+                },
+                "code": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                }
+              },
+              "required": [
+                "field",
+                "message",
+                "code"
+              ]
+            }
+          }
+        },
+        "required": [
+          "error",
+          "command_id",
+          "violations"
+        ]
+      },
+      "CommandSecurity": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "enum": [
+              "UNAUTHORIZED_401",
+              "FORBIDDEN_403"
+            ]
+          },
+          "command_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "reason": {
+            "type": "string"
+          },
+          "required_capability": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "error",
+          "command_id",
+          "reason"
+        ]
+      },
+      "CommandApiResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "success": {
+                "const": true
+              },
+              "ack": {
+                "$ref": "#/components/schemas/LedgerAck"
+              }
+            },
+            "required": [
+              "success",
+              "ack"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "success": {
+                "const": false
+              },
+              "conflict": {
+                "$ref": "#/components/schemas/CommandConflict"
+              }
+            },
+            "required": [
+              "success",
+              "conflict"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "success": {
+                "const": false
+              },
+              "validation": {
+                "$ref": "#/components/schemas/CommandValidation"
+              }
+            },
+            "required": [
+              "success",
+              "validation"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "success": {
+                "const": false
+              },
+              "security": {
+                "$ref": "#/components/schemas/CommandSecurity"
+              }
+            },
+            "required": [
+              "success",
+              "security"
+            ]
+          }
+        ]
+      },
+      "AttachmentRef": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "attachment_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mime_type": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ]
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20971520
+          },
+          "hash_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "local_blob_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        },
+        "required": [
+          "attachment_id",
+          "mime_type",
+          "size_bytes",
+          "hash_sha256",
+          "local_blob_ref"
+        ]
+      },
+      "SyncDelta": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "delta_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "aggregate_type": {
+            "const": "module-state"
+          },
+          "aggregate_id": {
+            "const": "bootstrap"
+          },
+          "operation": {
+            "const": "UPSERT"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "data": {
+            "type": "object"
+          },
+          "modified_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "delta_id",
+          "aggregate_type",
+          "aggregate_id",
+          "operation",
+          "version",
+          "data",
+          "modified_at"
+        ]
+      },
+      "SyncPull": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "fazenda_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "next_cursor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "deltas": {
+            "type": "array",
+            "maxItems": 500,
+            "items": {
+              "$ref": "#/components/schemas/SyncDelta"
+            }
+          },
+          "server_timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "attachment_refs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttachmentRef"
+            }
+          }
+        },
+        "required": [
+          "tenant_id",
+          "fazenda_id",
+          "next_cursor",
+          "has_more",
+          "deltas",
+          "server_timestamp"
+        ]
+      }
+    }
+  }
+}

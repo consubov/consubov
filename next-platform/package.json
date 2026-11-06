@@ -27,7 +27,9 @@
     "qa:q8": "bun run qa/scripts/run-q8-gate.ts",
     "dev:api": "bun run --cwd api dev",
     "dev:shell": "bun run --cwd apps/fazenda/shell dev",
-    "dev:admin": "bun run --cwd apps/admin-global dev"
+    "dev:admin": "bun run --cwd apps/admin-global dev",
+    "build:modules": "bun run apps/fazenda/shell/scripts/build-module-artifacts.ts",
+    "serve:modules": "bun run qa/scripts/serve-module-artifacts.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2",

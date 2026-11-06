@@ -46,13 +46,16 @@ describe('Suíte Unitária: Resolução Anti-First-Match (ISO-004)', () => {
   });
 
   it('deve resolver outro vínculo quando escolhido explicitamente', () => {
-    const context = resolveActiveContext(baseSession, 'mem-multi-02-capataz');
+    const context = resolveActiveContext(baseSession, 'mem-multi-02-gerente');
 
     expect(context).not.toBeNull();
-    expect(context.profile_id).toBe('capataz');
+    expect(context.profile_id).toBe('gerente');
+    expect(context.context_id).toBe(`${multiRoleUser.memberships[1].tenant_id}:${multiRoleUser.memberships[1].fazenda_id}:gerente`);
     expect(context.fazenda_nome).toBe('Fazenda Pantanal Secundária');
-    expect(context.capabilities).toContain('offline:cocho');
-    expect(context.capabilities).toContain('offline:salga');
+    expect(context.capabilities).toContain('analytics:view');
+    expect(context.capabilities).toContain('meta:edit');
+    expect(context.capabilities).not.toContain('offline:cocho');
+    expect(context.capabilities).not.toContain('offline:salga');
   });
 
   it('deve rejeitar com UnauthorizedContextError quando membership_id for desconhecido', () => {

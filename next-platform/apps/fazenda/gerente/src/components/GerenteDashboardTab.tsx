@@ -20,9 +20,9 @@ export const GerenteDashboardTab: React.FC<GerenteDashboardTabProps> = ({
       {/* Grade de KPIs Principais */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
         <Card elevation="elevated">
-          <h3 style={{ margin: '0 0 8px', fontSize: '1.05rem', color: '#475569' }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: '1.05rem', color: '#475569' }}>
             {t('domain.gmd', 'Ganho Médio Diário (GMD)')}
-          </h3>
+          </h2>
           <p style={{ fontSize: '1.85rem', fontWeight: 800, margin: 0, color: '#15803D' }}>
             {t('gerente.dashboard.demoGmdValue', '1,45 kg/dia')}
           </p>
@@ -32,9 +32,9 @@ export const GerenteDashboardTab: React.FC<GerenteDashboardTabProps> = ({
         </Card>
 
         <Card elevation="elevated">
-          <h3 style={{ margin: '0 0 8px', fontSize: '1.05rem', color: '#475569' }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: '1.05rem', color: '#475569' }}>
             {t('domain.escore_cocho', 'Escore de Cocho')}
-          </h3>
+          </h2>
           <p style={{ fontSize: '1.85rem', fontWeight: 800, margin: 0, color: '#0369A1' }}>
             <span>{state.kpis.escoreCochoPct}%</span>
           </p>
@@ -44,9 +44,9 @@ export const GerenteDashboardTab: React.FC<GerenteDashboardTabProps> = ({
         </Card>
 
         <Card elevation="elevated">
-          <h3 style={{ margin: '0 0 8px', fontSize: '1.05rem', color: '#475569' }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: '1.05rem', color: '#475569' }}>
             {t('domain.lote', 'Lote')}
-          </h3>
+          </h2>
           <p style={{ fontSize: '1.85rem', fontWeight: 800, margin: 0, color: '#334155' }}>
             {t('gerente.dashboard.activeLotsCount', { count: String(state.lotes.length) })}
           </p>
@@ -59,15 +59,15 @@ export const GerenteDashboardTab: React.FC<GerenteDashboardTabProps> = ({
       {/* Tabela de Lotes Ativos */}
       <Card elevation="flat">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h3 style={{ margin: 0, fontSize: '1.15rem' }}>
+          <h2 style={{ margin: 0, fontSize: '1.15rem' }}>
             {t('gerente.tabs.lotes', 'Gestão de Lotes')}
-          </h3>
+          </h2>
           <Button variant="secondary" onClick={() => onNavigateTab('lotes')}>
             {t('action.search', 'Buscar...')}
           </Button>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
+        <div tabIndex={0} role="region" aria-label={t('gerente.tabs.lotes', 'Gestão de Lotes')} style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#475569' }}>

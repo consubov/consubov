@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { FAZENDA_MODULES } from '../../apps/fazenda/shell/src/router/moduleRegistry';
 import { SHELL_ROUTES, getRouteForProfile } from '../../apps/fazenda/shell/src/router/routes.config';
 import { canAccessModule, buildPartitionKey, parsePartitionKey } from '@consubov/auth-client';
@@ -6,29 +7,25 @@ import { scanFazendaModules } from '../harness/ast-literal-guard';
 import { resolve } from 'path';
 
 describe('Q4.4: Roteamento Lazy no Shell, Registro de Módulos, RBAC e Barreira AST Multidomínio', () => {
-  it('Q4.4.1: deve carregar dinamicamente (lazy import) todos os módulos de domínio da fazenda', async () => {
-    // 1. Módulo Gerente
-    const gerenteMod = await FAZENDA_MODULES.gerente.loader();
-    expect(gerenteMod).toBeDefined();
-    expect(typeof gerenteMod.default).toBe('function');
+  it('Q4.4.1: registry descreve artefatos remotos sem importar código de perfis no shell', () => {
+    for (const profile of ['gerente', 'capataz', 'escritorio', 'fabrica'] as const) {
+      const descriptor = FAZENDA_MODULES[profile];
+      expect(descriptor.moduleId).toBe(profile);
+      expect(descriptor.profileId).toBe(profile);
+      expect(descriptor.entryUrl).toContain(`/modules/${profile}/current/index.html`);
+      expect(descriptor.capabilities.length).toBeGreaterThan(0);
+      expect('loader' in descriptor).toBe(false);
+    }
 
-    // 2. Módulo Capataz
-    const capatazMod = await FAZENDA_MODULES.capataz.loader();
-    expect(capatazMod).toBeDefined();
-    expect(typeof capatazMod.default).toBe('function');
-
-    // 3. Módulo Escritório
-    const escritorioMod = await FAZENDA_MODULES.escritorio.loader();
-    expect(escritorioMod).toBeDefined();
-    expect(typeof escritorioMod.default).toBe('function');
-
-    // 4. Módulo Fábrica
-    const fabricaMod = await FAZENDA_MODULES.fabrica.loader();
-    expect(fabricaMod).toBeDefined();
-    expect(typeof fabricaMod.default).toBe('function');
-
-    // 5. Módulo Administrador Global (deve rejeitar carregamento em shell local de fazenda)
-    await expect(FAZENDA_MODULES.administrador.loader()).rejects.toThrow();
+    const shellRoot = resolve(import.meta.dir, '../../apps/fazenda/shell');
+    const registry = readFileSync(resolve(shellRoot, 'src/router/moduleRegistry.ts'), 'utf8');
+    const viteConfig = readFileSync(resolve(shellRoot, 'vite.config.ts'), 'utf8');
+    const shellPackage = readFileSync(resolve(shellRoot, 'package.json'), 'utf8');
+    for (const profile of ['gerente', 'capataz', 'escritorio', 'fabrica']) {
+      expect(registry).not.toContain(`import('@consubov/fazenda-${profile}')`);
+      expect(viteConfig).not.toContain(`../${profile}/src`);
+      expect(shellPackage).not.toContain(`"@consubov/fazenda-${profile}"`);
+    }
   });
 
   it('Q4.4.2: getRouteForProfile deve direcionar cada perfil para sua respectiva rota canônica', () => {

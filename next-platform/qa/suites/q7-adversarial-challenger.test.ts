@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import {
   QuiescenceRegistry,
   CriticalOperationType,
@@ -19,11 +19,19 @@ import { UpdateCoordinator } from '../../apps/fazenda/shell/src/pwa/UpdateCoordi
 // Helper mock para ServiceWorker e Registration em ambiente de teste hermético
 function createMockServiceWorker(initialState: ServiceWorkerState = 'installed') {
   const sentMessages: any[] = [];
-  return {
+  const worker = {
     state: initialState,
-    scriptURL: '/sw.js',
-    postMessage: (message: any) => {
+    scriptURL: 'https://app.test/sw.js',
+    postMessage: (message: any, ports?: MessagePort[]) => {
       sentMessages.push(message);
+      if (message.type === 'VERIFY_WAITING_WORKER') ports?.[0]?.postMessage({ type: 'WAITING_WORKER_VERIFIED', version: 'v2', scriptURL: 'https://app.test/sw.js', pending: true, compatible: true, canActivate: true });
+      if (message.type === 'ACTIVATE_WITH_CONSENT') {
+        expect(message.version).toBe('v2');
+        expect(message.scriptURL).toBe(worker.scriptURL);
+        expect(message.clientDeadline).toBeGreaterThan(Date.now());
+        Object.defineProperty(worker, 'state', { configurable: true, value: 'activated' });
+        ports?.[0]?.postMessage({ type: 'SHELL_ACTIVATION_ACCEPTED', accepted: true, version: 'v2' });
+      }
     },
     addEventListener: () => {},
     removeEventListener: () => {},
@@ -32,6 +40,12 @@ function createMockServiceWorker(initialState: ServiceWorkerState = 'installed')
     onstatechange: null,
     _sentMessages: sentMessages
   } as unknown as ServiceWorker & { _sentMessages: any[] };
+  return worker;
+}
+
+function expectNoActivation(worker: ServiceWorker & { _sentMessages: any[] }) {
+  // Discovery is read-only; no activation command is allowed without fresh consent.
+  expect(worker._sentMessages.every(message => message.type === 'VERIFY_WAITING_WORKER')).toBe(true);
 }
 
 function createMockRegistration(waitingWorker?: ServiceWorker | null) {
@@ -363,9 +377,16 @@ describe('Challenger Adversarial F07: Estresse Extremo, Falhas Catastróficas e 
   // =========================================================================
   describe('Vetor 3: Ataques e Bypass no Ciclo de Vida do Service Worker e UpdateCoordinator', () => {
     let registry: QuiescenceRegistry;
+    let originalLocation: PropertyDescriptor | undefined;
 
     beforeEach(() => {
       registry = new QuiescenceRegistry();
+      originalLocation = Object.getOwnPropertyDescriptor(globalThis, 'location');
+      Object.defineProperty(globalThis, 'location', { configurable: true, value: new URL('https://app.test/') });
+    });
+    afterEach(() => {
+      if (originalLocation) Object.defineProperty(globalThis, 'location', originalLocation);
+      else Reflect.deleteProperty(globalThis, 'location');
     });
 
     it('ADV-3.1: Neutralização de tentativa de ativação forçada enquanto travas de formulário e pesagem estão ativas', async () => {
@@ -401,14 +422,14 @@ describe('Challenger Adversarial F07: Estresse Extremo, Falhas Catastróficas e 
       expect(activeLocksNotified).toHaveLength(2);
 
       // Comprovado: NENHUMA mensagem SKIP_WAITING foi enviada ao Service Worker
-      expect(mockWorker._sentMessages).toHaveLength(0);
+      expectNoActivation(mockWorker);
       expect(coordinator.isHoldingForQuiescence()).toBe(true);
 
       // 2. Simula chamadas repetidas de checkForUpdates() enquanto travas continuam retidas
       await coordinator.checkForUpdates();
       await coordinator.checkForUpdates();
 
-      expect(mockWorker._sentMessages).toHaveLength(0);
+      expectNoActivation(mockWorker);
       expect(coordinator.isHoldingForQuiescence()).toBe(true);
 
       coordinator.destroy();
@@ -416,7 +437,7 @@ describe('Challenger Adversarial F07: Estresse Extremo, Falhas Catastróficas e 
       releaseWeighing();
     });
 
-    it('ADV-3.2: Liberação estritamente sequencial das travas com disparo único de SKIP_WAITING', async () => {
+    it('ADV-3.2: Liberação sequencial das travas não ativa sem consentimento explícito', async () => {
       const releaseForm = registry.acquireLock('form-vacina-1', 'FORM_DIRTY');
       const releaseSync = registry.acquireLock('sync-outbox-1', 'OUTBOX_SYNCING');
 
@@ -431,7 +452,7 @@ describe('Challenger Adversarial F07: Estresse Extremo, Falhas Catastróficas e 
       coordinator.initialize(mockReg);
       await new Promise((r) => setTimeout(r, 15));
 
-      expect(mockWorker._sentMessages).toHaveLength(0);
+      expectNoActivation(mockWorker);
 
       // Libera apenas a trava do formulário; trava de sync continua ativa
       releaseForm();
@@ -439,16 +460,17 @@ describe('Challenger Adversarial F07: Estresse Extremo, Falhas Catastróficas e 
 
       // Continua retido e sem mensagens enviadas
       expect(coordinator.isHoldingForQuiescence()).toBe(true);
-      expect(mockWorker._sentMessages).toHaveLength(0);
+      expectNoActivation(mockWorker);
 
       // Libera a trava de sync final
       releaseSync();
       await new Promise((r) => setTimeout(r, 25));
 
-      // Agora sim, exatamente 1 mensagem SKIP_WAITING enviada
+      // Mesmo sem travas críticas, a ativação depende de ação explícita.
       expect(coordinator.isHoldingForQuiescence()).toBe(false);
-      expect(mockWorker._sentMessages).toHaveLength(1);
-      expect(mockWorker._sentMessages[0]).toEqual({ type: 'SKIP_WAITING' });
+      expectNoActivation(mockWorker);
+      expect(await coordinator.activateWaitingWorker()).toBe(true);
+      expect(mockWorker._sentMessages.filter(message => message.type === 'ACTIVATE_WITH_CONSENT')).toHaveLength(1);
 
       coordinator.destroy();
     });
@@ -459,6 +481,8 @@ describe('Challenger Adversarial F07: Estresse Extremo, Falhas Catastróficas e 
       // Mock de window e location para interceptar reload
       const originalWindow = (globalThis as any).window;
       const originalNavigator = (globalThis as any).navigator;
+      const originalLocation = (globalThis as any).location;
+      Object.defineProperty(globalThis, 'location', { configurable: true, value: new URL('https://app.test/') });
 
       let controllerChangeCb: (() => void) | null = null;
 
@@ -490,11 +514,13 @@ describe('Challenger Adversarial F07: Estresse Extremo, Falhas Catastróficas e 
           autoReloadOnQuiescent: true
         });
 
-        const mockReg = createMockRegistration(null);
+        const mockWorker = createMockServiceWorker();
+        const mockReg = createMockRegistration(mockWorker);
         coordinator.initialize(mockReg);
 
         // Operador está fotografando o cocho (trava ativa)
         const releaseCamera = registry.acquireLock('camera-cocho-05', 'CAMERA_ACTIVE');
+        expect(await coordinator.activateWaitingWorker()).toBe(false);
 
         // Disparo inoportuno do evento controllerchange
         expect(controllerChangeCb).toBeDefined();
@@ -504,19 +530,25 @@ describe('Challenger Adversarial F07: Estresse Extremo, Falhas Catastróficas e 
 
         // window.location.reload NÃO deve ter sido invocado por causa da trava
         expect(reloadInvokedCount).toBe(0);
+        expectNoActivation(mockWorker);
 
         // Operador conclui a foto e salva
         releaseCamera();
 
         await new Promise((r) => setTimeout(r, 30));
 
-        // window.location.reload deve ter sido invocado apenas após atingir quiescência
+        // Releasing critical work does not authorize activation or reload.
+        expect(reloadInvokedCount).toBe(0);
+        expectNoActivation(mockWorker);
+        // Only the explicit action with verified consent and accepted ACK may reload.
+        expect(await coordinator.activateWaitingWorker()).toBe(true);
         expect(reloadInvokedCount).toBe(1);
 
         coordinator.destroy();
       } finally {
         (globalThis as any).window = originalWindow;
         (globalThis as any).navigator = originalNavigator;
+        Object.defineProperty(globalThis, 'location', { configurable: true, value: originalLocation });
       }
     });
 

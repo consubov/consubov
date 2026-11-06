@@ -1,3 +1,4 @@
+import { QuiescentForm } from '@consubov/ui';
 import React, { useState } from 'react';
 import { useTranslation, Card, Button } from '@consubov/ui';
 import { CapatazStore, CapatazState } from '../store/capatazStore';
@@ -30,21 +31,25 @@ export const CapatazCochoTab: React.FC<CapatazCochoTabProps> = ({ store, state }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    store.registrarLeituraCocho({
-      pasto_id: selectedPasto,
-      lote_id: selectedLote,
-      produto_id: selectedProduto,
-      escore_cocho: score,
-      sacos_fornecidos: Number(bags),
-      peso_saco_kg: Number(bagWeight),
-      cocho_limpo: cleanTrough,
-      observacao: notes || undefined
-    });
-
-    setSuccessMessage(true);
-    setTimeout(() => setSuccessMessage(false), 4000);
+    try {
+      await store.registrarLeituraCocho({
+        pasto_id: selectedPasto,
+        lote_id: selectedLote,
+        produto_id: selectedProduto,
+        escore_cocho: score,
+        sacos_fornecidos: Number(bags),
+        peso_saco_kg: Number(bagWeight),
+        cocho_limpo: cleanTrough,
+        observacao: notes || undefined
+      });
+      setSuccessMessage(true);
+      setTimeout(() => setSuccessMessage(false), 4000);
+      return true;
+    } catch {
+      // Store exposes persistence failures in the module storage alert.
+    }
   };
 
   return (
@@ -71,7 +76,7 @@ export const CapatazCochoTab: React.FC<CapatazCochoTabProps> = ({ store, state }
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <QuiescentForm onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 16 }}>
             {/* Pasto */}
             <div>
@@ -251,7 +256,7 @@ export const CapatazCochoTab: React.FC<CapatazCochoTabProps> = ({ store, state }
           <Button type="submit" variant="primary" style={{ minHeight: 48, minWidth: 200, fontSize: '1rem' }}>
             {t('capataz.cocho.submit')}
           </Button>
-        </form>
+        </QuiescentForm>
       </Card>
 
       {/* Histórico Recente de Leituras de Cocho */}

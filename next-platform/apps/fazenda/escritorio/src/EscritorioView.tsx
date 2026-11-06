@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useTranslation, StateBoundary } from '@consubov/ui';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation, StateBoundary, useLocalData, useLocalDataChanges, OperationIssuesFeedback, useReportModuleHealth } from '@consubov/ui';
+import type { ModuleExecutionContext } from '@consubov/contracts';
 import { getEscritorioStore, EscritorioState } from './store/escritorioStore';
 import { EscritorioDashboardTab } from './components/EscritorioDashboardTab';
 import { EscritorioNotasTab } from './components/EscritorioNotasTab';
@@ -9,10 +10,17 @@ import { EscritorioFinanceiroTab } from './components/EscritorioFinanceiroTab';
 
 export type EscritorioSubTab = 'overview' | 'invoices' | 'purchases' | 'lots' | 'closing';
 
-export const EscritorioView: React.FC = () => {
+export const EscritorioView: React.FC<{ context: ModuleExecutionContext }> = ({ context }) => {
   const { t } = useTranslation();
-  const store = getEscritorioStore();
+  const localData = useLocalData();
+  const store = useMemo(() => getEscritorioStore(context, localData), [context, localData]);
   const [state, setState] = useState<EscritorioState>(() => store.getState());
+  const [ready, setReady] = useState(false);
+  useReportModuleHealth(ready, state.persistenceError);
+  useLocalDataChanges(store, error => {
+    setReady(!error);
+    setState({ ...store.getState(), persistenceError: error ? t('gerente.storage.error') : null });
+  });
 
   // Recupera sub-aba da URL hash (#/fazenda/escritorio?tab=xxx)
   const getInitialTab = (): EscritorioSubTab => {
@@ -34,6 +42,7 @@ export const EscritorioView: React.FC = () => {
     const unsubscribe = store.subscribe(() => {
       setState({ ...store.getState() });
     });
+    void store.ready.then(() => setReady(true), () => { setReady(false); setState({ ...store.getState() }); });
     return unsubscribe;
   }, [store]);
 
@@ -55,6 +64,9 @@ export const EscritorioView: React.FC = () => {
 
   return (
     <div style={{ padding: 16 }} data-testid="escritorio-module-view">
+      <OperationIssuesFeedback />
+      {state.persistenceError && <div role="alert" style={{ marginBottom: 16, padding: 12, color: '#991B1B', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 6 }}>{state.persistenceError}</div>}
+      {!ready && !state.persistenceError && <p role="status">{t('state.loading', 'Carregando dados locais…')}</p>}
       {/* Cabeçalho do Módulo */}
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, color: '#0F172A' }}>
@@ -95,7 +107,7 @@ export const EscritorioView: React.FC = () => {
                 cursor: 'pointer',
                 fontSize: '0.925rem',
                 fontWeight: isActive ? 700 : 500,
-                color: isActive ? '#0284C7' : '#64748B',
+                color: isActive ? '#0369A1' : '#64748B',
                 borderBottom: isActive ? '3px solid #0284C7' : '3px solid transparent',
                 marginBottom: -4,
                 whiteSpace: 'nowrap',
@@ -114,7 +126,7 @@ export const EscritorioView: React.FC = () => {
         id={`tabpanel-${activeTab}`}
         aria-labelledby={`tab-${activeTab}`}
       >
-        <StateBoundary state={state.notasFiscais.length === 0 ? 'empty' : 'success'}>
+        <StateBoundary state={state.persistenceError ? 'error' : !ready ? 'loading' : state.notasFiscais.length === 0 ? 'empty' : 'success'}>
           {activeTab === 'overview' && (
             <EscritorioDashboardTab
               state={state}

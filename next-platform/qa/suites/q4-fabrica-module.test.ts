@@ -1,19 +1,44 @@
+import { moduleSeedSnapshot } from '../harness/module-seed';
 import { describe, it, expect, beforeEach } from 'bun:test';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
-import { I18nProvider } from '@consubov/ui';
+import { I18nProvider, ModuleRuntimeProvider } from '@consubov/ui';
 import { FabricaView, FABRICA_MODULE_DESCRIPTOR } from '@consubov/fazenda-fabrica';
 import { FabricaStore } from '../../apps/fazenda/fabrica/src/store/fabricaStore';
 import { scanAstLiterals, findTsxFiles } from '../harness/ast-literal-guard';
-import { iniciarBatidaPayloadSchema, concluirBatidaPayloadSchema, criarFormulaRacaoPayloadSchema, APP_DICTIONARY } from '@consubov/contracts';
+import { iniciarBatidaPayloadSchema, concluirBatidaPayloadSchema, criarFormulaRacaoPayloadSchema, APP_DICTIONARY, type ModuleExecutionContext, type ModuleLocalDataAPI, type LocalSnapshot, type LocalPendingCommand } from '@consubov/contracts';
 import { resolve } from 'path';
 import * as fs from 'fs';
 
 describe('Q4.3: Módulo Fábrica Local-First, Batidas Industriais, Baixa de Silos e Bilinguismo', () => {
   let store: FabricaStore;
+  const context: ModuleExecutionContext = {
+    userId: 'user-fabrica-test', tenantId: 'tenant-test', farmId: 'farm-test', retreatId: null,
+    moduleId: 'fabrica', profileId: 'fabrica', deviceId: 'device-fabrica-test', productId: 'consubov'
+  };
+  function makeLocalData(): ModuleLocalDataAPI {
+    const snapshots: LocalSnapshot[] = [moduleSeedSnapshot('fabrica')];
+    const commands: LocalPendingCommand[] = [];
+    return {
+      readSnapshot: async () => null,
+      listSnapshots: async <T,>() => snapshots as LocalSnapshot<T>[],
+      commitMutation: async mutation => {
+        snapshots.push(mutation.snapshot);
+        commands.push({ command: mutation.command as unknown as LocalPendingCommand['command'], attachmentRefs: mutation.command.attachment_refs });
+        return { commandId: mutation.command.command_id, committed: true };
+      },
+      readAttachment: async () => null,
+      listPendingCommands: async limit => commands.slice(0, limit),
+      getCursor: async () => null,
+      getSchemaVersion: async () => 1
+    };
+  }
+  let testLocalData: ModuleLocalDataAPI;
 
-  beforeEach(() => {
-    store = new FabricaStore('consubov:test:fabrica:01');
+  beforeEach(async () => {
+    testLocalData = makeLocalData();
+    store = new FabricaStore(context, testLocalData);
+    await store.ready;
   });
 
   it('Q4.3.1: deve exportar descritor canônico do módulo Fábrica', () => {
@@ -25,7 +50,7 @@ describe('Q4.3: Módulo Fábrica Local-First, Batidas Industriais, Baixa de Silo
 
   it('Q4.3.2: deve renderizar FabricaView em pt-BR com misturadores e silos', () => {
     const html = renderToString(
-      React.createElement(I18nProvider, { language: 'pt-BR' }, React.createElement(FabricaView))
+      React.createElement(I18nProvider, { language: 'pt-BR' }, React.createElement(ModuleRuntimeProvider, { localData: testLocalData, children: React.createElement(FabricaView, { context }) }))
     );
 
     expect(html).toContain('data-testid="fabrica-module-view"');
@@ -38,7 +63,7 @@ describe('Q4.3: Módulo Fábrica Local-First, Batidas Industriais, Baixa de Silo
 
   it('Q4.3.3: deve renderizar FabricaView em en-US com 100% de paridade linguística e zero vazamento de português', () => {
     const html = renderToString(
-      React.createElement(I18nProvider, { language: 'en-US' }, React.createElement(FabricaView))
+      React.createElement(I18nProvider, { language: 'en-US' }, React.createElement(ModuleRuntimeProvider, { localData: testLocalData, children: React.createElement(FabricaView, { context }) }))
     );
 
     expect(html).toContain('data-testid="fabrica-module-view"');
@@ -67,7 +92,7 @@ describe('Q4.3: Módulo Fábrica Local-First, Batidas Industriais, Baixa de Silo
     }
   });
 
-  it('Q4.3.4: validação matemática estrita da soma de 100% dos ingredientes na fórmula (Store e Schema Zod .refine)', () => {
+  it('Q4.3.4: validação matemática estrita da soma de 100% dos ingredientes na fórmula (Store e Schema Zod .refine)', async () => {
     // 1. Frontend Store: Fórmula com soma incorreta (90%): deve lançar erro
     expect(() => {
       store.salvarFormula({
@@ -146,7 +171,7 @@ describe('Q4.3: Módulo Fábrica Local-First, Batidas Industriais, Baixa de Silo
     expect(parseResult100.success).toBe(true);
 
     // 3. Fórmula com soma exata de 100% no Store: deve ser aceita com sucesso
-    const envelope = store.salvarFormula({
+    const envelope = await store.salvarFormula({
       formula_id: 'formula-certa-100',
       nome_formula: 'Ração Confinamento Terminação',
       tipo_raca_destino: 'racao_confinamento',
@@ -164,8 +189,8 @@ describe('Q4.3: Módulo Fábrica Local-First, Batidas Industriais, Baixa de Silo
     expect(store.getState().formulas.some(f => f.formula_id === 'formula-certa-100')).toBe(true);
   });
 
-  it('Q4.3.5: store.iniciarBatida deve alterar estado do misturador para "misturando" e gerar envelope', () => {
-    const envelope = store.iniciarBatida({
+  it('Q4.3.5: store.iniciarBatida deve alterar estado do misturador para "misturando" e gerar envelope', async () => {
+    const envelope = await store.iniciarBatida({
       batida_id: 'bat-2026-test-101',
       ordem_producao_id: 'op-2026-090',
       formula_id: 'formula-conf-alta-energia',
@@ -187,9 +212,9 @@ describe('Q4.3: Módulo Fábrica Local-First, Batidas Industriais, Baixa de Silo
     expect(batida?.status).toBe('em_andamento');
   });
 
-  it('Q4.3.6: store.concluirBatida deve liberar misturador, baixar estoque nos silos proporcionalmente e atualizar KPIs', () => {
+  it('Q4.3.6: store.concluirBatida deve liberar misturador, baixar estoque nos silos proporcionalmente e atualizar KPIs', async () => {
     // Registra batida em andamento com a formula existente 'form-terminacao-22' (65% milho)
-    store.iniciarBatida({
+    await store.iniciarBatida({
       batida_id: 'bat-baixa-01',
       ordem_producao_id: 'op-01',
       formula_id: 'form-terminacao-22',
@@ -203,7 +228,7 @@ describe('Q4.3: Módulo Fábrica Local-First, Batidas Industriais, Baixa de Silo
     const siloMilhoAntes = store.getState().silos.find(s => s.materia_prima_id === 'mp-milho')?.nivel_atual_kg ?? 0;
 
     // Conclusão de 1000kg (fórmula tem 65% de milho = 650kg de consumo esperado)
-    const envelope = store.concluirBatida({
+    const envelope = await store.concluirBatida({
       batida_id: 'bat-baixa-01',
       quantidade_realizada_kg: 1000,
       tempo_mistura_segundos: 240,
@@ -221,8 +246,8 @@ describe('Q4.3: Módulo Fábrica Local-First, Batidas Industriais, Baixa de Silo
     expect(siloMilhoDepois).toBe(siloMilhoAntes - 650); // 65% de 1000kg
   });
 
-  it('Q4.3.7: store.calibrarBalanca deve registrar calibração de balança e gerar envelope', () => {
-    const envelope = store.calibrarBalanca({
+  it('Q4.3.7: store.calibrarBalanca deve registrar calibração de balança e gerar envelope', async () => {
+    const envelope = await store.calibrarBalanca({
       balanca_id: 'balanca-mist-01',
       equipamento_tipo: 'celula_carga_misturador',
       peso_padrao_afericao_kg: 500,

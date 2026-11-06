@@ -1,3 +1,4 @@
+import { QuiescentForm } from '@consubov/ui';
 import React, { useState } from 'react';
 import { useTranslation, Card, Button } from '@consubov/ui';
 import { CapatazStore, CapatazState } from '../store/capatazStore';
@@ -40,20 +41,24 @@ export const CapatazContagemTab: React.FC<CapatazContagemTabProps> = ({ store, s
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    store.registrarContagemRebanho({
-      pasto_id: selectedPasto,
-      lote_id: selectedLote,
-      quantidade_cabecas: Number(headCount),
-      quantidade_bezerros: Number(calvesCount),
-      quantidade_mortos: Number(deathsCount),
-      causa_mortalidade: deathsCount > 0 ? t(mortalityCause as any) : undefined,
-      observacoes: notes || undefined
-    });
-
-    setSuccessMessage(true);
-    setTimeout(() => setSuccessMessage(false), 4000);
+    try {
+      await store.registrarContagemRebanho({
+        pasto_id: selectedPasto,
+        lote_id: selectedLote,
+        quantidade_cabecas: Number(headCount),
+        quantidade_bezerros: Number(calvesCount),
+        quantidade_mortos: Number(deathsCount),
+        causa_mortalidade: deathsCount > 0 ? t(mortalityCause as any) : undefined,
+        observacoes: notes || undefined
+      });
+      setSuccessMessage(true);
+      setTimeout(() => setSuccessMessage(false), 4000);
+      return true;
+    } catch {
+      // Store exposes persistence failures in the module storage alert.
+    }
   };
 
   return (
@@ -80,7 +85,7 @@ export const CapatazContagemTab: React.FC<CapatazContagemTabProps> = ({ store, s
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <QuiescentForm onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 16 }}>
             {/* Pasto */}
             <div>
@@ -213,7 +218,7 @@ export const CapatazContagemTab: React.FC<CapatazContagemTabProps> = ({ store, s
           <Button type="submit" variant="primary" style={{ minHeight: 48, minWidth: 200, fontSize: '1rem' }}>
             {t('capataz.contagem.submit')}
           </Button>
-        </form>
+        </QuiescentForm>
       </Card>
 
       {/* Histórico Recente de Contagens */}

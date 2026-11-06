@@ -49,6 +49,10 @@ export function I18nProvider({ children, defaultLanguage, language: propLanguage
     return propLanguage ?? defaultLanguage ?? getInitialLanguage();
   });
 
+  useEffect(() => {
+    if (propLanguage) setLanguageState(normalizeLanguage(propLanguage));
+  }, [propLanguage]);
+
   // Sincronização reativa cross-tab via storage event
   useEffect(() => {
     if (typeof window === 'undefined') return;

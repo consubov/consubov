@@ -1,3 +1,5 @@
+> Registro histórico anterior à correção F23 de 05/11/2026. Seus resultados e rótulos de encerramento não aprovam a revisão dirty atual. Consulte `f23-runtime-local.md` e os recibos por fonte/SHA em `qa/reports/f23-final-local.md`; QA independente e produção permanecem separados.
+
 # Relatório Executivo Formal de Encerramento da Incubação Isolada — FASE 08 (MISSÃO F23-ISOLATED-NEXT)
 
 **Identificador do Relatório**: `REP-F23-NEXT-08-CLOSURE-CONSOLIDATED`  

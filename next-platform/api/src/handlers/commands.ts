@@ -1,139 +1,38 @@
-import {
-  atomicCommandEnvelopeSchema,
-  isAllowedCommand,
-  isProfileAuthorizedForCommand,
-  validateCommandPayload,
-  AtomicCommandEnvelope
-} from '@consubov/contracts';
+import { atomicCommandEnvelopeSchema, isProfileAuthorizedForCommand, validateCommandPayload, type CommandApiResponse } from '@consubov/contracts';
 import { InMemoryLedger } from '../ledger/in-memory-ledger';
 import { authenticateRequest } from '../auth/middleware';
+import { LabGrantRegistry } from '../auth/grants';
 
-export async function handleCommandsRequest(
-  req: Request,
-  ledger: InMemoryLedger
-): Promise<Response> {
-  // 1. Método HTTP
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'METHOD_NOT_ALLOWED' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  // 2. Parse do Corpo da Requisição
+const json = (body: unknown, status: number) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+export async function handleCommandsRequest(req: Request, ledger: InMemoryLedger, grants: LabGrantRegistry): Promise<Response> {
+  if (req.method !== 'POST') return json({ error: 'METHOD_NOT_ALLOWED' }, 405);
+  const auth = await authenticateRequest(req);
+  if (!auth.authenticated) return auth.response;
   let body: unknown;
   try {
-    body = await req.json();
-  } catch {
-    return new Response(
-      JSON.stringify({
-        error: 'INVALID_JSON',
-        message: 'O corpo da requisição não é um JSON válido.'
-      }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
+    const text = await req.text();
+    if (new TextEncoder().encode(text).byteLength > 1024 * 1024) return json({ error: 'REQUEST_TOO_LARGE' }, 413);
+    body = JSON.parse(text);
+  } catch { return json({ error: 'INVALID_JSON' }, 400); }
+  const parsed = atomicCommandEnvelopeSchema.safeParse(body);
+  const commandId = body && typeof body === 'object' && 'command_id' in body && typeof body.command_id === 'string' && body.command_id.trim() ? body.command_id : 'unknown';
+  const invalid = (code: string, field: string, message: string) => json({ success: false, validation: { error: 'UNPROCESSABLE_ENTITY_422', command_id: commandId, violations: [{ code, field, message }] } } satisfies CommandApiResponse, 422);
+  if (!parsed.success) return invalid('INVALID_ENVELOPE', 'envelope', 'Command envelope validation failed.');
+  const command = parsed.data;
+  if ([command.command_id, command.aggregate_id, command.correlation_id].some(id => !id.trim() || id.length > 128)) return invalid('INVALID_IDENTIFIER', 'envelope', 'Command and aggregate identifiers must be 1..128 characters.');
+  if (!grants.check(auth.claims, 'sync.push') || !grants.matches(auth.claims, command) || !isProfileAuthorizedForCommand(auth.claims.profile_id, command.command_type)) {
+    return json({ success: false, security: { error: 'FORBIDDEN_403', command_id: command.command_id, reason: 'Active grant does not authorize this command context.', required_capability: 'sync.push' } } satisfies CommandApiResponse, 403);
   }
-
-  // 3. Checagem prévia da allowlist se o campo command_type existir
-  if (body && typeof body === 'object' && 'command_type' in body) {
-    const cmdType = String((body as Record<string, unknown>).command_type);
-    if (!isAllowedCommand(cmdType)) {
-      return new Response(
-        JSON.stringify({
-          error: 'COMMAND_NOT_ALLOWED',
-          message: `O comando '${cmdType}' não consta na allowlist de comandos permitidos da API.`
-        }),
-        { status: 422, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
+  if (command.schema_version !== 1) return invalid('UNSUPPORTED_SCHEMA', 'schema_version', 'Only implemented payload schema version 1 is accepted.');
+  for (const field of ['user_id', 'tenant_id', 'fazenda_id', 'retiro_id', 'product_id', 'profile_id', 'device_id'] as const) {
+    if (field in command.payload && command.payload[field] !== command[field]) return json({ success: false, security: { error: 'FORBIDDEN_403', command_id: command.command_id, reason: 'Domain payload scope differs from the authenticated context.' } } satisfies CommandApiResponse, 403);
   }
-
-  // 4. Barreira de Autenticação Bearer (Fail-Closed 401)
-  const auth = await authenticateRequest(req);
-  if (!auth.authenticated) {
-    return auth.response;
-  }
-  const claims = auth.claims;
-
-  // 5. Validação Zod da Estrutura do Envelope Atômico (Fail-Closed 400)
-  const validationResult = atomicCommandEnvelopeSchema.safeParse(body);
-  if (!validationResult.success) {
-    return new Response(
-      JSON.stringify({
-        error: 'VALIDATION_FAILED',
-        message: 'Envelope rejeitado na barreira de schemas Zod',
-        issues: validationResult.error.issues
-      }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-
-  const envelope = validationResult.data as unknown as AtomicCommandEnvelope;
-
-  // 6. Anti-Spoofing de Contexto e Perfil (Fail-Closed 403)
-  if (claims.tenant_id !== envelope.tenant_id) {
-    return new Response(
-      JSON.stringify({
-        error: 'CONTEXT_MISMATCH',
-        message: `Violação de isolamento multi-tenant: o tenant_id do token (${claims.tenant_id}) diverge do envelope (${envelope.tenant_id}).`,
-        token_tenant_id: claims.tenant_id,
-        envelope_tenant_id: envelope.tenant_id
-      }),
-      { status: 403, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-
-  if (claims.profile_id !== envelope.profile_id) {
-    return new Response(
-      JSON.stringify({
-        error: 'PROFILE_MISMATCH',
-        message: `Violação de perfil: o profile_id do token (${claims.profile_id}) diverge do envelope (${envelope.profile_id}).`,
-        token_profile_id: claims.profile_id,
-        envelope_profile_id: envelope.profile_id
-      }),
-      { status: 403, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-
-  // 7. Matriz RBAC Declarativa por Perfil (Fail-Closed 403)
-  if (!isProfileAuthorizedForCommand(claims.profile_id, envelope.command_type)) {
-    return new Response(
-      JSON.stringify({
-        error: 'FORBIDDEN_COMMAND',
-        message: `O perfil '${claims.profile_id}' não possui autorização para executar o comando '${envelope.command_type}'.`,
-        profile_id: claims.profile_id,
-        command_type: envelope.command_type
-      }),
-      { status: 403, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-
-  // 8. Validação Zod do Payload de Domínio Específico (Fail-Closed 400)
-  const domainValidation = validateCommandPayload(envelope.command_type, envelope.payload);
-  if (!domainValidation.success) {
-    return new Response(
-      JSON.stringify({
-        error: 'INVALID_DOMAIN_PAYLOAD',
-        message: `O payload fornecido viola as regras de validação de domínio do comando '${envelope.command_type}'.`,
-        command_type: envelope.command_type,
-        issues: domainValidation.errors
-      }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-
-  // 9. Processamento no Ledger Multi-Tenant & OCC (Fail-Closed 409)
-  const processResult = ledger.processCommand(envelope);
-
-  if (!processResult.success) {
-    return new Response(JSON.stringify(processResult.error), {
-      status: processResult.status,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  return new Response(JSON.stringify(processResult.ack), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' }
-  });
+  const validated = validateCommandPayload(command.command_type, command.payload);
+  if (!validated.success) return json({ success: false, validation: { error: 'UNPROCESSABLE_ENTITY_422', command_id: command.command_id,
+    violations: validated.errors.slice(0, 100).map(issue => ({ field: (issue.path.join('.') || 'payload').slice(0, 128), code: 'INVALID_DOMAIN_PAYLOAD', message: `${issue.code}: ${issue.message}`.slice(0, 500) }))
+  } } satisfies CommandApiResponse, 422);
+  // No await between the final grant check and the ledger's atomic in-memory commit.
+  if (!grants.check(auth.claims, 'sync.push')) return json({ error: 'GRANT_REVOKED' }, 403);
+  const result = ledger.processCommand(command);
+  return result.success ? json({ success: true, ack: result.ack }, 200) : json(result.error, result.status);
 }

@@ -15,12 +15,7 @@
   "dependencies": {
     "@consubov/contracts": "workspace:*",
     "@consubov/ui": "workspace:*",
-    "@consubov/auth-client": "workspace:*",
-    "@consubov/module-release": "workspace:*",
-    "@consubov/fazenda-gerente": "workspace:*",
-    "@consubov/fazenda-capataz": "workspace:*",
-    "@consubov/fazenda-escritorio": "workspace:*",
-    "@consubov/fazenda-fabrica": "workspace:*"
+    "@consubov/auth-client": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation, StateBoundary } from '@consubov/ui';
+import { useTranslation, StateBoundary, useLocalData, useLocalDataChanges, OperationIssuesFeedback, useReportModuleHealth } from '@consubov/ui';
 import { getGerenteStore, GerenteState } from './store/gerenteStore';
+import type { ModuleExecutionContext } from '@consubov/contracts';
 import { GerenteDashboardTab } from './components/GerenteDashboardTab';
 import { GerenteGmdTab } from './components/GerenteGmdTab';
 import { GerenteLotesTab } from './components/GerenteLotesTab';
@@ -9,10 +10,18 @@ import { GerenteCochoAuditTab } from './components/GerenteCochoAuditTab';
 
 export type GerenteSubTab = 'overview' | 'metas' | 'lotes' | 'custos' | 'auditoria';
 
-export const GerenteView: React.FC = () => {
+export const GerenteView: React.FC<{ context: ModuleExecutionContext }> = ({ context }) => {
   const { t } = useTranslation();
-  const store = getGerenteStore();
+  const localData = useLocalData();
+  const store = getGerenteStore(context, localData);
   const [state, setState] = useState<GerenteState>(() => store.getState());
+  const [ready, setReady] = useState(false);
+  const [storageError, setStorageError] = useState<string | null>(null);
+  useReportModuleHealth(ready, storageError);
+  useLocalDataChanges(store, error => {
+    setReady(!error);
+    setStorageError(error ? t('gerente.storage.error') : null);
+  });
 
   // Recupera sub-aba da URL hash (#/fazenda/gerente?tab=xxx)
   const getInitialTab = (): GerenteSubTab => {
@@ -34,6 +43,7 @@ export const GerenteView: React.FC = () => {
     const unsubscribe = store.subscribe(() => {
       setState({ ...store.getState() });
     });
+    store.ready.then(() => setReady(true), error => setStorageError(error instanceof Error ? error.message : String(error)));
     return unsubscribe;
   }, [store]);
 
@@ -55,6 +65,9 @@ export const GerenteView: React.FC = () => {
 
   return (
     <div style={{ padding: 16 }} data-testid="gerente-module-view">
+      <OperationIssuesFeedback />
+      {!ready && !storageError && <p role="status">{t('common.loading', 'Carregando dados locais…')}</p>}
+      {storageError && <p role="alert">{t('gerente.storage.error', 'Não foi possível abrir os dados locais.')} {storageError}</p>}
       {/* Cabeçalho do Módulo */}
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, color: '#0F172A' }}>
@@ -95,7 +108,7 @@ export const GerenteView: React.FC = () => {
                 cursor: 'pointer',
                 fontSize: '0.925rem',
                 fontWeight: isActive ? 700 : 500,
-                color: isActive ? '#0284C7' : '#64748B',
+                color: isActive ? '#0369A1' : '#64748B',
                 borderBottom: isActive ? '3px solid #0284C7' : '3px solid transparent',
                 marginBottom: -4,
                 whiteSpace: 'nowrap',
@@ -114,7 +127,7 @@ export const GerenteView: React.FC = () => {
         id={`tabpanel-${activeTab}`}
         aria-labelledby={`tab-${activeTab}`}
       >
-        <StateBoundary state={state.lotes.length === 0 ? 'empty' : 'success'}>
+        <StateBoundary state={storageError ? 'error' : !ready ? 'loading' : state.lotes.length === 0 ? 'empty' : 'success'}>
           {activeTab === 'overview' && (
             <GerenteDashboardTab
               state={state}

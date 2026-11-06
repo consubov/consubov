@@ -23,7 +23,7 @@ export function registerServiceWorker(callbacks?: ServiceWorkerRegistrationCallb
     callbacks?.onConnectivityChange?.(false);
   });
 
-  if ('serviceWorker' in navigator && (process.env.NODE_ENV === 'production' || process.env.VITE_SW_ENABLED === 'true')) {
+  if ('serviceWorker' in navigator && (import.meta.env.PROD || import.meta.env.VITE_SW_ENABLED === 'true')) {
     window.addEventListener('load', () => {
       navigator.serviceWorker
         .register('/sw.js')
@@ -31,7 +31,12 @@ export function registerServiceWorker(callbacks?: ServiceWorkerRegistrationCallb
           // Inicializa o coordenador de atualizações silenciosas com quiescência
           activeCoordinator = new UpdateCoordinator({
             ...callbacks,
+            onUpdateCurrent: () => {
+              window.dispatchEvent(new CustomEvent('consubov:update-current'));
+              callbacks?.onUpdateCurrent?.();
+            },
             onUpdateAvailable: (version) => {
+              window.dispatchEvent(new CustomEvent('consubov:update-available'));
               callbacks?.onUpdate?.(registration);
               callbacks?.onUpdateAvailable?.(version);
             }

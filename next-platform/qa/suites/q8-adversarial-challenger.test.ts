@@ -1,3 +1,4 @@
+import { moduleSeedSnapshot } from '../harness/module-seed';
 /**
  * SUÍTE ADVERSARIAL FINAL DO CHALLENGER — FASE 08 (MISSÃO F23-ISOLATED-NEXT)
  * Agente: challenger_f08_1 (Roles: critic, specialist)
@@ -10,7 +11,7 @@
  *    - Tentativas de contato com serviços de nuvem CONSUBOV (Supabase, Vercel, Cloudflare, Neon, produção)
  *    - Polimorfismo de chamada ao fetch (string, URL instance, Request object)
  *    - Tentativas estáticas de importação de código legado fora de next-platform/
- *    - Auditoria de confinamento absoluto do repositório canônico (main limpa, SHA 16b93499, 11 stashes)
+ *    - Auditoria de confinamento absoluto do repositório canônico (HEAD/status/hashes/stashes observados antes e depois)
  * 2. Estresse hostil de concorrência e OCC 409 sem LWW destrutivo:
  *    - Disputa massiva: 50 comandos concorrentes de mutação física com base_version defasada acionam OCC 409
  *    - Concorrência massiva em cocho: 30 leituras simultâneas aplicam Merge Aditivo cronológico sem perda
@@ -25,23 +26,20 @@
  * 4. Teste automatizado de auditoria da cláusula RELEASE_PROIBIDO_ESTRITAMENTE_NO_GO:
  *    - package.json da raiz com "private": true e ZERO scripts de publicação/deploy
  *    - Docs técnicos em next-platform/docs/ com cláusula explícita NO-GO / PRODUÇÃO ESTRITAMENTE NO-GO
- *    - Relatório oficial do Gate Q8 (qa/reports/q8_gate_result.json) certificando RELEASE_PROIBIDO_ESTRITAMENTE_NO_GO
+ *    - Derivação pura do relatório; nenhuma homologação ou autorização de produção
  *    - Auditoria de remotos git impedindo push involuntário para produção
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { spawnSync } from 'child_process';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'bun:test';
+import { assertOnlyNextPlatformChanges, canonicalRepository, captureGitBaseline, captureSourceManifest, createOwnedQaDirectory, nextPlatformDir, readGit, worktreeDir } from '../harness/workspace-baseline';
 import {
   existsSync,
   readFileSync,
   writeFileSync,
-  unlinkSync,
-  mkdirSync,
-  rmSync,
-  statSync,
-  readdirSync
+  statSync
 } from 'fs';
 import { resolve, join } from 'path';
+import { createReport, Q8_LOCAL_CHECK_IDS, verdictForChecks, type Q8Check } from '../harness/q8-report';
 import { installNetworkGuard, AntiEgressViolationError } from '../harness/network-guard';
 import { scanAstLiterals, isViolatingLiteral } from '../harness/ast-literal-guard';
 import { APP_DICTIONARY, translateKey } from '@consubov/contracts';
@@ -56,17 +54,58 @@ import {
   CapatazStore,
   resetCapatazStoresForTesting
 } from '../../apps/fazenda/capataz/src';
+import type { ModuleExecutionContext, ModuleLocalDataAPI, LocalSnapshot, LocalPendingCommand } from '@consubov/contracts';
+
+const capatazTestPartitions = new Map<string, { snapshots: LocalSnapshot[]; commands: LocalPendingCommand[] }>();
+function capatazTestContext(legacyKey: string): ModuleExecutionContext {
+  const parts = legacyKey.split(':');
+  if (parts[0] === 'consubov') parts.shift();
+  const [tenantId, userId, farmId] = parts;
+  if (!tenantId || !userId || !farmId) throw new Error(`Invalid test partition key: ${legacyKey}`);
+  return { userId, tenantId, farmId, retreatId: null, moduleId: 'capataz', profileId: 'capataz', deviceId: 'device-challenger-test', productId: 'consubov' };
+}
+function newCapatazStore(legacyKey: string): CapatazStore {
+  const context = capatazTestContext(legacyKey);
+  const key = JSON.stringify([context.productId, context.moduleId, context.userId, context.tenantId, context.farmId, context.retreatId]);
+  let partition = capatazTestPartitions.get(key);
+  if (!partition) { partition = { snapshots: [moduleSeedSnapshot('capataz')], commands: [] }; capatazTestPartitions.set(key, partition); }
+  const data: ModuleLocalDataAPI = {
+    readSnapshot: async () => null,
+    listSnapshots: async <T,>() => partition!.snapshots as LocalSnapshot<T>[],
+    commitMutation: async mutation => {
+      const index = partition!.snapshots.findIndex(snapshot => snapshot.aggregateType === mutation.snapshot.aggregateType && snapshot.aggregateId === mutation.snapshot.aggregateId);
+      if (index >= 0) partition!.snapshots.splice(index, 1);
+      partition!.snapshots.push(mutation.snapshot);
+      partition!.commands.push({ command: mutation.command as unknown as LocalPendingCommand['command'], attachmentRefs: mutation.command.attachment_refs });
+      return { commandId: mutation.command.command_id, committed: true };
+    },
+    readAttachment: async () => null,
+    listPendingCommands: async limit => partition!.commands.slice(0, limit),
+    getCursor: async () => null,
+    getSchemaVersion: async () => 1
+  };
+  return new CapatazStore(context, data);
+}
 
 describe('CHALLENGER F08: Bateria Adversarial Empírica de Estresse e Encerramento da Incubação', () => {
-  const rootDir = 'd:\\MATEUS\\Documentos\\GitHub\\consubov';
-  const worktreeDir = 'd:\\MATEUS\\Documentos\\GitHub\\consubov-worktrees\\f23-isolated-next-platform';
-  const nextPlatformDir = resolve(worktreeDir, 'next-platform');
-  const tempFixtureDir = resolve(nextPlatformDir, 'qa/.tmp-challenger-fixture');
+  let canonicalBefore: ReturnType<typeof captureGitBaseline>;
+  let worktreeBefore: ReturnType<typeof captureGitBaseline>;
+  beforeAll(() => {
+    canonicalBefore = captureGitBaseline(canonicalRepository());
+    worktreeBefore = captureGitBaseline();
+    assertOnlyNextPlatformChanges(worktreeBefore);
+  });
+  afterAll(() => {
+    expect(captureGitBaseline(canonicalBefore.root)).toEqual(canonicalBefore);
+    expect(captureGitBaseline()).toEqual(worktreeBefore);
+  });
 
+  let fixture: ReturnType<typeof createOwnedQaDirectory> | undefined;
   let uninstallNetworkGuard: (() => void) | null = null;
 
   beforeEach(() => {
     resetCapatazStoresForTesting();
+    capatazTestPartitions.clear();
     if (typeof localStorage !== 'undefined') {
       localStorage.clear();
     }
@@ -77,9 +116,8 @@ describe('CHALLENGER F08: Bateria Adversarial Empírica de Estresse e Encerramen
       uninstallNetworkGuard();
       uninstallNetworkGuard = null;
     }
-    if (existsSync(tempFixtureDir)) {
-      rmSync(tempFixtureDir, { recursive: true, force: true });
-    }
+    fixture?.dispose();
+    fixture = undefined;
   });
 
   // =========================================================================
@@ -215,22 +253,8 @@ describe('CHALLENGER F08: Bateria Adversarial Empírica de Estresse e Encerramen
     });
 
     it('ADV-8.1.5: Escape do monorepo: Hermeticidade estática e ausência de imports para código legado', () => {
-      function collectTsFiles(dir: string, fileList: string[] = []): string[] {
-        const entries = readdirSync(dir);
-        for (const entry of entries) {
-          if (entry === 'node_modules' || entry === 'dist' || entry === '.git') continue;
-          const fullPath = join(dir, entry);
-          const stat = statSync(fullPath);
-          if (stat.isDirectory()) {
-            collectTsFiles(fullPath, fileList);
-          } else if (entry.endsWith('.ts') || entry.endsWith('.tsx')) {
-            fileList.push(fullPath);
-          }
-        }
-        return fileList;
-      }
-
-      const allTsFiles = collectTsFiles(nextPlatformDir);
+      const allTsFiles = Object.keys(captureSourceManifest().files)
+        .filter(path => /\.tsx?$/.test(path)).map(path => resolve(nextPlatformDir, path));
       expect(allTsFiles.length).toBeGreaterThan(30);
 
       const legacyEscapeViolations: Array<{ file: string; line: string }> = [];
@@ -258,48 +282,9 @@ describe('CHALLENGER F08: Bateria Adversarial Empírica de Estresse e Encerramen
     });
 
     it('ADV-8.1.6: Escape do monorepo: Auditoria forense de confinamento absoluto do repositório canônico', () => {
-      // 1. Árvore limpa na main do repositório canônico
-      const gitStatus = spawnSync('git', ['status', '--short', '--branch'], {
-        cwd: rootDir,
-        encoding: 'utf-8',
-        shell: true
-      });
-      expect(gitStatus.status).toBe(0);
-      expect((gitStatus.stdout || '').trim().startsWith('## main...origin/main')).toBe(true);
-
-      // 2. Porcelain sem arquivos modificados fora de .agents/
-      const porcelain = spawnSync('git', ['status', '--porcelain'], {
-        cwd: rootDir,
-        encoding: 'utf-8',
-        shell: true
-      });
-      expect(porcelain.status).toBe(0);
-      const porcelainLines = (porcelain.stdout || '')
-        .split('\n')
-        .map((l: string) => l.trim())
-        .filter((l: string) => l.length > 0 && !l.includes('.agents/'));
-      expect(porcelainLines).toEqual([]);
-
-      // 3. HEAD canônico inalterado
-      const headRev = spawnSync('git', ['rev-parse', 'HEAD'], {
-        cwd: rootDir,
-        encoding: 'utf-8',
-        shell: true
-      });
-      expect(headRev.status).toBe(0);
-      expect((headRev.stdout || '').trim()).toContain('16b93499');
-
-      // 4. Exatamente 11 stashes intactos
-      const stashList = spawnSync('git', ['stash', 'list'], {
-        cwd: rootDir,
-        encoding: 'utf-8',
-        shell: true
-      });
-      expect(stashList.status).toBe(0);
-      const stashes = (stashList.stdout || '').trim().split('\n').filter(Boolean);
-      expect(stashes.length).toBe(11);
-      expect(stashes[0]).toContain('stash@{0}');
-      expect(stashes[10]).toContain('stash@{10}');
+      expect(captureGitBaseline(canonicalBefore.root)).toEqual(canonicalBefore);
+      expect(captureGitBaseline()).toEqual(worktreeBefore);
+      assertOnlyNextPlatformChanges();
     });
   });
 
@@ -396,8 +381,9 @@ describe('CHALLENGER F08: Bateria Adversarial Empírica de Estresse e Encerramen
       }
     });
 
-    it('ADV-8.2.3: Ciclo de resolução explícita: alternância rápida entre manter_local e aceitar_servidor', () => {
-      const store = new CapatazStore('consubov:tenant-adv-occ:user-01:fazenda-01:capataz');
+    it('ADV-8.2.3: Ciclo de resolução explícita: alternância rápida entre manter_local e aceitar_servidor', async () => {
+      const store = newCapatazStore('consubov:tenant-adv-occ:user-01:fazenda-01:capataz');
+      await store.ready;
       (store as any).state.isLeader = true;
 
       const TOTAL_ITEMS = 20;
@@ -454,8 +440,9 @@ describe('CHALLENGER F08: Bateria Adversarial Empírica de Estresse e Encerramen
       }
     });
 
-    it('ADV-8.2.4: Resiliência a comandos inexistentes, resoluções duplicadas e IDs forjados sem corrupção', () => {
-      const store = new CapatazStore('consubov:tenant-adv-occ-safe:user-01:fazenda-01:capataz');
+    it('ADV-8.2.4: Resiliência a comandos inexistentes, resoluções duplicadas e IDs forjados sem corrupção', async () => {
+      const store = newCapatazStore('consubov:tenant-adv-occ-safe:user-01:fazenda-01:capataz');
+      await store.ready;
       (store as any).state.isLeader = true;
 
       // 1. Tentar resolver um ID inexistente
@@ -499,9 +486,8 @@ describe('CHALLENGER F08: Bateria Adversarial Empírica de Estresse e Encerramen
   // =========================================================================
   describe('Vetor 3: Desafios Sintéticos ao AST Literal Guard (Casos Limítrofes JSX e Dicionário)', () => {
     it('ADV-8.3.1: Desafio AST: Detecção de literais camuflados em JSX aninhado profundo, fragmentos e espaços', () => {
-      if (!existsSync(tempFixtureDir)) {
-        mkdirSync(tempFixtureDir, { recursive: true });
-      }
+      fixture = createOwnedQaDirectory('q8-challenger');
+      const tempFixtureDir = fixture.path;
 
       const hostileFixturePath = join(tempFixtureDir, 'hostile-nested.tsx');
       const hostileCode = `
@@ -543,9 +529,8 @@ export function HostileComponent() {
     });
 
     it('ADV-8.3.2: Desafio AST: Detecção de literais hardcoded em expressões e atributos sensíveis camuflados', () => {
-      if (!existsSync(tempFixtureDir)) {
-        mkdirSync(tempFixtureDir, { recursive: true });
-      }
+      fixture = createOwnedQaDirectory('q8-challenger');
+      const tempFixtureDir = fixture.path;
 
       const hostileAttrsFixturePath = join(tempFixtureDir, 'hostile-attributes.tsx');
       const hostileAttrsCode = `
@@ -583,9 +568,8 @@ export function HostileAttributesComponent() {
     });
 
     it('ADV-8.3.3: Desafio AST: Tolerância estrita a símbolos permitidos, emojis, números e unidades (zero falsos-positivos)', () => {
-      if (!existsSync(tempFixtureDir)) {
-        mkdirSync(tempFixtureDir, { recursive: true });
-      }
+      fixture = createOwnedQaDirectory('q8-challenger');
+      const tempFixtureDir = fixture.path;
 
       const safeFixturePath = join(tempFixtureDir, 'safe-tokens.tsx');
       const safeCode = `
@@ -753,48 +737,31 @@ export function SafeTokensComponent() {
       expect(arqContent).toContain('PRODUÇÃO ESTRITAMENTE NO-GO');
     });
 
-    it('ADV-8.4.3: Auditoria do relatório oficial do Gate Q8 (q8_gate_result.json)', () => {
-      const reportPath = resolve(nextPlatformDir, 'qa/reports/q8_gate_result.json');
-      expect(existsSync(reportPath)).toBe(true);
-
-      const report = JSON.parse(readFileSync(reportPath, 'utf-8'));
-
-      // Validação das flags de auditoria canônicas
-      expect(report.gate_id).toBe('GATE_Q8_CONSOLIDATION_MATRICES_AST_REGRESSION_CLOSURE');
-      expect(report.audit_flags.production_gate).toBe('RELEASE_PROIBIDO_ESTRITAMENTE_NO_GO');
-      expect(report.audit_flags.closure_status).toBe('PASS_INCUBACAO_CONCLUIDA_LOCAL_READY');
-      expect(report.audit_flags.canonical_repo_untouched).toBe(true);
-      expect(report.audit_flags.isolation_preserved).toBe(true);
-
-      // O relatório oficial deve auditar exatamente 8 checks
-      expect(report.summary.total_checks).toBe(8);
-      expect(report.summary.passed + report.summary.failed).toBe(8);
-      expect(report.summary.blocked).toBe(0);
-      expect(['PASS', 'FAIL']).toContain(report.verdict);
-      if (report.verdict === 'PASS') {
-        expect(report.summary.passed).toBe(8);
-        expect(report.summary.failed).toBe(0);
-      }
+    it('ADV-8.4.3: Relatório puro deriva falhas e pendências sem recibo anterior', () => {
+      const identity = { root: '/synthetic/worktree', head: 'a'.repeat(40), branch: '(detached)', dirty: true, changedFileHashes: { 'next-platform/example.ts': 'bytes' }, stashSha256: 'stash-digest' };
+      const source = { files: { 'example.ts': 'bytes' }, sha256: 'manifest', exclusions: [] };
+      const checks: Q8Check[] = Q8_LOCAL_CHECK_IDS.map(id => ({ id, name: id, status: 'PASS', duration_ms: 1 }));
+      const input = { runId: 'synthetic-report-unit', startedAt: '2026-11-05T00:00:00Z', finishedAt: '2026-11-05T00:00:01Z', baseline: identity, finalBaseline: identity, canonicalBefore: identity, canonicalAfter: identity, sourceBefore: source, sourceAfter: source, checks };
+      const report = createReport({ ...input, checks: [...checks, { id: 'REAL_BROWSER', name: 'independent real browser evidence', status: 'NAO_EXECUTADO', duration_ms: 0 }] });
+      expect(report.localGateVerdict).toBe('PASS');
+      expect(report.verdict).toBe('NAO_EXECUTADO');
+      expect(report.audit_flags.closure_status).toBe('HOMOLOGACAO_PENDENTE');
+      expect(report.audit_flags.production_gate).toBe('NO_GO');
+      expect(report.summary.not_executed).toBe(1);
+      const failed = createReport({ ...input, checks: checks.map(check => check.id === 'Q8.5_HERMETIC_SECURITY_ANTI_EGRESS' ? { ...check, status: 'FAIL' as const } : check) });
+      expect(failed.verdict).toBe('FAIL');
+      expect(failed.audit_flags.isolation_preserved).toBe(false);
+      expect(verdictForChecks([])).toBe('NAO_EXECUTADO');
+      expect(createReport({ ...input, checks: [] }).localGateVerdict).toBe('NAO_EXECUTADO');
+      expect(createReport({ ...input, sourceAfter: { ...source, files: { 'example.ts': 'changed-dirty-bytes' } } }).localGateVerdict).toBe('BLOQUEADO');
+      expect(createReport({ ...input, canonicalAfter: { ...identity, stashSha256: 'different-same-count' } }).audit_flags.canonical_repo_untouched).toBe(false);
     });
 
-    it('ADV-8.4.4: Auditoria de isolamento de remotos Git e branch feat/platform/f23-isolated-next-platform', () => {
-      // 1. A branch atual da worktree DEVE ser estritamente feat/platform/f23-isolated-next-platform
-      const branchRes = spawnSync('git', ['branch', '--show-current'], {
-        cwd: nextPlatformDir,
-        encoding: 'utf-8',
-        shell: true
-      });
-      expect(branchRes.status).toBe(0);
-      expect((branchRes.stdout || '').trim()).toBe('feat/platform/f23-isolated-next-platform');
+    it('ADV-8.4.4: Auditoria de remotos Git somente leitura e identidade observada', () => {
+      expect(captureGitBaseline()).toEqual(worktreeBefore);
 
       // 2. Os remotos git NÃO devem apontar para repositórios de deploy ou produção de terceiros
-      const remoteRes = spawnSync('git', ['remote', '-v'], {
-        cwd: nextPlatformDir,
-        encoding: 'utf-8',
-        shell: true
-      });
-      expect(remoteRes.status).toBe(0);
-      const remotes = (remoteRes.stdout || '');
+      const remotes = readGit(worktreeDir, ['remote', '-v']);
       expect(remotes).not.toContain('vps');
       expect(remotes).not.toContain('production');
       expect(remotes).not.toContain('vercel.com');

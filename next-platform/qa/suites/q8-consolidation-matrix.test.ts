@@ -1,5 +1,7 @@
+import { loginApi, authorizedEnvelope } from '../harness/api-auth';
+import { moduleSeedSnapshot } from '../harness/module-seed';
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
-import { spawnSync } from 'child_process';
+import { assertOnlyNextPlatformChanges, canonicalRepository, captureGitBaseline, captureSourceManifest, nextPlatformDir } from '../harness/workspace-baseline';
 import { resolve } from 'path';
 import { readFileSync, existsSync } from 'fs';
 import { createApiServer } from '@consubov/platform-api';
@@ -31,6 +33,7 @@ import {
   resolveDomainConflict,
   compressPhoto
 } from '../../apps/fazenda/capataz/src';
+import type { ModuleExecutionContext, ModuleLocalDataAPI, LocalSnapshot, LocalPendingCommand } from '@consubov/contracts';
 import {
   ReleaseManager,
   RollbackManager,
@@ -48,10 +51,53 @@ import {
   getBlockedPortabilityItems
 } from '../harness/portability-catalog';
 
+const capatazTestPartitions = new Map<string, { snapshots: LocalSnapshot[]; commands: LocalPendingCommand[]; attachments: Map<string, { ref: any; blob: Blob }> }>();
+function capatazTestContext(legacyKey: string): ModuleExecutionContext {
+  const parts = legacyKey.split(':');
+  if (parts[0] === 'consubov') parts.shift();
+  const [tenantId, userId, farmId] = parts;
+  if (!tenantId || !userId || !farmId) throw new Error(`Invalid test partition key: ${legacyKey}`);
+  return { userId, tenantId, farmId, retreatId: null, moduleId: 'capataz', profileId: 'capataz', deviceId: 'device-q8-test', productId: 'consubov' };
+}
+function newCapatazStore(legacyKey: string): CapatazStore {
+  const context = capatazTestContext(legacyKey);
+  const key = JSON.stringify([context.productId, context.moduleId, context.userId, context.tenantId, context.farmId, context.retreatId]);
+  let partition = capatazTestPartitions.get(key);
+  if (!partition) {
+    partition = { snapshots: [moduleSeedSnapshot('capataz')], commands: [], attachments: new Map() };
+    capatazTestPartitions.set(key, partition);
+  }
+  const data: ModuleLocalDataAPI = {
+    readSnapshot: async () => null,
+    listSnapshots: async <T,>() => partition!.snapshots as LocalSnapshot<T>[],
+    commitMutation: async mutation => {
+      const index = partition!.snapshots.findIndex(snapshot => snapshot.aggregateType === mutation.snapshot.aggregateType && snapshot.aggregateId === mutation.snapshot.aggregateId);
+      if (index >= 0) partition!.snapshots.splice(index, 1);
+      partition!.snapshots.push(mutation.snapshot);
+      partition!.commands.push({ command: mutation.command as unknown as LocalPendingCommand['command'], attachmentRefs: mutation.command.attachment_refs });
+      for (const attachment of mutation.attachments) partition!.attachments.set(attachment.ref.attachment_id, attachment);
+      return { commandId: mutation.command.command_id, committed: true };
+    },
+    readAttachment: async attachmentId => partition!.attachments.get(attachmentId) ?? null,
+    listPendingCommands: async limit => partition!.commands.slice(0, limit),
+    getCursor: async () => null,
+    getSchemaVersion: async () => 1
+  };
+  return new CapatazStore(context, data);
+}
+
 describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001..012, PORT-001..005)', () => {
-  const rootDir = 'd:\\MATEUS\\Documentos\\GitHub\\consubov';
-  const worktreeDir = 'd:\\MATEUS\\Documentos\\GitHub\\consubov-worktrees\\f23-isolated-next-platform';
-  const nextPlatformDir = resolve(worktreeDir, 'next-platform');
+  let canonicalBefore: ReturnType<typeof captureGitBaseline>;
+  let worktreeBefore: ReturnType<typeof captureGitBaseline>;
+  beforeAll(() => {
+    canonicalBefore = captureGitBaseline(canonicalRepository());
+    worktreeBefore = captureGitBaseline();
+    assertOnlyNextPlatformChanges(worktreeBefore);
+  });
+  afterAll(() => {
+    expect(captureGitBaseline(canonicalBefore.root)).toEqual(canonicalBefore);
+    expect(captureGitBaseline()).toEqual(worktreeBefore);
+  });
 
   let restoreNetwork: () => void;
   let apiInstance: ReturnType<typeof createApiServer>;
@@ -78,22 +124,10 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
     baseUrl = `http://127.0.0.1:${port}`;
 
     const cap = SYNTHETIC_USERS['capataz.lab@consubov.local']!;
-    tokenCapataz = await signSyntheticJwt({
-      user_id: cap.user_id,
-      tenant_id: cap.memberships[0]!.tenant_id,
-      fazenda_id: cap.memberships[0]!.fazenda_id,
-      profile_id: 'capataz',
-      roles: ['capataz']
-    });
+    tokenCapataz = (await loginApi(baseUrl, 'capataz')).tokens.access_token;
 
     const ger = SYNTHETIC_USERS['gerente.lab@consubov.local']!;
-    tokenGerente = await signSyntheticJwt({
-      user_id: ger.user_id,
-      tenant_id: ger.memberships[0]!.tenant_id,
-      fazenda_id: ger.memberships[0]!.fazenda_id,
-      profile_id: 'gerente',
-      roles: ['gerente']
-    });
+    tokenGerente = (await loginApi(baseUrl, 'gerente')).tokens.access_token;
   });
 
   afterAll(() => {
@@ -105,6 +139,7 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
     storage = new InMemorySessionStorage();
     authService = new LocalAuthService({ storage });
     resetCapatazStoresForTesting();
+    capatazTestPartitions.clear();
   });
 
   // ==========================================================================
@@ -112,33 +147,8 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
   // ==========================================================================
   describe('Bloco 1: Matriz ISO-001 a ISO-010 — Integridade, Isolamento e Governança', () => {
     it('ISO-001: Confinamento Git da raiz intocada e ausência de chamadas a endpoints remotos', async () => {
-      // 1. Árvore limpa na main do repositório canônico
-      const gitStatus = spawnSync('git', ['status', '--short', '--branch'], {
-        cwd: rootDir,
-        encoding: 'utf-8',
-        shell: true
-      });
-      expect(gitStatus.status).toBe(0);
-      expect((gitStatus.stdout || '').trim().startsWith('## main...origin/main')).toBe(true);
-
-      // 2. Exact 11 stashes intactos
-      const stashList = spawnSync('git', ['stash', 'list'], {
-        cwd: rootDir,
-        encoding: 'utf-8',
-        shell: true
-      });
-      expect(stashList.status).toBe(0);
-      const stashLines = (stashList.stdout || '').trim().split('\n').filter(Boolean);
-      expect(stashLines.length).toBe(11);
-
-      // 3. Baseline HEAD SHA 16b93499
-      const headRev = spawnSync('git', ['rev-parse', 'HEAD'], {
-        cwd: rootDir,
-        encoding: 'utf-8',
-        shell: true
-      });
-      expect(headRev.status).toBe(0);
-      expect((headRev.stdout || '').trim().startsWith('16b93499')).toBe(true);
+      expect(captureGitBaseline(canonicalBefore.root)).toEqual(canonicalBefore);
+      expect(captureGitBaseline()).toEqual(worktreeBefore);
 
       // 4. Barreira anti-egress bloqueia conexões a endpoints remotos de produção
       let blockedSupabase = false;
@@ -196,6 +206,7 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
         session_id: 'sess-sem-vinculo',
         user_id: 'user-sem-vinculo',
         user_email: 'inativo@consubov.local',
+        profile_id: 'capataz',
         user_name: 'Usuário Sem Vínculo',
         memberships: [],
         active_context: null,
@@ -221,7 +232,7 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
           'Content-Type': 'application/json',
           Authorization: `Bearer ${forgedToken}`
         },
-        body: JSON.stringify({
+        body: JSON.stringify(createSyntheticCommandEnvelope({
           command_id: 'cmd-unauthorized-001',
           idempotency_key: 'idemp-unauth-test-12345',
           command_type: 'capataz.cocho.registrar_escore',
@@ -230,21 +241,24 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
           tenant_id: 'tenant-diferente',
           user_id: 'user-forged',
           profile_id: 'capataz',
-          client_timestamp: new Date().toISOString(),
+          occurred_at_local: new Date().toISOString(),
           base_version: 0,
           payload: { pasto_id: 'pasto-01', escore_cocho: 2, produto_id: 'prod-sal' }
-        })
+        }))
       });
 
-      // Fail-closed 403 (ou 400 por mismatch de tenant) sem vazar detalhes internos
-      expect([400, 401, 403]).toContain(res.status);
+      // A valid envelope reaches grant authorization and is explicitly denied.
+      expect(res.status).toBe(403);
+      const rejection: any = await res.json();
+      expect(rejection.security.error).toBe('FORBIDDEN_403');
     });
 
-    it('ISO-004: Múltiplos papéis/fazendas exigem seleção explícita (anti-first-match)', () => {
+    it('ISO-004: Uma conta mantém um perfil e exige seleção explícita entre vínculos de fazenda', () => {
       const multiMembershipSession: SyntheticUserSession = {
         session_id: 'sess-multi',
         user_id: 'user-multi-fazenda',
         user_email: 'multi@consubov.local',
+        profile_id: 'gerente',
         user_name: 'Operador Multi Fazenda',
         memberships: [
           {
@@ -285,7 +299,7 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
       expect(resolved.profile_id).toBe('gerente');
     });
 
-    it('ISO-005: Independência de módulos e builds autônomos sem alteração de hashes alheios', () => {
+    it('ISO-005: Contrato unitário de metadados independentes; builds reais são outro gate', () => {
       const releaseManager = new ReleaseManager();
 
       const modGerente: ModuleArtifactRelease = {
@@ -382,19 +396,19 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
       expect(rollbackManager.getActiveGeneration('escritorio')?.version).toBe('1.9.0');
     });
 
-    it('ISO-007: Persistência durável de fotos e outbox offline no Capataz com resiliência a reinício', async () => {
+    it('ISO-007: Contrato em memória recupera fotos/outbox ao recriar store; sem prova de reinício real', async () => {
       const partitionKey = 'tenant-iso:user-capataz:fazenda-01:capataz';
-      const store1 = new CapatazStore(partitionKey);
+      const store1 = newCapatazStore(partitionKey);
 
       // Comprime foto client-side e registra na store
       const photoResult = await compressPhoto(new Uint8Array(200000), {
         pastoId: 'pasto-01',
         tipoRegistro: 'leitura_matutina'
       });
-      store1.anexarFotoCocho(photoResult);
+      await store1.anexarFotoCocho(photoResult);
 
       // Registra leitura de cocho
-      store1.registrarLeituraCocho({
+      await store1.registrarLeituraCocho({
         pasto_id: 'pasto-01',
         produto_id: 'prod-sal-mineral-80',
         escore_cocho: 2,
@@ -402,12 +416,14 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
         foto_attachment_id: photoResult.attachment_id
       });
 
+      await store1.ready;
       const stateBeforeRestart = store1.getState();
       expect(stateBeforeRestart.outbox.length).toBe(2); // Foto + Leitura
       expect(stateBeforeRestart.fotos[photoResult.attachment_id]).toBeDefined();
 
-      // Simula encerramento do app e reinício posterior com novo store na mesma partição
-      const store2 = new CapatazStore(partitionKey);
+      // Recria um store sobre o mesmo Map; IndexedDB/reinício real exigem browser.
+      const store2 = newCapatazStore(partitionKey);
+      await store2.ready;
       const stateAfterRestart = store2.getState();
 
       expect(stateAfterRestart.outbox.length).toBe(2);
@@ -416,19 +432,13 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
       expect(stateAfterRestart.leiturasCocho[0]?.escore_cocho).toBe(2);
     });
 
-    it('ISO-008: Segregação absoluta entre ADM CONSUBOV e Fazendas (origens, tokens e storage desacoplados)', async () => {
+    it('ISO-008: Contrato de partição e API rejeita ADM tentando mutação de fazenda', async () => {
       // 1. Particionamento do storage do Capataz rejeita chaves sem os 4 segmentos canônicos
       const farmKey = buildPartitionKey('tenant-alfa', 'user-1', 'fazenda-norte', 'capataz');
       expect(farmKey).toBe('tenant-alfa:user-1:fazenda-norte:capataz');
 
-      // 2. Token de ADM CONSUBOV não possui fazenda_id e tem profile_id = administrador
-      const adminToken = await signSyntheticJwt({
-        user_id: 'admin-global-01',
-        tenant_id: 'system-global',
-        fazenda_id: undefined as any,
-        profile_id: 'administrador',
-        roles: ['super_admin']
-      });
+      // Use a real selected-context grant to prove ADM cannot mutate farm data.
+      const adminToken = (await loginApi(baseUrl, 'administrador')).tokens.access_token;
 
       // 3. Tentar executar comando operacional de campo com token de ADM resulta em 403 Forbidden
       const res = await fetch(`${baseUrl}/api/v1/commands`, {
@@ -437,7 +447,7 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
           'Content-Type': 'application/json',
           Authorization: `Bearer ${adminToken}`
         },
-        body: JSON.stringify({
+        body: JSON.stringify(authorizedEnvelope(adminToken, createSyntheticCommandEnvelope({
           command_id: 'cmd-adm-farm-violation',
           idempotency_key: 'idemp-adm-violation-12345',
           command_type: 'capataz.salga.lancar',
@@ -446,13 +456,15 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
           tenant_id: 'system-global',
           user_id: 'admin-global-01',
           profile_id: 'administrador',
-          client_timestamp: new Date().toISOString(),
+          occurred_at_local: new Date().toISOString(),
           base_version: 0,
           payload: { pasto_id: 'pasto-01', produto_id: 'prod-1', sacos_fornecidos: 2 }
-        })
+        })))
       });
 
-      expect([400, 401, 403]).toContain(res.status);
+      expect(res.status).toBe(403);
+      const rejection: any = await res.json();
+      expect(rejection.security.error).toBe('FORBIDDEN_403');
     });
 
     it('ISO-009: Governança de shared packages compatíveis N/N-1', () => {
@@ -476,27 +488,10 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
     });
 
     it('ISO-010: Encerramento auditável sem merge na main e com salvaguarda NO-GO', () => {
-      // Branch da worktree DEVE ser feat/platform/f23-isolated-next-platform
-      const branchRes = spawnSync('git', ['branch', '--show-current'], {
-        cwd: worktreeDir,
-        encoding: 'utf-8',
-        shell: true
-      });
-      expect(branchRes.status).toBe(0);
-      expect((branchRes.stdout || '').trim()).toBe('feat/platform/f23-isolated-next-platform');
-
-      // Raiz main NÃO contém commits de feat/platform/
-      const logCheck = spawnSync('git', ['log', 'main', '--oneline', '-n', '5'], {
-        cwd: rootDir,
-        encoding: 'utf-8',
-        shell: true
-      });
-      expect(logCheck.status).toBe(0);
-      expect((logCheck.stdout || '')).toContain('16b93499');
-
-      // Salvaguarda formal mandatória NO-GO para liberação externa
-      const productionGate = 'RELEASE_PROIBIDO_ESTRITAMENTE_NO_GO';
-      expect(productionGate).toBe('RELEASE_PROIBIDO_ESTRITAMENTE_NO_GO');
+      expect(captureGitBaseline()).toEqual(worktreeBefore);
+      expect(captureGitBaseline(canonicalBefore.root)).toEqual(canonicalBefore);
+      const policy = readFileSync(resolve(nextPlatformDir, 'docs/f08-arquitetura-plataforma-isolada.md'), 'utf-8');
+      expect(policy).toContain('PRODUÇÃO ESTRITAMENTE NO-GO');
     });
   });
 
@@ -504,15 +499,16 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
   // BLOCO 2: MATRIZ LF-001 A LF-012 (12 CRITÉRIOS LOCAL-FIRST E BARREIRA API)
   // ==========================================================================
   describe('Bloco 2: Matriz LF-001 a LF-012 — Local-First, Resiliência e Barreira de API', () => {
-    it('LF-001: Leitura de snapshots e gravação local sem falso ACK sob API offline', () => {
-      const store = new CapatazStore('tenant-lf001:user-1:fazenda-01:capataz');
+    it('LF-001: Leitura de snapshots e gravação local sem falso ACK sob API offline', async () => {
+      const store = newCapatazStore('tenant-lf001:user-1:fazenda-01:capataz');
+      await store.ready;
 
       // Leitura de dados pré-carregados localmente sem rede
       const pastos = store.getState().pastos;
       expect(pastos.length).toBeGreaterThan(0);
 
       // Gravação local offline: status inicial deve ser pendente na outbox
-      const { envelope } = store.registrarLeituraCocho({
+      const { envelope } = await store.registrarLeituraCocho({
         pasto_id: pastos[0]!.pasto_id,
         produto_id: 'prod-sal-mineral-80',
         escore_cocho: 1,
@@ -532,7 +528,7 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
         user_id: cap.user_id,
         fazenda_id: cap.memberships[0]!.fazenda_id,
         profile_id: 'capataz',
-        command_type: 'capataz.cocho.registrar_escore',
+        command_type: 'capataz.cocho.registrar_escore', aggregate_type: 'cocho', aggregate_id: 'pasto-01', base_version: 1,
         payload: { pasto_id: 'pasto-01', escore_cocho: 2, sacos_fornecidos: 2, produto_id: 'prod-sal' }
       });
 
@@ -542,31 +538,32 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenCapataz}`
         },
-        body: JSON.stringify(envelope)
+        body: JSON.stringify(authorizedEnvelope(tokenCapataz, envelope))
       });
 
       expect(res.status).toBe(200);
       const ack: any = await res.json();
-      expect(ack.command_id).toBe(envelope.command_id);
-      expect(ack.status).toBe('acked');
-      expect(ack.server_received_at).toBeDefined();
-      expect(ack.new_version).toBeDefined();
+      expect(ack.ack.command_id).toBe(envelope.command_id);
+      expect(ack.ack.status).toBe('COMMITTED');
+      expect(ack.ack.committed_at).toBeDefined();
+      expect(ack.ack.aggregate_version).toBeDefined();
     });
 
-    it('LF-003: App reiniciado e fotos pesadas com integridade durável e sem falso ACK', async () => {
+    it('LF-003: Contrato em memória recupera fotos/outbox sem falso ACK', async () => {
       const partitionKey = 'tenant-lf003:user-1:fazenda-01:capataz';
-      const store = new CapatazStore(partitionKey);
+      const store = newCapatazStore(partitionKey);
 
       // Gera foto sintética de 3.5MB
       const rawBytes = new Uint8Array(3670016);
       const photo = await compressPhoto(rawBytes, { pastoId: 'pasto-03' });
 
       // Anexa foto na store
-      store.anexarFotoCocho(photo);
+      await store.anexarFotoCocho(photo);
       expect(photo.compressedSizeBytes).toBeLessThan(300 * 1024);
 
       // Reinício simulado
-      const rebootedStore = new CapatazStore(partitionKey);
+      const rebootedStore = newCapatazStore(partitionKey);
+      await rebootedStore.ready;
       const rebootedState = rebootedStore.getState();
 
       expect(rebootedState.fotos[photo.attachment_id]?.attachment_id).toBe(photo.attachment_id);
@@ -589,7 +586,7 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenCapataz}`
         },
-        body: JSON.stringify(spoofedTenantEnvelope)
+        body: JSON.stringify({ ...authorizedEnvelope(tokenCapataz, spoofedTenantEnvelope), tenant_id: 'tenant-vitima-adulterado' })
       });
       expect(resSpoofed.status).toBe(403);
 
@@ -607,7 +604,7 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenCapataz}`
         },
-        body: JSON.stringify(notAllowedEnvelope)
+        body: JSON.stringify(authorizedEnvelope(tokenCapataz, notAllowedEnvelope))
       });
       expect([400, 422]).toContain(resNotAllowed.status);
     });
@@ -619,13 +616,13 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
         command_id: 'cmd-dedup-unique-001',
         idempotency_key: fixedIdempKey,
         aggregate_id: 'pasto-dedup-unique-01',
-        base_version: 0,
+        base_version: 1,
         tenant_id: cap.memberships[0]!.tenant_id,
         user_id: cap.user_id,
         fazenda_id: cap.memberships[0]!.fazenda_id,
         profile_id: 'capataz',
         command_type: 'capataz.cocho.registrar_escore',
-        payload: { pasto_id: 'pasto-01', escore_cocho: 3, sacos_fornecidos: 2, produto_id: 'prod-sal' }
+        payload: { pasto_id: 'pasto-dedup-unique-01', escore_cocho: 3, sacos_fornecidos: 2, produto_id: 'prod-sal' }
       });
 
       // Primeiro envio: aceito e processado
@@ -635,7 +632,7 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenCapataz}`
         },
-        body: JSON.stringify(envelope)
+        body: JSON.stringify(authorizedEnvelope(tokenCapataz, envelope))
       });
       expect(res1.status).toBe(200);
       const ack1: any = await res1.json();
@@ -647,14 +644,14 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenCapataz}`
         },
-        body: JSON.stringify(envelope)
+        body: JSON.stringify(authorizedEnvelope(tokenCapataz, envelope))
       });
       expect(res2.status).toBe(200);
       const ack2: any = await res2.json();
 
       // O ACK retornado é deduplicado com o mesmo command_id
-      expect(ack2.command_id).toBe(ack1.command_id);
-      expect(ack2.idempotent_replay).toBe(true);
+      expect(ack2.ack.command_id).toBe(ack1.ack.command_id);
+      expect(ack2).toEqual(ack1);
     });
 
     it('LF-006: Conflito por base_version tratado por domínio (HTTP 409) sem LWW destrutivo', async () => {
@@ -674,7 +671,7 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
         profile_id: 'gerente',
         command_type: 'gerente.metas.definir',
         payload: {
-          lote_id: 'lote-01',
+          lote_id: aggregateId,
           gmd_alvo_kg_dia: 0.85,
           peso_final_alvo_kg: 520,
           data_alvo_abate: new Date().toISOString()
@@ -687,7 +684,7 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenGerente}`
         },
-        body: JSON.stringify(cmd1)
+        body: JSON.stringify(authorizedEnvelope(tokenGerente, cmd1))
       });
       expect(res1.status).toBe(200);
 
@@ -704,7 +701,7 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
         profile_id: 'gerente',
         command_type: 'gerente.metas.definir',
         payload: {
-          lote_id: 'lote-01',
+          lote_id: aggregateId,
           gmd_alvo_kg_dia: 0.95,
           peso_final_alvo_kg: 530,
           data_alvo_abate: new Date().toISOString()
@@ -717,7 +714,7 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenGerente}`
         },
-        body: JSON.stringify(cmdConcorrente)
+        body: JSON.stringify(authorizedEnvelope(tokenGerente, cmdConcorrente))
       });
 
       // API rejeita com OCC 409 Conflict
@@ -732,41 +729,47 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
       expect(resolution.strategy).toBe('OCC_CONFLICT_REVIEW');
     });
 
-    it('LF-007: Autoupdate sem clique com download em background e ativação sob quiescência', async () => {
+    it('LF-007: Worker verificado exige consentimento explícito e quiescência antes de ativar', async () => {
       const quiescence = new QuiescenceRegistry();
+      const originalLocation = Object.getOwnPropertyDescriptor(globalThis, 'location');
+      Object.defineProperty(globalThis, 'location', { configurable: true, value: new URL('https://q8.test/') });
       let activated = false;
-
-      const mockWorker = {
-        state: 'installed' as ServiceWorkerState,
-        postMessage: (msg: any) => {
-          if (msg?.type === 'SKIP_WAITING') activated = true;
+      const messages: string[] = [];
+      const events = new EventTarget();
+      const worker = {
+        state: 'installed', scriptURL: 'https://q8.test/sw.js',
+        addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events),
+        postMessage(msg: any, ports: MessagePort[]) {
+          messages.push(msg.type);
+          if (msg.type === 'VERIFY_WAITING_WORKER') ports[0]!.postMessage({ type: 'WAITING_WORKER_VERIFIED', version: 'q8-next', scriptURL: worker.scriptURL, pending: true, compatible: true, canActivate: true });
+          if (msg.type === 'ACTIVATE_WITH_CONSENT') {
+            activated = true; worker.state = 'activated';
+            events.dispatchEvent(new Event('statechange'));
+            ports[0]!.postMessage({ type: 'SHELL_ACTIVATION_ACCEPTED', accepted: true, version: 'q8-next' });
+          }
         }
-      } as unknown as ServiceWorker;
-
-      const mockReg = {
-        waiting: mockWorker,
-        active: null,
-        installing: null
-      } as unknown as ServiceWorkerRegistration;
-
-      const coordinator = new UpdateCoordinator({
-        quiescenceRegistry: quiescence,
-        autoReloadOnQuiescent: false
-      });
-
-      // Trava ativa: câmera em uso
+      };
+      const registration = { waiting: worker, active: null, installing: null } as unknown as ServiceWorkerRegistration;
+      const coordinator = new UpdateCoordinator({ quiescenceRegistry: quiescence, autoReloadOnQuiescent: false, checkIntervalMs: 0 });
       const releaseCam = quiescence.acquireLock('cam-lock-01', 'CAMERA_ACTIVE');
-      coordinator.initialize(mockReg);
-
-      // Update NÃO pode ser ativado durante a captura de foto
-      expect(activated).toBe(false);
-
-      // Quando a câmera é liberada e o sistema volta à quiescência
-      releaseCam();
-      await new Promise((r) => setTimeout(r, 30));
-
-      // Ativação silenciosa sem clique efetuada com sucesso
-      expect(activated).toBe(true);
+      try {
+        coordinator.initialize(registration);
+        await coordinator.handleWaitingWorker(worker as unknown as ServiceWorker);
+        expect(coordinator.isPending()).toBe(true);
+        expect(await coordinator.activateWaitingWorker()).toBe(false);
+        expect(activated).toBe(false);
+        releaseCam();
+        await new Promise(resolve => setTimeout(resolve, 10));
+        expect(activated).toBe(false);
+        expect(messages.every(type => type === 'VERIFY_WAITING_WORKER')).toBe(true);
+        expect(await coordinator.activateWaitingWorker()).toBe(true);
+        expect(activated).toBe(true);
+        expect(messages.filter(type => type === 'ACTIVATE_WITH_CONSENT')).toHaveLength(1);
+      } finally {
+        releaseCam(); coordinator.destroy();
+        if (originalLocation) Object.defineProperty(globalThis, 'location', originalLocation);
+        else Reflect.deleteProperty(globalThis, 'location');
+      }
     });
 
     it('LF-008: Chunk 404 aciona reversão atômica para geração N-1 sem quebra da UI', async () => {
@@ -811,7 +814,7 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
       expect(rollback.getActiveGeneration('gerente')?.version).toBe('1.9.0');
     });
 
-    it('LF-009: Publicação de artefato exclusivo de um módulo preserva hashes dos demais', () => {
+    it('LF-009: Contrato unitário preserva metadados alheios; builds reais são outro gate', () => {
       const releaseMgr = new ReleaseManager();
 
       const fabV1: ModuleArtifactRelease = {
@@ -853,14 +856,15 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
       expect(latestCap?.version).toBe('1.0.0');
     });
 
-    it('LF-010: Particionamento do IndexedDB impede acesso cruzado entre perfis e fazendas', () => {
+    it('LF-010: Particionamento do contrato em memória impede acesso cruzado entre fazendas', async () => {
       const keyFazendaNorte = 'tenant-alfa:user-joao:fazenda-norte:capataz';
       const keyFazendaSul = 'tenant-alfa:user-joao:fazenda-sul:capataz';
 
-      const storeNorte = new CapatazStore(keyFazendaNorte);
-      const storeSul = new CapatazStore(keyFazendaSul);
+      const storeNorte = newCapatazStore(keyFazendaNorte);
+      const storeSul = newCapatazStore(keyFazendaSul);
+      await Promise.all([storeNorte.ready, storeSul.ready]);
 
-      storeNorte.registrarLeituraCocho({
+      await storeNorte.registrarLeituraCocho({
         pasto_id: 'pasto-norte-01',
         produto_id: 'prod-sal',
         escore_cocho: 2,
@@ -873,40 +877,29 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
       expect(storeSul.getState().leiturasCocho.length).toBe(0);
     });
 
-    it('LF-011: Barreira API-Only: zero referências a SDK PostgREST/Supabase ou segredos no bundle', () => {
-      const appsDir = resolve(nextPlatformDir, 'apps');
-      const packagesDir = resolve(nextPlatformDir, 'packages');
-
-      function scanForbiddenTokens(dir: string): string[] {
-        const forbidden: string[] = [];
-        const pattern = ['@supa', 'base/supa', 'base-js|createClient|postgrest'].join('');
-        const entries = spawnSync('git', ['grep', '-n', '-E', pattern, '--', 'apps/**', 'packages/**'], {
-          cwd: nextPlatformDir,
-          encoding: 'utf-8',
-          shell: true
-        });
-
-        const lines = (entries.stdout || '').split('\n').filter(Boolean);
-        for (const line of lines) {
-          // Ignora se for teste ou comentário explicativo de barreira
-          if (!line.includes('.test.') && !line.includes('//') && !line.includes('/*')) {
-            forbidden.push(line);
-          }
-        }
-        return forbidden;
+    it('LF-011: Inspeção de fontes tracked/untracked contra SDK Supabase/PostgREST', () => {
+      // Source inspection includes untracked files; bundle evidence is a separate gate.
+      const sourceFiles = Object.keys(captureSourceManifest().files).filter(path =>
+        /^(apps|packages)\//.test(path) && /\.[cm]?[jt]sx?$/.test(path) && !/\.(test|spec)\./.test(path));
+      expect(sourceFiles.length).toBeGreaterThan(30);
+      const violations: string[] = [];
+      const forbidden = /@supabase\/supabase-js|\bcreateClient\s*\(|\bpostgrest\b/i;
+      for (const path of sourceFiles) {
+        // Scan every line, including executable code following comments. This
+        // conservative inspection cannot silently drop a complete line.
+        const lines = readFileSync(resolve(nextPlatformDir, path), 'utf-8').split('\n');
+        lines.forEach((line, index) => { if (forbidden.test(line)) violations.push(`${path}:${index + 1}`); });
       }
-
-      const violations = scanForbiddenTokens(nextPlatformDir);
-      expect(violations.length).toBe(0);
+      expect(violations).toEqual([]);
     });
 
-    it('LF-012: Falta de Background Sync no navegador mantém fila segura para drenagem ao reconectar', () => {
+    it('LF-012: Contrato em memória mantém fila sem SyncManager; browser real é outro gate', async () => {
       // Simula browser legados/iOS Safari sem suporte a SyncManager
       const hasSyncManager = typeof (globalThis as any).SyncManager !== 'undefined';
       expect(hasSyncManager).toBe(false);
 
-      const store = new CapatazStore('tenant-safari:user-01:fazenda-01:capataz');
-      store.registrarLeituraCocho({
+      const store = newCapatazStore('tenant-safari:user-01:fazenda-01:capataz');
+      await store.registrarLeituraCocho({
         pasto_id: 'pasto-01',
         produto_id: 'prod-sal',
         escore_cocho: 1,
@@ -916,8 +909,9 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
       // A fila local é mantida com 100% de integridade
       expect(store.getState().outbox.length).toBe(1);
 
-      // Simula reinício e recuperação dos comandos na outbox
-      const recoveredStore = new CapatazStore('tenant-safari:user-01:fazenda-01:capataz');
+      // Recria store no mesmo processo/Map; não demonstra reinício real.
+      const recoveredStore = newCapatazStore('tenant-safari:user-01:fazenda-01:capataz');
+      await recoveredStore.ready;
       expect(recoveredStore.getState().outbox.length).toBe(1);
     });
   });
@@ -960,36 +954,18 @@ describe('Gate Q8: Consolidação das Matrizes Normativas (ISO-001..010, LF-001.
     });
 
     it('PORT-003: Modificações restritas estritamente a next-platform/** (zero alteração em apps/web/)', () => {
-      // 1. Verifica no status da worktree que nada sob apps/web foi tocado
-      const gitStatusWorktree = spawnSync('git', ['status', '--short'], {
-        cwd: worktreeDir,
-        encoding: 'utf-8',
-        shell: true
-      });
-      expect(gitStatusWorktree.status).toBe(0);
-      const outputWorktree = gitStatusWorktree.stdout || '';
-      expect(outputWorktree.includes('apps/web/')).toBe(false);
-
-      // 2. Verifica no git log da worktree que todos os commits afetaram apenas next-platform/**
-      const logDiff = spawnSync('git', ['diff', '16b93499..HEAD', '--name-only'], {
-        cwd: worktreeDir,
-        encoding: 'utf-8',
-        shell: true
-      });
-      expect(logDiff.status).toBe(0);
-      const changedFiles = (logDiff.stdout || '').split('\n').filter(Boolean);
-      for (const file of changedFiles) {
-        expect(file.startsWith('next-platform/')).toBe(true);
-      }
+      assertOnlyNextPlatformChanges();
+      expect(captureGitBaseline()).toEqual(worktreeBefore);
+      expect(captureGitBaseline(canonicalBefore.root)).toEqual(canonicalBefore);
     });
 
-    it('PORT-004: Validação empírica de paridade comportamental por testes de regressão', () => {
+    it('PORT-004: Validação empírica de paridade comportamental por testes de regressão', async () => {
       // 1. Escala de escore de cocho (0, 1, 2, 3, 4)
-      const pastoStore = new CapatazStore('tenant-port004:user-1:fazenda-01:capataz');
+      const pastoStore = newCapatazStore('tenant-port004:user-1:fazenda-01:capataz');
       const validEscores = [0, 1, 2, 3, 4] as const;
 
       for (const escore of validEscores) {
-        const { envelope } = pastoStore.registrarLeituraCocho({
+        const { envelope } = await pastoStore.registrarLeituraCocho({
           pasto_id: 'pasto-01',
           produto_id: 'prod-sal',
           escore_cocho: escore,

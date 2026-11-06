@@ -1,9 +1,11 @@
 import { InMemoryLedger, CommandLogFilter } from '../ledger/in-memory-ledger';
 import { authenticateRequest } from '../auth/middleware';
+import { LabGrantRegistry } from '../auth/grants';
 
 export async function handleAdminAuditRequest(
   req: Request,
-  ledger: InMemoryLedger
+  ledger: InMemoryLedger,
+  grants: LabGrantRegistry
 ): Promise<Response> {
   if (req.method !== 'GET') {
     return new Response(JSON.stringify({ error: 'METHOD_NOT_ALLOWED' }), {
@@ -20,12 +22,10 @@ export async function handleAdminAuditRequest(
 
   const claims = auth.claims;
 
-  // 2. Autorização RBAC: Apenas perfil administrador ou roles administrativas (Fail-Closed 403)
+  // Global audit requires the current server grant; caller roles alone cannot authorize it.
   const hasAdminProfile = claims.profile_id === 'administrador';
-  const hasAdminRole = Array.isArray((claims as any).roles) &&
-    (claims as any).roles.some((r: string) => ['super_admin', 'support_admin', 'financial_admin'].includes(r));
 
-  if (!hasAdminProfile && !hasAdminRole) {
+  if (!hasAdminProfile || !grants.check(claims, 'audit:view')) {
     return new Response(
       JSON.stringify({
         error: 'FORBIDDEN',

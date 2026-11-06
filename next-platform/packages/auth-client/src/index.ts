@@ -8,5 +8,7 @@ export * from './jwt/claims';
 export * from './jwt/synthetic-jwt';
 export * from './storage/partition';
 export * from './storage/session-storage';
+export * from './storage/provisioned-auth-storage';
 export * from './fixtures/synthetic-users';
 export * from './service/local-auth-service';
+export * from './service/provisioned-auth-service';

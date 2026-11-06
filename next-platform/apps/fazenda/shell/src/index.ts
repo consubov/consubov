@@ -1,5 +1,5 @@
 import { ProductId } from '@consubov/contracts';
-import { SessionManager } from '@consubov/auth-client';
+import { SessionManager } from '@consubov/auth-client/browser';
 import { QuiescenceRegistry } from '@consubov/module-release';
 
 export const FAZENDA_SHELL_CONFIG = {

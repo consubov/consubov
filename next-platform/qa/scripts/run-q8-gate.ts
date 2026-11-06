@@ -1,225 +1,89 @@
-import { spawnSync } from 'child_process';
-import { existsSync, mkdirSync, writeFileSync, statSync } from 'fs';
-import { resolve } from 'path';
+import { spawnSync } from 'node:child_process';
+import { appendFileSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { createReport, Q8_LOCAL_CHECK_IDS, type Q8Check, type Q8ReportInput } from '../harness/q8-report';
+import { assertOnlyNextPlatformChanges, canonicalRepository, captureGitBaseline, captureSourceManifest, createOwnedQaDirectory, nextPlatformDir, worktreeDir } from '../harness/workspace-baseline';
 
 const qaDir = resolve(import.meta.dir, '..');
-const nextPlatformDir = resolve(qaDir, '..');
-const reportsDir = resolve(qaDir, 'reports');
-const docsDir = resolve(nextPlatformDir, 'docs');
-
-if (!existsSync(reportsDir)) {
-  mkdirSync(reportsDir, { recursive: true });
+const checks: Q8Check[] = [];
+const startedAt = new Date().toISOString();
+let outputPath: string | undefined;
+function log(message: string) {
+  console.log(message);
+  if (outputPath) appendFileSync(outputPath, `${message}\n`, 'utf8');
 }
-
-console.log('================================================================');
-console.log('RUNNER DO GATE Q8 — CONSOLIDAÇÃO GERAL, MATRIZES NORMATIVAS,');
-console.log('AST LITERAL GUARD GLOBAL, REGRESSÃO MONOREPO E ENCERRAMENTO');
-console.log('================================================================');
-
-interface CheckResult {
-  id: string;
-  name: string;
-  status: 'PASS' | 'FAIL';
-  duration_ms: number;
-  output?: string;
+function runCheck(id: string, name: string, args: string[], cwd = qaDir) {
+  const started = Date.now();
+  log(`[RUN] ${id}: ${name}`);
+  const result = spawnSync(process.execPath, args, { cwd, encoding: 'utf8', shell: false, windowsHide: true, timeout: 600_000, maxBuffer: 32 * 1024 * 1024 });
+  const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+  // Bun can return success with no matching tests. Such a run provides no evidence.
+  const coverageObserved = args[0] !== 'test' || /\b[1-9]\d* pass\b/.test(output);
+  const status = !result.error && result.status === 0 && !result.signal && coverageObserved ? 'PASS' : 'FAIL';
+  checks.push({ id, name, status, duration_ms: Date.now() - started, output,
+    process: { command: process.execPath, args, cwd, exitCode: result.status, signal: result.signal, ...(result.error ? { error: result.error.message } : {}) } });
+  log(output);
+  log(`[${status}] ${id}`);
 }
-
-const checks: CheckResult[] = [];
-
-function runCheck(
-  id: string,
-  name: string,
-  command: string,
-  args: string[],
-  cwd: string
-): boolean {
-  console.log(`\n[RUN] ${id}: ${name}...`);
-  const start = Date.now();
-  const res = spawnSync(command, args, { cwd, encoding: 'utf-8', shell: true });
-  const duration_ms = Date.now() - start;
-
-  const passed = res.status === 0;
-  checks.push({
-    id,
-    name,
-    status: passed ? 'PASS' : 'FAIL',
-    duration_ms,
-    output: passed ? undefined : (res.stderr || res.stdout || '')
+const state: Q8ReportInput = { runId: '', startedAt, finishedAt: '', baseline: null, finalBaseline: null, canonicalBefore: null, canonicalAfter: null, sourceBefore: null, sourceAfter: null, checks };
+let canonical: string | undefined;
+let reportPath: string | undefined;
+try {
+  // Validate the checkout identities before creating any output directory.
+  if (JSON.parse(readFileSync(resolve(nextPlatformDir, 'package.json'), 'utf8')).name !== '@consubov/next-platform') throw new Error('Unexpected workspace package identity');
+  canonical = canonicalRepository();
+  const initialBaseline = captureGitBaseline(worktreeDir);
+  state.baseline = initialBaseline;
+  state.canonicalBefore = captureGitBaseline(canonical);
+  state.sourceBefore = captureSourceManifest();
+  const run = createOwnedQaDirectory('q8', 'runs');
+  state.runId = run.path.split(/[\\/]/).at(-1)!;
+  reportPath = resolve(run.path, 'result.json');
+  outputPath = resolve(run.path, 'output.log');
+  writeFileSync(outputPath, '', { flag: 'wx' });
+  log(`Q8 local evidence ${state.runId}; HEAD=${state.baseline.head}; dirty=${state.baseline.dirty}`);
+  assertOnlyNextPlatformChanges(initialBaseline);
+  runCheck(Q8_LOCAL_CHECK_IDS[0], 'ISO unit matrix (memory fixtures; no browser durability claim)', ['test', 'suites/q8-consolidation-matrix.test.ts', '-t', 'ISO-', '--timeout', '30000']);
+  runCheck(Q8_LOCAL_CHECK_IDS[1], 'Local-first unit matrix (memory fixtures)', ['test', 'suites/q8-consolidation-matrix.test.ts', '-t', 'LF-', '--timeout', '30000']);
+  runCheck(Q8_LOCAL_CHECK_IDS[2], 'Portability unit matrix', ['test', 'suites/q8-consolidation-matrix.test.ts', '-t', 'PORT-', '--timeout', '30000']);
+  runCheck(Q8_LOCAL_CHECK_IDS[3], 'AST literal scanner and dictionary key parity within scanned scope', ['test', 'suites/q8-ast-literal-guard.test.ts', '--timeout', '30000']);
+  runCheck(Q8_LOCAL_CHECK_IDS[4], 'Anti-egress and worktree isolation suites', ['test', 'suites/q1-anti-egress.test.ts', 'suites/q1-isolation.test.ts', '--timeout', '30000']);
+  runCheck(Q8_LOCAL_CHECK_IDS[5], 'Workspace TypeScript check', ['run', 'typecheck'], nextPlatformDir);
+  runCheck(Q8_LOCAL_CHECK_IDS[6], 'Full Q1-Q8 unit/static regression', ['test', 'qa/suites/', '--timeout', '90000'], nextPlatformDir);
+  const started = Date.now();
+  const required = ['f08-arquitetura-plataforma-isolada.md', 'f08-guia-operacao-offgrid-capataz.md', 'f08-relatorio-encerramento-incubacao.md'];
+  const documents = required.map(file => {
+    try { const info = statSync(resolve(nextPlatformDir, 'docs', file)); return { file, exists: info.isFile(), bytes: info.size }; }
+    catch { return { file, exists: false, bytes: 0 }; }
   });
-
-  if (passed) {
-    console.log(`[PASS] ${id} (${duration_ms}ms)`);
-  } else {
-    console.error(`[FAIL] ${id} (${duration_ms}ms)`);
-    console.error(res.stderr || res.stdout);
+  checks.push({ id: Q8_LOCAL_CHECK_IDS[7], name: 'Historical documentation file existence only; content and closure not approved', status: documents.every(doc => doc.exists && doc.bytes > 0) ? 'PASS' : 'FAIL', duration_ms: Date.now() - started, output: JSON.stringify(documents) });
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+  checks.push({ id: 'Q8_EXECUTION_CONTEXT', name: 'Execution context and scope', status: 'BLOQUEADO', duration_ms: 0, output: message });
+  log(`[BLOQUEADO] ${message}`);
+} finally {
+  for (const id of Q8_LOCAL_CHECK_IDS) if (!checks.some(check => check.id === id)) checks.push({ id, name: id, status: 'NAO_EXECUTADO', duration_ms: 0 });
+  for (const [id, name] of [
+    ['Q8_REAL_BROWSER', 'Chromium/WebKit and persistence matrix: separate coordinated execution required'],
+    ['Q8_PHYSICAL_HARDWARE', 'Physical devices: not executed by this runner'],
+    ['Q8_INDEPENDENT_QA', 'Independent acceptance: not performed by this runner']
+  ]) checks.push({ id: id!, name: name!, status: 'NAO_EXECUTADO', duration_ms: 0 });
+  try {
+    state.finalBaseline = captureGitBaseline(worktreeDir);
+    if (canonical) state.canonicalAfter = captureGitBaseline(canonical);
+    state.sourceAfter = captureSourceManifest();
+  } catch (error) {
+    checks.push({ id: 'Q8_FINAL_BASELINE', name: 'Final stability capture', status: 'BLOQUEADO', duration_ms: 0, output: String(error) });
   }
-
-  return passed;
-}
-
-function runDocCheck(id: string, name: string, requiredFiles: string[]): boolean {
-  console.log(`\n[RUN] ${id}: ${name}...`);
-  const start = Date.now();
-  let passed = true;
-  const missingOrEmpty: string[] = [];
-
-  for (const file of requiredFiles) {
-    const fullPath = resolve(docsDir, file);
-    if (!existsSync(fullPath)) {
-      passed = false;
-      missingOrEmpty.push(`${file} (inexistente)`);
-    } else {
-      const size = statSync(fullPath).size;
-      if (size < 1000) {
-        passed = false;
-        missingOrEmpty.push(`${file} (conteúdo insuficiente: ${size} bytes)`);
-      }
-    }
+  state.finishedAt = new Date().toISOString();
+  const report = createReport(state);
+  if (reportPath) {
+    writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, { flag: 'wx' });
+    const persisted = JSON.parse(readFileSync(reportPath, 'utf8'));
+    if (persisted.runId !== report.runId || persisted.sourceBefore?.sha256 !== report.sourceBefore?.sha256 || persisted.verdict !== report.verdict) throw new Error('Persisted receipt validation failed');
+    log(`Receipt: ${reportPath}`);
   }
-
-  const duration_ms = Date.now() - start;
-  checks.push({
-    id,
-    name,
-    status: passed ? 'PASS' : 'FAIL',
-    duration_ms,
-    output: passed ? undefined : `Documentos com pendência: ${missingOrEmpty.join(', ')}`
-  });
-
-  if (passed) {
-    console.log(`[PASS] ${id} (${duration_ms}ms)`);
-  } else {
-    console.error(`[FAIL] ${id} (${duration_ms}ms)`);
-    console.error(`Documentos pendentes: ${missingOrEmpty.join(', ')}`);
-  }
-
-  return passed;
-}
-
-// 1. Auditoria da Matriz ISO (ISO-001 a ISO-010)
-runCheck(
-  'Q8.1_ISO_MATRIX_AUDIT',
-  'Matriz de Isolamento e Integridade Normativa ISO-001..010 (suites/q8-consolidation-matrix.test.ts)',
-  'bun',
-  ['test', 'suites/q8-consolidation-matrix.test.ts', '-t', 'ISO-', '--timeout', '30000'],
-  qaDir
-);
-
-// 2. Auditoria da Matriz Local-First (LF-001 a LF-012)
-runCheck(
-  'Q8.2_LOCAL_FIRST_LF_MATRIX',
-  'Matriz Local-First, Resiliência e Barreira de API LF-001..012 (suites/q8-consolidation-matrix.test.ts)',
-  'bun',
-  ['test', 'suites/q8-consolidation-matrix.test.ts', '-t', 'LF-', '--timeout', '30000'],
-  qaDir
-);
-
-// 3. Auditoria da Matriz de Portabilidade (PORT-001 a PORT-005)
-runCheck(
-  'Q8.3_PORTABILITY_PORT_MATRIX',
-  'Matriz de Portabilidade Controlada e Governança PORT-001..005 (suites/q8-consolidation-matrix.test.ts)',
-  'bun',
-  ['test', 'suites/q8-consolidation-matrix.test.ts', '-t', 'PORT-', '--timeout', '30000'],
-  qaDir
-);
-
-// 4. AST Literal Guard e Bilinguismo 100% Global
-runCheck(
-  'Q8.4_FULL_AST_I18N_GUARD',
-  'AST QA Guard: Certificação Global de Zero Literais JSX e 100% Paridade Bilíngue pt-BR/en-US (suites/q8-ast-literal-guard.test.ts)',
-  'bun',
-  ['test', 'suites/q8-ast-literal-guard.test.ts', '--timeout', '30000'],
-  qaDir
-);
-
-// 5. Isolamento Hermético e Salvaguardas Anti-Egress
-runCheck(
-  'Q8.5_HERMETIC_SECURITY_ANTI_EGRESS',
-  'Barreira Anti-Egress de Rede e Confinamento Estrito da Raiz Canônica (suites/q1-anti-egress.test.ts suites/q1-isolation.test.ts)',
-  'bun',
-  ['test', 'suites/q1-anti-egress.test.ts', 'suites/q1-isolation.test.ts', '--timeout', '30000'],
-  qaDir
-);
-
-// 6. Typecheck Estrito TypeScript (tsc --noEmit)
-runCheck(
-  'Q8.6_TYPECHECK_GLOBAL',
-  'Compilação Estrita TypeScript sem Erros em Todo o Workspace next-platform (tsc --noEmit)',
-  'bun',
-  ['run', 'typecheck'],
-  nextPlatformDir
-);
-
-// 7. Regressão Completa Monorepo (Suítes Q1 a Q8)
-runCheck(
-  'Q8.7_FULL_MONOREPO_REGRESSION',
-  'Regressão Integral das Suítes Automatizadas do Monorepo (100% testes aprovados sem falhas)',
-  'bun',
-  ['test', 'qa/suites/', '--timeout', '90000'],
-  nextPlatformDir
-);
-
-// 8. Integridade e Completude da Documentação Técnica Obrigatória
-runDocCheck(
-  'Q8.8_DOCUMENTATION_COMPLETENESS',
-  'Completude dos Documentos Técnicos Canônicos em next-platform/docs/',
-  [
-    'f08-arquitetura-plataforma-isolada.md',
-    'f08-guia-operacao-offgrid-capataz.md',
-    'f08-relatorio-encerramento-incubacao.md'
-  ]
-);
-
-const totalChecks = checks.length;
-const passedChecks = checks.filter(c => c.status === 'PASS').length;
-const failedChecks = checks.filter(c => c.status === 'FAIL').length;
-const allPassed = failedChecks === 0;
-
-const resultReport = {
-  gate_id: 'GATE_Q8_CONSOLIDATION_MATRICES_AST_REGRESSION_CLOSURE',
-  task_id: 'F23-NEXT-08',
-  milestone: 'FASE 08 (QA Completo, Matrizes Normativas ISO/LF/PORT, AST Literal Guard, Documentação Técnica e Encerramento da Incubação)',
-  worktree_path: resolve(nextPlatformDir, '..'),
-  branch: 'feat/platform/f23-isolated-next-platform',
-  executed_at: new Date().toISOString(),
-  runtime: {
-    bun_version: Bun.version,
-    node_version: process.version,
-    os: `${process.platform} ${process.arch}`
-  },
-  checks,
-  summary: {
-    total_checks: totalChecks,
-    passed: passedChecks,
-    failed: failedChecks,
-    blocked: 0
-  },
-  audit_flags: {
-    isolation_preserved: true,
-    canonical_repo_untouched: true,
-    iso_matrix_10_of_10_verified: true,
-    local_first_matrix_12_of_12_verified: true,
-    portability_matrix_5_of_5_verified: true,
-    ast_literal_guard_zero_violations: true,
-    bilingual_parity_100_percent: true,
-    typecheck_zero_errors: true,
-    monorepo_regression_all_passed: true,
-    technical_documentation_complete: true,
-    production_gate: 'RELEASE_PROIBIDO_ESTRITAMENTE_NO_GO',
-    closure_status: 'PASS_INCUBACAO_CONCLUIDA_LOCAL_READY'
-  },
-  verdict: allPassed ? 'PASS' : 'FAIL'
-};
-
-const reportPath = resolve(reportsDir, 'q8_gate_result.json');
-writeFileSync(reportPath, JSON.stringify(resultReport, null, 2), 'utf-8');
-
-console.log('\n================================================================');
-console.log(`RESUMO DO GATE Q8: ${allPassed ? 'PASS (100% APROVADO)' : 'FAIL'}`);
-console.log(`Total: ${totalChecks} | Aprovados: ${passedChecks} | Falhas: ${failedChecks}`);
-console.log(`Recibo salvo em: ${reportPath}`);
-console.log('================================================================\n');
-
-if (!allPassed) {
-  process.exit(1);
+  log(`Local checks=${report.localGateVerdict}; overall=${report.verdict}; production=NO_GO`);
+  // This command's exit describes the local test gate, never whole-phase approval.
+  process.exitCode = report.localGateVerdict === 'PASS' && !checks.some(check => check.status === 'FAIL' || check.status === 'BLOQUEADO') ? 0 : 1;
 }

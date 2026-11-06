@@ -1,3 +1,4 @@
+import { QuiescentForm } from '@consubov/ui';
 import React, { useState } from 'react';
 import { useTranslation, Card, Button, Input } from '@consubov/ui';
 import { FabricaState, FabricaStore } from '../store/fabricaStore';
@@ -24,10 +25,13 @@ export const FabricaBatidasTab: React.FC<FabricaBatidasTabProps> = ({ state, sto
   const [desvioPeso, setDesvioPeso] = useState('5');
 
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleIniciarBatida = (e: React.FormEvent) => {
+  const handleIniciarBatida = async (e: React.FormEvent) => {
     e.preventDefault();
-    store.iniciarBatida({
+    setErrorMessage(null);
+    try {
+    await store.iniciarBatida({
       batida_id: `batida-${Date.now()}`,
       ordem_producao_id: ordemProducao,
       formula_id: selectedFormulaId,
@@ -38,13 +42,17 @@ export const FabricaBatidasTab: React.FC<FabricaBatidasTabProps> = ({ state, sto
     });
 
     setFeedbackMessage(t('fabrica.batch.startSuccess', 'Batida iniciada e vinculada ao misturador!'));
+      return true;
+    } catch (error) { setErrorMessage(error instanceof Error ? error.message : String(error)); }
   };
 
-  const handleConcluirBatida = (e: React.FormEvent) => {
+  const handleConcluirBatida = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedBatidaId) return;
 
-    store.concluirBatida({
+    setErrorMessage(null);
+    try {
+    await store.concluirBatida({
       batida_id: selectedBatidaId,
       quantidade_realizada_kg: parseFloat(quantidadeRealizada),
       tempo_mistura_segundos: parseInt(tempoMistura, 10),
@@ -53,12 +61,15 @@ export const FabricaBatidasTab: React.FC<FabricaBatidasTabProps> = ({ state, sto
     });
 
     setFeedbackMessage(t('fabrica.batch.concludeSuccess', 'Batida concluída e estoque baixado!'));
+      return true;
+    } catch (error) { setErrorMessage(error instanceof Error ? error.message : String(error)); }
   };
 
   const batidasEmAndamento = state.batidas.filter(b => b.status === 'em_andamento');
 
   return (
     <div data-testid="fabrica-batidas-tab" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {errorMessage && <Card elevation="elevated" style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA', padding: 12 }}><p role="alert" style={{ margin: 0, color: '#991B1B' }}>{errorMessage}</p></Card>}
       {feedbackMessage && (
         <Card elevation="elevated" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', padding: 12 }}>
           <p style={{ margin: 0, color: '#166534', fontWeight: 600 }}>{feedbackMessage}</p>
@@ -67,17 +78,18 @@ export const FabricaBatidasTab: React.FC<FabricaBatidasTabProps> = ({ state, sto
 
       {/* Iniciar Nova Batida */}
       <Card elevation="elevated">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
           {t('fabrica.batch.startTitle', 'Iniciar Batida de Ração')}
-        </h3>
+        </h2>
 
-        <form onSubmit={handleIniciarBatida} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <QuiescentForm onSubmit={handleIniciarBatida} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
+              <label htmlFor="fabrica-batida-formula" style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
                 {t('fabrica.batch.formula', 'Fórmula da Dieta')}
               </label>
               <select
+                id="fabrica-batida-formula"
                 value={selectedFormulaId}
                 onChange={e => setSelectedFormulaId(e.target.value)}
                 style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #CBD5E1' }}
@@ -89,10 +101,11 @@ export const FabricaBatidasTab: React.FC<FabricaBatidasTabProps> = ({ state, sto
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
+              <label htmlFor="fabrica-batida-misturador" style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
                 {t('fabrica.batch.mixer', 'Misturador / Linha')}
               </label>
               <select
+                id="fabrica-batida-misturador"
                 value={selectedMixerId}
                 onChange={e => setSelectedMixerId(e.target.value)}
                 style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #CBD5E1' }}
@@ -124,23 +137,24 @@ export const FabricaBatidasTab: React.FC<FabricaBatidasTabProps> = ({ state, sto
               {t('fabrica.batch.startTitle', 'Iniciar Batida de Ração')}
             </Button>
           </div>
-        </form>
+        </QuiescentForm>
       </Card>
 
       {/* Concluir Batida em Andamento */}
       {batidasEmAndamento.length > 0 && (
         <Card elevation="elevated" style={{ backgroundColor: '#F8FAFC' }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
+          <h2 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
             {t('fabrica.batch.concludeTitle', 'Concluir Batida de Ração')}
-          </h3>
+          </h2>
 
-          <form onSubmit={handleConcluirBatida} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <QuiescentForm onSubmit={handleConcluirBatida} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
               <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
+                <label htmlFor="fabrica-concluir-batida" style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
                   {t('domain.batida', 'Batida de Ração')}
                 </label>
                 <select
+                  id="fabrica-concluir-batida"
                   value={selectedBatidaId}
                   onChange={e => setSelectedBatidaId(e.target.value)}
                   style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #CBD5E1' }}
@@ -183,15 +197,15 @@ export const FabricaBatidasTab: React.FC<FabricaBatidasTabProps> = ({ state, sto
                 {t('fabrica.batch.concludeTitle', 'Concluir Batida de Ração')}
               </Button>
             </div>
-          </form>
+          </QuiescentForm>
         </Card>
       )}
 
       {/* Histórico Recente de Batidas */}
       <Card elevation="flat">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>
           {t('fabrica.tabs.batches', 'Batidas e Misturadores')}
-        </h3>
+        </h2>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {state.batidas.map(b => (

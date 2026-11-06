@@ -1,3 +1,4 @@
+import { QuiescentForm } from '@consubov/ui';
 import React, { useState } from 'react';
 import { useTranslation, Card, Button } from '@consubov/ui';
 import { CapatazStore, CapatazState } from '../store/capatazStore';
@@ -38,20 +39,24 @@ export const CapatazQrTab: React.FC<CapatazQrTabProps> = ({ store, state }) => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    store.registrarLeituraQrPasto({
-      pasto_id: selectedPasto,
-      altura_media_cm: Number(heightCm),
-      qr_code_lido: scannedCode,
-      escore_massa_forragem: Number(forageScore),
-      condicao_aguada: waterCondition,
-      condicao_cocho: troughCondition,
-      justificativa_falha_qr: isManualOverride ? t(overrideReason as any) : undefined
-    });
-
-    setSuccessMessage(true);
-    setTimeout(() => setSuccessMessage(false), 4000);
+    try {
+      await store.registrarLeituraQrPasto({
+        pasto_id: selectedPasto,
+        altura_media_cm: Number(heightCm),
+        qr_code_lido: scannedCode,
+        escore_massa_forragem: Number(forageScore),
+        condicao_aguada: waterCondition,
+        condicao_cocho: troughCondition,
+        justificativa_falha_qr: isManualOverride ? t(overrideReason as any) : undefined
+      });
+      setSuccessMessage(true);
+      setTimeout(() => setSuccessMessage(false), 4000);
+      return true;
+    } catch {
+      // Store exposes persistence failures in the module storage alert.
+    }
   };
 
   const currentPasto = state.pastos.find(p => p.pasto_id === selectedPasto);
@@ -113,7 +118,7 @@ export const CapatazQrTab: React.FC<CapatazQrTabProps> = ({ store, state }) => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <QuiescentForm onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 16 }}>
             {/* Seletor de Pasto */}
             <div>
@@ -247,7 +252,7 @@ export const CapatazQrTab: React.FC<CapatazQrTabProps> = ({ store, state }) => {
           <Button type="submit" variant="primary" style={{ minHeight: 48, minWidth: 200, fontSize: '1rem' }}>
             {t('capataz.qr.confirmReading')}
           </Button>
-        </form>
+        </QuiescentForm>
       </Card>
     </div>
   );

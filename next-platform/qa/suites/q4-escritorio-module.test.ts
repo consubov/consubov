@@ -1,20 +1,49 @@
+import { EscritorioDashboardTab } from '../../apps/fazenda/escritorio/src/components/EscritorioDashboardTab';
+import { moduleSeedSnapshot } from '../harness/module-seed';
 import { describe, it, expect, beforeEach } from 'bun:test';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
-import { I18nProvider } from '@consubov/ui';
+import { I18nProvider, ModuleRuntimeProvider } from '@consubov/ui';
 import { EscritorioView, ESCRITORIO_MODULE_DESCRIPTOR } from '@consubov/fazenda-escritorio';
 import { EscritorioStore } from '../../apps/fazenda/escritorio/src/store/escritorioStore';
+import { EscritorioFinanceiroTab } from '../../apps/fazenda/escritorio/src/components/EscritorioFinanceiroTab';
 import { scanAstLiterals, findTsxFiles } from '../harness/ast-literal-guard';
-import { registrarNotaFiscalPayloadSchema, APP_DICTIONARY } from '@consubov/contracts';
+import { registrarNotaFiscalPayloadSchema, APP_DICTIONARY, type ModuleExecutionContext, type ModuleLocalDataAPI, type LocalPendingCommand, type LocalMutation } from '@consubov/contracts';
 import { resolve } from 'path';
 import * as fs from 'fs';
 
 describe('Q4.2: Módulo Escritório Local-First, Gestão de NF-e, Compras, Lotes e Bilinguismo', () => {
   let store: EscritorioStore;
+  let localData: ModuleLocalDataAPI;
+  const context: ModuleExecutionContext = {
+    userId: 'user-escritorio-test', tenantId: 'tenant-test', farmId: 'fazenda-test', retreatId: null,
+    moduleId: 'escritorio', profileId: 'escritorio', deviceId: 'device-test', productId: 'consubov'
+  };
 
-  beforeEach(() => {
-    store = new EscritorioStore('consubov:test:escritorio:01');
+  beforeEach(async () => {
+    const pending: LocalPendingCommand[] = [];
+    localData = {
+      readSnapshot: async () => null,
+      listSnapshots: async <T,>() => [moduleSeedSnapshot('escritorio')] as import('@consubov/contracts').LocalSnapshot<T>[],
+      commitMutation: async <T,>(mutation: LocalMutation<T>) => {
+        pending.push({ command: mutation.command as LocalPendingCommand['command'], attachmentRefs: mutation.command.attachment_refs });
+        return { commandId: mutation.command.command_id, committed: true };
+      },
+      readAttachment: async () => null,
+      listPendingCommands: async (limit: number) => pending.slice(0, limit),
+      getCursor: async () => null,
+      getSchemaVersion: async () => 1
+    };
+    store = new EscritorioStore(context, localData);
+    await store.ready;
   });
+
+  function renderView(language: 'pt-BR' | 'en-US'): string {
+    return renderToString(React.createElement(I18nProvider, { language }, React.createElement(ModuleRuntimeProvider, {
+      localData,
+      children: React.createElement(EscritorioView, { context })
+    })));
+  }
 
   it('Q4.2.1: deve exportar descritor canônico do módulo Escritório', () => {
     expect(ESCRITORIO_MODULE_DESCRIPTOR.moduleId).toBe('escritorio');
@@ -24,9 +53,7 @@ describe('Q4.2: Módulo Escritório Local-First, Gestão de NF-e, Compras, Lotes
   });
 
   it('Q4.2.2: deve renderizar EscritorioView em pt-BR com abas e dados administrativos', () => {
-    const html = renderToString(
-      React.createElement(I18nProvider, { language: 'pt-BR' }, React.createElement(EscritorioView))
-    );
+    const html = renderView('pt-BR');
 
     expect(html).toContain('data-testid="escritorio-module-view"');
     expect(html).toContain('Escritório Administrativo');
@@ -36,9 +63,7 @@ describe('Q4.2: Módulo Escritório Local-First, Gestão de NF-e, Compras, Lotes
   });
 
   it('Q4.2.3: deve renderizar EscritorioView em en-US com 100% de paridade linguística e zero vazamento de português', () => {
-    const html = renderToString(
-      React.createElement(I18nProvider, { language: 'en-US' }, React.createElement(EscritorioView))
-    );
+    const html = renderView('en-US');
 
     expect(html).toContain('data-testid="escritorio-module-view"');
     expect(html).toContain('Administrative Office');
@@ -46,8 +71,8 @@ describe('Q4.2: Módulo Escritório Local-First, Gestão de NF-e, Compras, Lotes
     expect(html).toContain('Purchase Orders');
     expect(html).toContain('Lot Registrations &amp; Splits');
     expect(html).toContain('Administrative Overview');
-    expect(html).toContain('Reconciliation Outbox Queue');
-    expect(html).toContain('Pending Dispatch');
+    expect(html).not.toContain('Reconciliation Outbox Queue');
+    expect(html).not.toContain('Pending Dispatch');
 
     // Asserções negativas obrigatórias contra vazamento de português em modo en-US
     const ptForbiddenTerms = [
@@ -62,6 +87,26 @@ describe('Q4.2: Módulo Escritório Local-First, Gestão de NF-e, Compras, Lotes
     ];
     for (const term of ptForbiddenTerms) {
       expect(html).not.toContain(term);
+    }
+  });
+
+  it('keeps administrative records usable without displaying delivery queues or synchronization state', async () => {
+    await store.ready;
+    await store.criarPedidoCompra({
+      pedido_compra_id: 'pc-ui-no-status', fornecedor_id: 'forn-cerrado-nutri',
+      produto_insumo_id: 'insumo-nucleo-confinamento', quantidade_pedida: 20,
+      unidade: 'ton', preco_unitario_brl: 3400, condicao_pagamento: '30_60_dias',
+      previsao_entrega: '2026-11-20T00:00:00.000Z'
+    });
+    expect(store.getState().outbox.length).toBeGreaterThan(0);
+    for (const language of ['pt-BR', 'en-US'] as const) {
+      const dashboard = renderView(language);
+      const financial = renderToString(React.createElement(I18nProvider, { language },
+        React.createElement(EscritorioFinanceiroTab, { state: store.getState(), store })));
+      expect(financial).toContain(language === 'pt-BR' ? 'Emitir Relatório Financeiro' : 'Generate Financial Report');
+      for (const html of [dashboard, financial]) {
+        expect(html).not.toMatch(/outbox|pendentes de envio|pending dispatch|sincronizado|synchroni[sz]|sync status/i);
+      }
     }
   });
 
@@ -112,8 +157,8 @@ describe('Q4.2: Módulo Escritório Local-First, Gestão de NF-e, Compras, Lotes
     expect(noItemsResult.success).toBe(false);
   });
 
-  it('Q4.2.5: store.registrarNotaFiscal deve criar AtomicCommandEnvelope e registrar entrada no estado local', () => {
-    const envelope = store.registrarNotaFiscal({
+  it('Q4.2.5: store.registrarNotaFiscal deve criar AtomicCommandEnvelope e registrar entrada no estado local', async () => {
+    const envelope = await store.registrarNotaFiscal({
       nota_fiscal_id: 'nf-2026-test-01',
       numero_nf: '88102',
       serie: '2',
@@ -145,8 +190,8 @@ describe('Q4.2: Módulo Escritório Local-First, Gestão de NF-e, Compras, Lotes
     expect(state.outbox.length).toBe(1);
   });
 
-  it('Q4.2.6: store.criarPedidoCompra deve gerar envelope e registrar pedido no estado local', () => {
-    const envelope = store.criarPedidoCompra({
+  it('Q4.2.6: store.criarPedidoCompra deve gerar envelope e registrar pedido no estado local', async () => {
+    const envelope = await store.criarPedidoCompra({
       pedido_compra_id: 'pc-2026-900',
       fornecedor_id: 'forn-cerrado-nutri',
       produto_insumo_id: 'insumo-nucleo-confinamento',
@@ -167,8 +212,8 @@ describe('Q4.2: Módulo Escritório Local-First, Gestão de NF-e, Compras, Lotes
     expect(pedido?.status).toBe('pendente');
   });
 
-  it('Q4.2.7: store.particionarLote deve gerar envelope e criar sub-lotes no estado local', () => {
-    const envelope = store.particionarLote({
+  it('Q4.2.7: store.particionarLote deve gerar envelope e criar sub-lotes no estado local', async () => {
+    const envelope = await store.particionarLote({
       lote_origem_id: 'lote-adm-01',
       novos_lotes: [
         {
@@ -194,8 +239,8 @@ describe('Q4.2: Módulo Escritório Local-First, Gestão de NF-e, Compras, Lotes
     expect(state.lotes.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('Q4.2.8: store.fecharCustoLote deve gerar envelope e registrar fechamento financeiro', () => {
-    const envelope = store.fecharCustoLote({
+  it('Q4.2.8: store.fecharCustoLote deve gerar envelope e registrar fechamento financeiro', async () => {
+    const envelope = await store.fecharCustoLote({
       lote_id: 'lote-adm-01',
       periodo_mes: 10,
       periodo_ano: 2026,
@@ -228,9 +273,7 @@ describe('Q4.2: Módulo Escritório Local-First, Gestão de NF-e, Compras, Lotes
   });
 
   it('Q4.2.10: deve possuir semântica W3C ARIA Tabs completa e scope="col" nas tabelas', () => {
-    const html = renderToString(
-      React.createElement(I18nProvider, { language: 'pt-BR' }, React.createElement(EscritorioView))
-    );
+    const html = renderView('pt-BR');
 
     expect(html).toContain('role="tablist"');
     expect(html).toContain('id="tab-overview"');
@@ -240,7 +283,9 @@ describe('Q4.2: Módulo Escritório Local-First, Gestão de NF-e, Compras, Lotes
     expect(html).toContain('role="tabpanel"');
     expect(html).toContain('id="tabpanel-overview"');
     expect(html).toContain('aria-labelledby="tab-overview"');
-    expect(html).toContain('scope="col"');
+    const dashboard = renderToString(React.createElement(I18nProvider, { language: 'pt-BR' },
+      React.createElement(EscritorioDashboardTab, { state: store.getState(), onRefresh: () => {}, onNavigateTab: () => {} })));
+    expect(dashboard).toContain('scope="col"');
   });
 
   it('Q4.2.11: 100% das chaves passadas a t(...) em escritorio/src devem existir em APP_DICTIONARY', () => {

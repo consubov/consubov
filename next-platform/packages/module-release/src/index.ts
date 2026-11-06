@@ -3,6 +3,8 @@ export * from './catalog/manifest.schema';
 export * from './catalog/ReleaseManager';
 export * from './quiescence/registry';
 export * from './quiescence/hooks';
+export * from './quiescence/module-bridge';
 export * from './loader/rollback-manager';
 export * from './loader/integrity-check';
 export * from './loader/safe-dynamic-import';
+export * from './generation';

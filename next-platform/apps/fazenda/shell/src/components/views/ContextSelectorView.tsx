@@ -51,7 +51,7 @@ export const ContextSelectorView: React.FC = () => {
             {session ? `${session.user_name} (${session.user_email})` : ''}
           </p>
           <p style={{ margin: '4px 0 0', color: colorTokens.text.secondary, fontSize: '0.9rem' }}>
-            {t('shell.context.subtitle', 'Escolha a fazenda e a função com a qual deseja trabalhar agora:')}
+            {t('shell.context.subtitle', 'Escolha a fazenda ou unidade autorizada para continuar:')}
           </p>
         </div>
 
@@ -70,7 +70,7 @@ export const ContextSelectorView: React.FC = () => {
           }}
         >
           <strong>{t('shell.context.isoPrefix', 'ISO-004:')} </strong>
-          {t('auth.context.antiFirstMatchNotice', 'Regra de Segurança ISO-004: Nenhum perfil ou fazenda é selecionado automaticamente. A escolha explícita é obrigatória.')}
+          {t('auth.context.antiFirstMatchNotice', 'Regra de Segurança ISO-004: nenhum vínculo operacional é selecionado automaticamente. A escolha explícita é obrigatória.')}
         </div>
 
         {errorMessage && (

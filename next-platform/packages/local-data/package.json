@@ -1,0 +1,21 @@
+{
+  "name": "@consubov/local-data",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "bun build src/index.ts --outdir dist --target browser",
+    "test:browser": "bun test/run-in-browsers.ts",
+    "test:browser:stores": "bun test/run-in-browsers.ts --stores",
+    "test:browser:auth": "bun test/run-in-browsers.ts --auth"
+  },
+  "dependencies": {
+    "@consubov/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "typescript": "^5.8.3"
+  }
+}

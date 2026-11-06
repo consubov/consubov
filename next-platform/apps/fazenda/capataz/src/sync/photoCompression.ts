@@ -32,9 +32,7 @@ export interface CompressedPhotoResult {
 }
 
 export function generateAttachmentId(): string {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).slice(2, 9);
-  return `att-cocho-${timestamp}-${random}`;
+  return crypto.randomUUID();
 }
 
 /**
@@ -85,7 +83,7 @@ export async function compressPhoto(
     originalSizeBytes = input.byteLength;
     if (typeof Buffer !== 'undefined') {
       originalDataUrl = `data:${mimeType};base64,${Buffer.from(input).toString('base64')}`;
-    }
+    } else originalDataUrl = await blobToDataUrl(new Blob([new Uint8Array(input)], { type: mimeType }));
   } else if (typeof Blob !== 'undefined' && input instanceof Blob) {
     originalSizeBytes = input.size;
     originalDataUrl = await blobToDataUrl(input);
@@ -117,30 +115,24 @@ export async function compressPhoto(
 
         ctx.drawImage(img, 0, 0, width, height);
 
-        const compressedDataUrl = canvas.toDataURL(mimeType, quality);
-        const base64Data = compressedDataUrl.split(',')[1] || '';
-        const compressedSizeBytes = Math.round((base64Data.length * 3) / 4);
-        const compressionRatioPct = originalSizeBytes > 0
-          ? Math.max(0, Math.round(((originalSizeBytes - compressedSizeBytes) / originalSizeBytes) * 100))
-          : 85;
-
         canvas.toBlob(
           (blob) => {
-            resolve({
+            if (!blob) return reject(new Error('Não foi possível codificar a foto.'));
+            void blobToDataUrl(blob).then(dataUrl => resolve({
               attachment_id,
-              blob: blob || undefined,
-              dataUrl: compressedDataUrl,
-              originalSizeBytes: originalSizeBytes || 4 * 1024 * 1024,
-              compressedSizeBytes,
+              blob,
+              dataUrl,
+              originalSizeBytes,
+              compressedSizeBytes: blob.size,
               width,
               height,
-              compressionRatioPct,
+              compressionRatioPct: originalSizeBytes > 0 ? Math.max(0, Math.round((1 - blob.size / originalSizeBytes) * 100)) : 0,
               mimeType,
               pastoId: options.pastoId,
               cochoId: options.cochoId,
               tipoRegistro: options.tipoRegistro,
               createdAt
-            });
+            }), reject);
           },
           mimeType,
           quality
@@ -148,8 +140,7 @@ export async function compressPhoto(
       };
 
       img.onerror = () => {
-        // Fallback gracioso para dados sintéticos
-        resolve(createSyntheticCompressedResult(attachment_id, originalSizeBytes, options, createdAt));
+        reject(new Error('A imagem recebida não pôde ser lida.'));
       };
 
       img.src = originalDataUrl;

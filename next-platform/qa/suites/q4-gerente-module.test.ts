@@ -1,19 +1,45 @@
+import { GerenteDashboardTab } from '../../apps/fazenda/gerente/src/components/GerenteDashboardTab';
+import { moduleSeedSnapshot } from '../harness/module-seed';
 import { describe, it, expect, beforeEach } from 'bun:test';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
-import { I18nProvider } from '@consubov/ui';
+import { I18nProvider, ModuleRuntimeProvider } from '@consubov/ui';
 import { GerenteView, GERENTE_MODULE_DESCRIPTOR } from '@consubov/fazenda-gerente';
 import { GerenteStore } from '../../apps/fazenda/gerente/src/store/gerenteStore';
 import { scanAstLiterals, findTsxFiles } from '../harness/ast-literal-guard';
 import { resolve } from 'path';
 import * as fs from 'fs';
-import { APP_DICTIONARY } from '@consubov/contracts';
+import { APP_DICTIONARY, type ModuleExecutionContext, type ModuleLocalDataAPI, type LocalSnapshot, type LocalPendingCommand } from '@consubov/contracts';
 
 describe('Q4.1: Módulo Gerente Local-First, Indicadores Zootécnicos, Metas e Bilinguismo', () => {
   let store: GerenteStore;
+  const context: ModuleExecutionContext = {
+    userId: 'user-gerente-test', tenantId: 'tenant-test', farmId: 'farm-test', retreatId: null,
+    moduleId: 'gerente', profileId: 'gerente', deviceId: 'device-gerente-test', productId: 'consubov'
+  };
+  function makeLocalData(): ModuleLocalDataAPI {
+    const snapshots: LocalSnapshot[] = [moduleSeedSnapshot('gerente')];
+    const commands: LocalPendingCommand[] = [];
+    return {
+      readSnapshot: async () => null,
+      listSnapshots: async <T,>() => snapshots as LocalSnapshot<T>[],
+      commitMutation: async mutation => {
+        snapshots.push(mutation.snapshot);
+        commands.push({ command: mutation.command as unknown as LocalPendingCommand['command'], attachmentRefs: mutation.command.attachment_refs });
+        return { commandId: mutation.command.command_id, committed: true };
+      },
+      readAttachment: async () => null,
+      listPendingCommands: async limit => commands.slice(0, limit),
+      getCursor: async () => null,
+      getSchemaVersion: async () => 1
+    };
+  }
+  let testLocalData: ModuleLocalDataAPI;
 
-  beforeEach(() => {
-    store = new GerenteStore('consubov:test:gerente:01');
+  beforeEach(async () => {
+    testLocalData = makeLocalData();
+    store = new GerenteStore(context, testLocalData);
+    await store.ready;
   });
 
   it('Q4.1.1: deve exportar descritor canônico do módulo Gerente', () => {
@@ -25,30 +51,32 @@ describe('Q4.1: Módulo Gerente Local-First, Indicadores Zootécnicos, Metas e B
 
   it('Q4.1.2: deve renderizar GerenteView em pt-BR com dados zootécnicos e sem erros', () => {
     const html = renderToString(
-      React.createElement(I18nProvider, { language: 'pt-BR' }, React.createElement(GerenteView))
+      React.createElement(I18nProvider, { language: 'pt-BR' }, React.createElement(ModuleRuntimeProvider, { localData: testLocalData }, React.createElement(GerenteView, { context })))
     );
 
     expect(html).toContain('data-testid="gerente-module-view"');
     expect(html).toContain('Gerente de Produção');
-    expect(html).toContain('Ganho Médio Diário (GMD)');
-    expect(html).toContain('Escore de Cocho');
+    expect(html).toContain('Carregando dados operacionais');
+    expect(html).not.toContain('Lote 01 - Garrotes Nelore');
     expect(html).toContain('Gestão de Lotes');
   });
 
   it('Q4.1.3: deve renderizar GerenteView em en-US com 100% de paridade linguística e zero vazamento de português', () => {
     const html = renderToString(
-      React.createElement(I18nProvider, { language: 'en-US' }, React.createElement(GerenteView))
+      React.createElement(I18nProvider, { language: 'en-US' }, React.createElement(ModuleRuntimeProvider, { localData: testLocalData }, React.createElement(GerenteView, { context })))
     );
 
     expect(html).toContain('data-testid="gerente-module-view"');
     expect(html).toContain('Production Manager');
-    expect(html).toContain('Average Daily Gain (ADG)');
+    expect(html).toContain('Loading operational data');
     expect(html).toContain('Trough Score');
     expect(html).toContain('Herd Lots Management');
-    expect(html).toContain('Lot Identification');
-    expect(html).toContain('Head Count');
-    expect(html).toContain('Average Weight (kg)');
-    expect(html).toContain('Target ADG (kg/day)');
+    const dashboard = renderToString(React.createElement(I18nProvider, { language: 'en-US' },
+      React.createElement(GerenteDashboardTab, { state: store.getState(), onRefresh: () => {}, onNavigateTab: () => {} })));
+    expect(dashboard).toContain('Lot Identification');
+    expect(dashboard).toContain('Head Count');
+    expect(dashboard).toContain('Average Weight (kg)');
+    expect(dashboard).toContain('Target ADG (kg/day)');
 
     // Asserções negativas obrigatórias contra vazamento de português em modo en-US
     const ptForbiddenTerms = [
@@ -67,8 +95,8 @@ describe('Q4.1: Módulo Gerente Local-First, Indicadores Zootécnicos, Metas e B
     }
   });
 
-  it('Q4.1.4: store.definirMetas deve gerar AtomicCommandEnvelope válido e atualizar estado local', () => {
-    const envelope = store.definirMetas({
+  it('Q4.1.4: store.definirMetas deve gerar AtomicCommandEnvelope válido e atualizar estado local', async () => {
+    const envelope = await store.definirMetas({
       lote_id: 'lote-recria-01',
       gmd_alvo_kg_dia: 1.48,
       peso_final_alvo_kg: 520,
@@ -91,8 +119,8 @@ describe('Q4.1: Módulo Gerente Local-First, Indicadores Zootécnicos, Metas e B
     expect(state.outbox.length).toBe(1);
   });
 
-  it('Q4.1.5: store.ajustarDieta deve registrar comando e atualizar meta de consumo', () => {
-    const envelope = store.ajustarDieta({
+  it('Q4.1.5: store.ajustarDieta deve registrar comando e atualizar meta de consumo', async () => {
+    const envelope = await store.ajustarDieta({
       lote_id: 'lote-recria-01',
       produto_id: 'prod-suplemento-aguas',
       nova_meta_consumo_g_cab_dia: 1600,
@@ -108,8 +136,8 @@ describe('Q4.1: Módulo Gerente Local-First, Indicadores Zootécnicos, Metas e B
     expect(lote?.consumo_esperado_g_cab_dia).toBe(1600);
   });
 
-  it('Q4.1.6: store.transferirPasto deve atualizar pasto do lote e gerar envelope de movimentação', () => {
-    const envelope = store.transferirPasto({
+  it('Q4.1.6: store.transferirPasto deve atualizar pasto do lote e gerar envelope de movimentação', async () => {
+    const envelope = await store.transferirPasto({
       lote_id: 'lote-recria-01',
       pasto_origem_id: 'pasto-04',
       pasto_destino_id: 'pasto-12',
@@ -127,8 +155,8 @@ describe('Q4.1: Módulo Gerente Local-First, Indicadores Zootécnicos, Metas e B
     expect(lote?.pasto_id).toBe('pasto-12');
   });
 
-  it('Q4.1.7: store.apropriarCustos deve atualizar centros de custo do lote', () => {
-    const envelope = store.apropriarCustos({
+  it('Q4.1.7: store.apropriarCustos deve atualizar centros de custo do lote', async () => {
+    const envelope = await store.apropriarCustos({
       lote_id: 'lote-recria-01',
       periodo_mes: 11,
       periodo_ano: 2026,
@@ -149,8 +177,8 @@ describe('Q4.1: Módulo Gerente Local-First, Indicadores Zootécnicos, Metas e B
     expect(state.custos[0]?.percentual).toBe(60);
   });
 
-  it('Q4.1.8: store.aprovarLeituraCocho deve auditar e aprovar leitura de cocho', () => {
-    const envelope = store.aprovarLeituraCocho({
+  it('Q4.1.8: store.aprovarLeituraCocho deve auditar e aprovar leitura de cocho', async () => {
+    const envelope = await store.aprovarLeituraCocho({
       leitura_cocho_id: 'leitura-01',
       pasto_id: 'pasto-04',
       status_aprovacao: 'aprovado',
@@ -183,7 +211,7 @@ describe('Q4.1: Módulo Gerente Local-First, Indicadores Zootécnicos, Metas e B
 
   it('Q4.1.10: deve possuir semântica W3C ARIA Tabs completa e scope="col" nas tabelas', () => {
     const html = renderToString(
-      React.createElement(I18nProvider, { language: 'pt-BR' }, React.createElement(GerenteView))
+      React.createElement(I18nProvider, { language: 'pt-BR' }, React.createElement(ModuleRuntimeProvider, { localData: testLocalData }, React.createElement(GerenteView, { context })))
     );
 
     expect(html).toContain('role="tablist"');
@@ -194,7 +222,9 @@ describe('Q4.1: Módulo Gerente Local-First, Indicadores Zootécnicos, Metas e B
     expect(html).toContain('role="tabpanel"');
     expect(html).toContain('id="tabpanel-overview"');
     expect(html).toContain('aria-labelledby="tab-overview"');
-    expect(html).toContain('scope="col"');
+    const dashboard = renderToString(React.createElement(I18nProvider, { language: 'pt-BR' },
+      React.createElement(GerenteDashboardTab, { state: store.getState(), onRefresh: () => {}, onNavigateTab: () => {} })));
+    expect(dashboard).toContain('scope="col"');
   });
 
   it('Q4.1.11: 100% das chaves passadas a t(...) em gerente/src devem existir em APP_DICTIONARY', () => {

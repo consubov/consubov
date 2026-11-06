@@ -4,6 +4,26 @@ import { InMemorySessionStorage } from '../src/storage/session-storage';
 import { verifySyntheticJwt } from '../src/jwt/synthetic-jwt';
 
 describe('Suíte Unitária: LocalAuthService (Ciclo de Vida Offgrid)', () => {
+  it('não emite novos tokens a partir de sessão expirada', async () => {
+    const service = new LocalAuthService();
+    const login = await service.login({ email: 'gerente.lab@consubov.local' });
+    service.getSessionManager().setSession({ ...login.session!, expires_at: new Date(Date.now() - 1000).toISOString() });
+    const result = await service.selectContext(login.available_memberships![0]!.membership_id);
+    expect(result.success).toBe(false);
+    expect(service.getSessionManager().getSession()).toBeNull();
+    expect(service.getSessionManager().getTokens()).toBeNull();
+  });
+
+  it('não aplica contexto ou tokens após logout durante assinatura assíncrona', async () => {
+    const service = new LocalAuthService();
+    const login = await service.login({ email: 'gerente.lab@consubov.local' });
+    const selection = service.selectContext(login.available_memberships![0]!.membership_id);
+    service.logout();
+    expect((await selection).success).toBe(false);
+    expect(service.getSessionManager().getSession()).toBeNull();
+    expect(service.getSessionManager().getTokens()).toBeNull();
+  });
+
   it('deve realizar login de gerente e exigir seleção explícita de contexto (ISO-004)', async () => {
     const storage = new InMemorySessionStorage();
     const service = new LocalAuthService({ storage });
@@ -54,22 +74,33 @@ describe('Suíte Unitária: LocalAuthService (Ciclo de Vida Offgrid)', () => {
     expect(result.error).toContain('ACESSO_NEGADO_403');
   });
 
-  it('deve permitir switch de contexto para usuário multi-papel', async () => {
+  it('deve manter um perfil por conta ao trocar entre vínculos', async () => {
     const service = new LocalAuthService();
     const loginResult = await service.login({ email: 'multirole.lab@consubov.local' });
     expect(loginResult.success).toBe(true);
+    expect(loginResult.session?.profile_id).toBe('gerente');
+    expect(loginResult.available_memberships?.every(membership => membership.profile_id === 'gerente')).toBe(true);
     expect(loginResult.available_memberships?.length).toBe(2);
 
-    // Seleciona Gerente
     const ctx1 = await service.selectContext('mem-multi-01-gerente');
     expect(ctx1.session?.active_context?.profile_id).toBe('gerente');
-
-    // Troca para Capataz
-    const ctx2 = await service.switchContext('mem-multi-02-capataz');
-    expect(ctx2.session?.active_context?.profile_id).toBe('capataz');
-    expect(ctx2.tokens?.access_token).not.toBe(ctx1.tokens?.access_token);
+    const ctx2 = await service.switchContext('mem-multi-02-gerente');
+    expect(ctx2.success).toBe(true);
+    expect(ctx2.session?.active_context?.profile_id).toBe('gerente');
   });
 
+  it('deve falhar fechado se a sessão tiver vínculo de outro perfil', async () => {
+    const service = new LocalAuthService();
+    const login = await service.login({ email: 'multirole.lab@consubov.local' });
+    const session = login.session!;
+    service.getSessionManager().setSession({
+      ...session,
+      memberships: [...session.memberships, { ...session.memberships[0]!, membership_id: 'tampered-other-profile', profile_id: 'capataz' }]
+    });
+    const result = await service.selectContext('tampered-other-profile');
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('perfil único');
+  });
   it('deve renovar sessão offgrid via refreshSession', async () => {
     const service = new LocalAuthService();
     await service.login({ email: 'capataz.lab@consubov.local' });

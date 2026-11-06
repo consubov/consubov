@@ -10,6 +10,7 @@ import { ISessionStorage, LocalStorageSessionStorage } from '../storage/session-
 export class LocalAuthService {
   private sessionManager: SessionManager;
   private jwtSecret: string;
+  private contextSelectionEpoch = 0;
 
   constructor(options?: {
     sessionManager?: SessionManager;
@@ -33,6 +34,7 @@ export class LocalAuthService {
    * Em conformidade com o ISO-004, a sessão inicial NUNCA assume contexto implícito.
    */
   public async login(credentials: AuthCredentials): Promise<AuthResult> {
+    this.contextSelectionEpoch++;
     const userRecord = SYNTHETIC_USERS[credentials.email];
     if (!userRecord) {
       return {
@@ -50,7 +52,12 @@ export class LocalAuthService {
       };
     }
 
-    const activeMemberships = userRecord.memberships.filter(m => m.is_active);
+    const profileMemberships = userRecord.memberships.filter(m => m.profile_id === userRecord.primary_profile);
+    if (profileMemberships.length !== userRecord.memberships.length) {
+      return { success: false, error: 'A conta de laboratório contém vínculos de mais de um perfil.' };
+    }
+
+    const activeMemberships = profileMemberships.filter(m => m.is_active);
     if (activeMemberships.length === 0) {
       return {
         success: false,
@@ -66,7 +73,8 @@ export class LocalAuthService {
       user_id: userRecord.user_id,
       user_name: userRecord.name,
       user_email: userRecord.email,
-      memberships: userRecord.memberships,
+      profile_id: userRecord.primary_profile,
+      memberships: profileMemberships,
       active_context: null, // NULO até escolha consciente (ISO-004)
       issued_at: now.toISOString(),
       expires_at: expiresAt.toISOString(),
@@ -87,6 +95,7 @@ export class LocalAuthService {
    * Seleção explícita de contexto (fazenda/perfil) pelo operador (ISO-004).
    */
   public async selectContext(membershipId: string): Promise<AuthResult> {
+    const selectionEpoch = ++this.contextSelectionEpoch;
     const currentSession = this.sessionManager.getSession();
     if (!currentSession) {
       return {
@@ -94,7 +103,16 @@ export class LocalAuthService {
         error: 'Nenhuma sessão autenticada para selecionar contexto.'
       };
     }
+    const expiresAt = Date.parse(currentSession.expires_at);
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      this.logout();
+      return { success: false, error: 'Sessão expirada. Autentique-se novamente.' };
+    }
 
+    const membership = currentSession.memberships.find(item => item.membership_id === membershipId);
+    if (!membership || membership.profile_id !== currentSession.profile_id || currentSession.memberships.some(item => item.profile_id !== currentSession.profile_id)) {
+      return { success: false, error: 'Vínculo incompatível com o perfil único desta conta.' };
+    }
     let authorizedContext: AuthorizedContext;
     try {
       authorizedContext = resolveActiveContext(currentSession, membershipId);
@@ -107,6 +125,10 @@ export class LocalAuthService {
 
     const claims = createClaimsFromContext(currentSession, authorizedContext, 86400);
     const accessToken = await signSyntheticJwt(claims, this.jwtSecret);
+    if (selectionEpoch !== this.contextSelectionEpoch ||
+        this.sessionManager.getSession()?.session_id !== currentSession.session_id) {
+      return { success: false, error: 'A sessão mudou durante a seleção do contexto. Selecione novamente.' };
+    }
     const refreshToken = `ref-${currentSession.user_id}-${authorizedContext.context_id}-${Date.now()}`;
 
     const tokens: TokenPair = {
@@ -172,6 +194,7 @@ export class LocalAuthService {
    * Encerramento de sessão local e limpeza da partição ativa.
    */
   public logout(): void {
+    this.contextSelectionEpoch++;
     this.sessionManager.clearSession();
   }
 }

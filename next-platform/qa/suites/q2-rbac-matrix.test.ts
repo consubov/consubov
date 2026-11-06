@@ -1,3 +1,5 @@
+import { loginApi, authorizedEnvelope } from '../harness/api-auth';
+import { isProfileAuthorizedForCommand } from '@consubov/contracts';
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { createApiServer } from '@consubov/platform-api';
 import { allocateAvailablePort } from '../harness/port-allocator';
@@ -26,15 +28,7 @@ describe('Gate Q2.2: Matriz RBAC Declarativa (5 perfis x 22 comandos autorizados
     for (const p of profiles) {
       const user = SYNTHETIC_USERS[p.email]!;
       const mem = user.memberships[0]!;
-      tokens[p.key] = await signSyntheticJwt({
-        user_id: user.user_id,
-        email: user.email,
-        name: user.name,
-        tenant_id: mem.tenant_id,
-        fazenda_id: mem.fazenda_id,
-        profile_id: p.profile_id,
-        roles: [p.profile_id]
-      });
+      tokens[p.key] = (await loginApi(baseUrl, p.profile_id)).tokens.access_token;
     }
   });
 
@@ -73,12 +67,12 @@ describe('Gate Q2.2: Matriz RBAC Declarativa (5 perfis x 22 comandos autorizados
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokens['gerente']}`
       },
-      body: JSON.stringify(envelope)
+      body: JSON.stringify(authorizedEnvelope(tokens['gerente']!, envelope))
     });
 
     expect(res.status).toBe(403);
     const body: any = await res.json();
-    expect(body.error).toBe('FORBIDDEN_COMMAND');
+    expect(body.security.error).toBe('FORBIDDEN_403');
   });
 
   it('Q2.2.2: deve barrar com 403 Capataz tentando apropriar custos de gestão (gerente.custos.apropriar)', async () => {
@@ -107,12 +101,12 @@ describe('Gate Q2.2: Matriz RBAC Declarativa (5 perfis x 22 comandos autorizados
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokens['capataz']}`
       },
-      body: JSON.stringify(envelope)
+      body: JSON.stringify(authorizedEnvelope(tokens['capataz']!, envelope))
     });
 
     expect(res.status).toBe(403);
     const body: any = await res.json();
-    expect(body.error).toBe('FORBIDDEN_COMMAND');
+    expect(body.security.error).toBe('FORBIDDEN_403');
   });
 
   it('Q2.2.3: deve barrar com 403 Administrador tentando lançar cocho de campo (capataz.cocho.registrar_escore)', async () => {
@@ -133,12 +127,12 @@ describe('Gate Q2.2: Matriz RBAC Declarativa (5 perfis x 22 comandos autorizados
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokens['admin']}`
       },
-      body: JSON.stringify(envelope)
+      body: JSON.stringify(authorizedEnvelope(tokens['admin']!, envelope))
     });
 
     expect(res.status).toBe(403);
     const body: any = await res.json();
-    expect(body.error).toBe('FORBIDDEN_COMMAND');
+    expect(body.security.error).toBe('FORBIDDEN_403');
   });
 
   it('Q2.2.4: deve barrar com 403 Escritório tentando iniciar batida industrial (fabrica.batidas.iniciar)', async () => {
@@ -172,12 +166,12 @@ describe('Gate Q2.2: Matriz RBAC Declarativa (5 perfis x 22 comandos autorizados
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokens['escritorio']}`
       },
-      body: JSON.stringify(envelope)
+      body: JSON.stringify(authorizedEnvelope(tokens['escritorio']!, envelope))
     });
 
     expect(res.status).toBe(403);
     const body: any = await res.json();
-    expect(body.error).toBe('FORBIDDEN_COMMAND');
+    expect(body.security.error).toBe('FORBIDDEN_403');
   });
 
   it('Q2.2.5: deve aprovar com 200 Capataz executando seu próprio comando (capataz.cocho.registrar_escore)', async () => {
@@ -192,8 +186,8 @@ describe('Gate Q2.2: Matriz RBAC Declarativa (5 perfis x 22 comandos autorizados
       fazenda_id: mem.fazenda_id,
       profile_id: 'capataz',
       command_type: 'capataz.cocho.registrar_escore',
-      aggregate_id: 'pasto-01',
-      base_version: 0
+      aggregate_id: 'pasto-01', payload: { pasto_id: 'pasto-01', produto_id: 'prod-01', sacos_fornecidos: 2, escore_cocho: 2 },
+      base_version: 1
     });
 
     const res = await fetch(`${baseUrl}/api/v1/commands`, {
@@ -202,12 +196,12 @@ describe('Gate Q2.2: Matriz RBAC Declarativa (5 perfis x 22 comandos autorizados
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokens['capataz']}`
       },
-      body: JSON.stringify(envelope)
+      body: JSON.stringify(authorizedEnvelope(tokens['capataz']!, envelope))
     });
 
     expect(res.status).toBe(200);
     const body: any = await res.json();
-    expect(body.status).toBe('acked');
+    expect(body.ack.status).toBe('COMMITTED');
   });
 
   it('Q2.2.6: deve aprovar com 200 Gerente executando seu próprio comando (gerente.metas.definir)', async () => {
@@ -222,7 +216,7 @@ describe('Gate Q2.2: Matriz RBAC Declarativa (5 perfis x 22 comandos autorizados
       fazenda_id: mem.fazenda_id,
       profile_id: 'gerente',
       command_type: 'gerente.metas.definir',
-      aggregate_id: 'lote-01',
+      aggregate_type: 'lote', aggregate_id: 'lote-01',
       base_version: 0,
       payload: {
         lote_id: 'lote-01',
@@ -238,12 +232,12 @@ describe('Gate Q2.2: Matriz RBAC Declarativa (5 perfis x 22 comandos autorizados
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokens['gerente']}`
       },
-      body: JSON.stringify(envelope)
+      body: JSON.stringify(authorizedEnvelope(tokens['gerente']!, envelope))
     });
 
     expect(res.status).toBe(200);
     const body: any = await res.json();
-    expect(body.status).toBe('acked');
+    expect(body.ack.status).toBe('COMMITTED');
   });
 
   it('Q2.2.7: deve aprovar com 200 Fábrica executando seu próprio comando (fabrica.batidas.iniciar)', async () => {
@@ -258,7 +252,7 @@ describe('Gate Q2.2: Matriz RBAC Declarativa (5 perfis x 22 comandos autorizados
       fazenda_id: mem.fazenda_id,
       profile_id: 'fabrica',
       command_type: 'fabrica.batidas.iniciar',
-      aggregate_id: 'misturador-01',
+      aggregate_type: 'batida', aggregate_id: 'batida-01',
       base_version: 0,
       payload: {
         batida_id: 'batida-01',
@@ -281,12 +275,12 @@ describe('Gate Q2.2: Matriz RBAC Declarativa (5 perfis x 22 comandos autorizados
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokens['fabrica']}`
       },
-      body: JSON.stringify(envelope)
+      body: JSON.stringify(authorizedEnvelope(tokens['fabrica']!, envelope))
     });
 
     expect(res.status).toBe(200);
     const body: any = await res.json();
-    expect(body.status).toBe('acked');
+    expect(body.ack.status).toBe('COMMITTED');
   });
 
   it('Q2.2.8: deve aprovar com 200 Escritório executando seu próprio comando (escritorio.notas.registrar_entrada)', async () => {
@@ -301,7 +295,7 @@ describe('Gate Q2.2: Matriz RBAC Declarativa (5 perfis x 22 comandos autorizados
       fazenda_id: mem.fazenda_id,
       profile_id: 'escritorio',
       command_type: 'escritorio.notas.registrar_entrada',
-      aggregate_id: 'tenant-lab-001',
+      aggregate_type: 'nota_fiscal', aggregate_id: 'nf-001',
       base_version: 0,
       payload: {
         nota_fiscal_id: 'nf-001',
@@ -330,15 +324,15 @@ describe('Gate Q2.2: Matriz RBAC Declarativa (5 perfis x 22 comandos autorizados
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokens['escritorio']}`
       },
-      body: JSON.stringify(envelope)
+      body: JSON.stringify(authorizedEnvelope(tokens['escritorio']!, envelope))
     });
 
     expect(res.status).toBe(200);
     const body: any = await res.json();
-    expect(body.status).toBe('acked');
+    expect(body.ack.status).toBe('COMMITTED');
   });
 
-  it('Q2.2.9: deve aprovar com 200 Administrador executando seu próprio comando (admin.tenants.criar)', async () => {
+  it('Q2.2.9: allowlist administrativa não concede grant operacional nem ACK de domínio inexistente', async () => {
     const user = SYNTHETIC_USERS['admin.lab@consubov.local']!;
     const mem = user.memberships[0]!;
 
@@ -371,11 +365,13 @@ describe('Gate Q2.2: Matriz RBAC Declarativa (5 perfis x 22 comandos autorizados
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokens['admin']}`
       },
-      body: JSON.stringify(envelope)
+      body: JSON.stringify(authorizedEnvelope(tokens['admin']!, envelope))
     });
 
-    expect(res.status).toBe(200);
+    expect(isProfileAuthorizedForCommand('administrador', 'admin.tenants.criar')).toBe(true);
+    expect(res.status).toBe(403);
+    expect(apiInstance.ledger.queryLogs({ command_type: 'admin.tenants.criar' })).toHaveLength(0);
     const body: any = await res.json();
-    expect(body.status).toBe('acked');
+    expect(body.security.error).toBe('FORBIDDEN_403');
   });
 });

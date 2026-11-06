@@ -30,6 +30,7 @@ export interface SyntheticUserSession {
   user_id: string;
   user_name: string;
   user_email: string;
+  profile_id: UserProfileId;
   memberships: readonly MembershipRecord[];
   active_context: AuthorizedContext | null; // NULO até que haja seleção consciente!
   issued_at: string;  // ISO 8601

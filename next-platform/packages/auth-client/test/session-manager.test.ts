@@ -23,6 +23,7 @@ describe('Suíte Unitária: SessionManager e Chave de Partição Única', () => 
     user_id: 'user-456',
     user_name: 'Usuário Teste',
     user_email: 'user@consubov.local',
+    profile_id: 'gerente',
     memberships: [],
     active_context: fakeContext,
     issued_at: new Date().toISOString(),
@@ -62,6 +63,17 @@ describe('Suíte Unitária: SessionManager e Chave de Partição Única', () => 
     expect(restored).toBe(true);
     expect(sm2.getSession()?.user_id).toBe('user-456');
     expect(sm2.getActiveContext()?.profile_id).toBe('gerente');
+  });
+
+  it('recusa sessão expirada ou com datas inválidas sem restaurar tokens', () => {
+    for (const expires_at of ['invalid-date', new Date(Date.now() - 1000).toISOString()]) {
+      const storage = new InMemorySessionStorage();
+      const persisted = new SessionManager({ initialSession: { ...fakeSession, expires_at }, storage });
+      const restored = new SessionManager({ storage });
+      expect(restored.restoreFromStorage(persisted.getPartitionKey())).toBe(false);
+      expect(restored.getSession()).toBeNull();
+      expect(restored.getTokens()).toBeNull();
+    }
   });
 
   it('deve notificar listeners ao atualizar sessão', () => {

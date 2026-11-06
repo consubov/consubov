@@ -5,13 +5,16 @@ import {
   CapatazStore,
   resetCapatazStoresForTesting
 } from '../../apps/fazenda/capataz/src';
+import { createCapatazTestStore, resetCapatazTestData } from '../harness/capataz-test-runtime';
 
 describe('Q5.3: Gestão de Fotos de Cocho, Compressão Client-Side e Dissociação de Upload', () => {
   let store: CapatazStore;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     resetCapatazStoresForTesting();
-    store = new CapatazStore('consubov:tenant-test:user-capataz:fazenda-01:capataz');
+    resetCapatazTestData();
+    store = createCapatazTestStore('consubov:tenant-test:user-capataz:fazenda-01:capataz');
+    await store.ready;
   });
 
   it('Q5.3.1: deve calcular aspect ratio fit mantendo proporção original sem distorção', () => {
@@ -32,7 +35,7 @@ describe('Q5.3: Gestão de Fotos de Cocho, Compressão Client-Side e Dissociaç�
     expect(fit3.height).toBe(720);
   });
 
-  it('Q5.3.2: deve comprimir foto de alta resolução (4MB+) gerando saída leve (~100-200KB) com economia > 85%', async () => {
+  it('Q5.3.2: mantém fixture headless de metadados; compressão real exige teste browser', async () => {
     // 4.2 MB simulados
     const originalBytes = new Uint8Array(4404019);
     const result = await compressPhoto(originalBytes, {
@@ -44,7 +47,7 @@ describe('Q5.3: Gestão de Fotos de Cocho, Compressão Client-Side e Dissociaç�
     });
 
     expect(result.attachment_id).toBeDefined();
-    expect(result.attachment_id.startsWith('att-cocho-')).toBe(true);
+    expect(result.attachment_id).toMatch(/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i);
     expect(result.originalSizeBytes).toBe(4404019);
 
     // Deve estar na faixa otimizada de 80KB a 220KB
@@ -67,7 +70,7 @@ describe('Q5.3: Gestão de Fotos de Cocho, Compressão Client-Side e Dissociaç�
     });
 
     // Anexa a foto ao store
-    const { envelope } = store.anexarFotoCocho(compressed);
+    const { envelope } = await store.anexarFotoCocho(compressed);
 
     // 1. O blob reside no store de fotos local indexado por attachment_id
     const state = store.getState();
@@ -86,10 +89,13 @@ describe('Q5.3: Gestão de Fotos de Cocho, Compressão Client-Side e Dissociaç�
     expect(serializedPayload.length).toBeLessThan(1024); // menos de 1KB de metadados
   });
 
-  it('Q5.3.4: deve permitir vincular foto ao comando de leitura de cocho com AttachmentRef de integridade', () => {
+  it('Q5.3.4: deve permitir vincular foto ao comando de leitura de cocho com AttachmentRef de integridade', async () => {
     const attachmentId = 'att-cocho-teste-sha256-ref';
+    const photo = await compressPhoto(new Uint8Array(1024), { pastoId: 'pasto-01' });
+    photo.attachment_id = attachmentId;
+    await store.anexarFotoCocho(photo);
 
-    const { envelope, leitura } = store.registrarLeituraCocho({
+    const { envelope, leitura } = await store.registrarLeituraCocho({
       pasto_id: 'pasto-01',
       produto_id: 'prod-sal-mineral-80',
       escore_cocho: 2,

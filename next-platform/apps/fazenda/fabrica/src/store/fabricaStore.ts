@@ -1,3 +1,4 @@
+import { applyModuleCommand, type MisturadorRecord, type FormulaRecord, type BatidaRecord, type SiloRecord, type CalibracaoRecord, type FabricaState } from '@consubov/domain-projection/fabrica';
 import {
   AtomicCommandEnvelope,
   CriarFormulaRacaoPayload,
@@ -7,209 +8,105 @@ import {
   ReceberMateriaPrimaPayload,
   CalibrarBalancaMisturadorPayload,
   IngredienteFormula,
-  UserProfileId
+  type ModuleExecutionContext,
+  type ModuleLocalDataAPI
 } from '@consubov/contracts';
+import type { LocalSnapshot } from '@consubov/contracts';
 
-export interface MisturadorRecord {
-  misturador_id: string;
-  nome: string;
-  status: 'ocioso' | 'misturando' | 'descarregando';
-  batida_atual_id?: string;
-  capacidade_kg: number;
-}
+export type { MisturadorRecord, FormulaRecord, BatidaRecord, SiloRecord, CalibracaoRecord, FabricaState } from '@consubov/domain-projection/fabrica';
 
-export interface FormulaRecord {
-  formula_id: string;
-  nome_formula: string;
-  tipo_raca_destino: string;
-  ingredientes: IngredienteFormula[];
-  tamanho_batida_padrao_kg: number;
-  ativo: boolean;
-}
-
-export interface BatidaRecord {
-  batida_id: string;
-  ordem_producao_id: string;
-  formula_id: string;
-  misturador_id: string;
-  quantidade_planejada_kg: number;
-  quantidade_realizada_kg?: number;
-  tempo_mistura_segundos?: number;
-  operador_id: string;
-  iniciado_em: string;
-  finalizado_em?: string;
-  desvio_peso_kg?: number;
-  status: 'em_andamento' | 'concluida';
-}
-
-export interface SiloRecord {
-  silo_id: string;
-  nome_silo: string;
-  materia_prima_id: string;
-  materia_prima_nome: string;
-  capacidade_total_kg: number;
-  nivel_atual_kg: number;
-  ocupacao_pct: number;
-}
-
-export interface CalibracaoRecord {
-  balanca_id: string;
-  equipamento_tipo: string;
-  peso_padrao_kg: number;
-  peso_medido_kg: number;
-  desvio_pct: number;
-  calibrado: boolean;
-  data_calibracao: string;
-}
-
-export interface FabricaState {
-  kpis: {
-    misturadoresAtivos: number;
-    producaoHojeKg: number;
-    metaHojeKg: number;
-    silosAlertaCount: number;
-  };
-  misturadores: MisturadorRecord[];
-  formulas: FormulaRecord[];
-  batidas: BatidaRecord[];
-  silos: SiloRecord[];
-  calibracoes: CalibracaoRecord[];
-  outbox: AtomicCommandEnvelope<any>[];
-  baseVersions: Record<string, number>;
+function isFabricaState(value: unknown): value is FabricaState {
+  if (!value || typeof value !== 'object') return false;
+  const state = value as Partial<FabricaState>;
+  return Boolean(
+    state.kpis && Array.isArray(state.misturadores) && Array.isArray(state.formulas) &&
+    Array.isArray(state.batidas) && Array.isArray(state.silos) &&
+    Array.isArray(state.calibracoes) && Array.isArray(state.outbox) &&
+    state.baseVersions && typeof state.baseVersions === 'object' &&
+    (state.localRevision === undefined || (Number.isSafeInteger(state.localRevision) && state.localRevision >= 0))
+  );
 }
 
 export class FabricaStore {
   private state: FabricaState;
-  private partitionKey: string;
+  private context: ModuleExecutionContext;
+  private localData: ModuleLocalDataAPI;
+  private mutationQueue: Promise<void> = Promise.resolve();
+  public readonly ready: Promise<void>;
+  private hydrationFailed = false;
   private listeners: Set<() => void> = new Set();
 
-  constructor(partitionKey = 'consubov:tenant-default:user-fabrica:fazenda-01:fabrica') {
-    this.partitionKey = partitionKey;
-    this.state = this.loadInitialState();
+  constructor(context: ModuleExecutionContext, localData: ModuleLocalDataAPI) {
+    this.context = context;
+    this.localData = localData;
+    this.state = this.createInitialState();
+    this.ready = this.hydrate();
+    void this.ready.catch(() => undefined);
   }
 
-  private loadInitialState(): FabricaState {
-    if (typeof localStorage !== 'undefined') {
-      try {
-        const cached = localStorage.getItem(this.partitionKey);
-        if (cached) {
-          return JSON.parse(cached);
-        }
-      } catch {
-        // Fallback
-      }
-    }
-
+  private createInitialState(): FabricaState {
     return {
-      kpis: {
-        misturadoresAtivos: 1,
-        producaoHojeKg: 12500,
-        metaHojeKg: 20000,
-        silosAlertaCount: 0
-      },
-      misturadores: [
-        {
-          misturador_id: 'misturador-01',
-          nome: 'Misturador Horizontal 01 (2000kg)',
-          status: 'misturando',
-          batida_atual_id: 'batida-42',
-          capacidade_kg: 2000
-        },
-        {
-          misturador_id: 'misturador-02',
-          nome: 'Misturador Vertical 02 (1500kg)',
-          status: 'ocioso',
-          capacidade_kg: 1500
-        }
-      ],
-      formulas: [
-        {
-          formula_id: 'form-terminacao-22',
-          nome_formula: 'Terminação 22%',
-          tipo_raca_destino: 'racao_confinamento',
-          tamanho_batida_padrao_kg: 2000,
-          ativo: true,
-          ingredientes: [
-            { materia_prima_id: 'mp-milho', nome_ingrediente: 'Milho Moído', porcentagem_inclusao: 65 },
-            { materia_prima_id: 'mp-soja', nome_ingrediente: 'Farelo de Soja 46%', porcentagem_inclusao: 25 },
-            { materia_prima_id: 'mp-nucleo', nome_ingrediente: 'Núcleo Confinamento', porcentagem_inclusao: 7 },
-            { materia_prima_id: 'mp-calcario', nome_ingrediente: 'Calcário Calcítico', porcentagem_inclusao: 3 }
-          ]
-        }
-      ],
-      batidas: [
-        {
-          batida_id: 'batida-42',
-          ordem_producao_id: 'op-2026-1104',
-          formula_id: 'form-terminacao-22',
-          misturador_id: 'misturador-01',
-          quantidade_planejada_kg: 2000,
-          operador_id: 'user-fabrica-synthetic',
-          iniciado_em: '2026-11-04T09:30:00.000Z',
-          status: 'em_andamento'
-        }
-      ],
-      silos: [
-        {
-          silo_id: 'silo-01',
-          nome_silo: 'Silo 01',
-          materia_prima_id: 'mp-milho',
-          materia_prima_nome: 'Milho Moído',
-          capacidade_total_kg: 60000,
-          nivel_atual_kg: 42000,
-          ocupacao_pct: 70
-        },
-        {
-          silo_id: 'silo-02',
-          nome_silo: 'Silo 02',
-          materia_prima_id: 'mp-soja',
-          materia_prima_nome: 'Farelo de Soja',
-          capacidade_total_kg: 40000,
-          nivel_atual_kg: 33800,
-          ocupacao_pct: 84.5
-        },
-        {
-          silo_id: 'silo-03',
-          nome_silo: 'Silo 03',
-          materia_prima_id: 'mp-nucleo',
-          materia_prima_nome: 'Núcleo Mineral',
-          capacidade_total_kg: 20000,
-          nivel_atual_kg: 14500,
-          ocupacao_pct: 72.5
-        }
-      ],
-      calibracoes: [
-        {
-          balanca_id: 'balanca-misturador-01',
-          equipamento_tipo: 'celula_carga_misturador',
-          peso_padrao_kg: 1000,
-          peso_medido_kg: 1002,
-          desvio_pct: 0.2,
-          calibrado: true,
-          data_calibracao: '2026-11-01T08:00:00.000Z'
-        }
-      ],
-      outbox: [],
-      baseVersions: {
-        'form-terminacao-22': 0,
-        'batida-42': 0,
-        'silo-01': 0,
-        'silo-02': 0,
-        'silo-03': 0,
-        'balanca-misturador-01': 0
-      }
+      kpis: { misturadoresAtivos: 0, producaoHojeKg: 0, metaHojeKg: 0, silosAlertaCount: 0 },
+      misturadores: [], formulas: [], batidas: [], silos: [], calibracoes: [],
+      outbox: [], baseVersions: {}, localRevision: 0
     };
   }
 
-  private persist(): void {
-    if (typeof localStorage !== 'undefined') {
-      try {
-        localStorage.setItem(this.partitionKey, JSON.stringify(this.state));
-      } catch {
-        // quota
-      }
+  private async hydrate(): Promise<void> {
+    try {
+      const pending = await this.localData.listPendingCommands(500);
+      const candidates = await this.localData.listSnapshots<FabricaState>();
+      const latest = candidates.filter((snapshot): snapshot is LocalSnapshot<FabricaState> => isFabricaState(snapshot.data))
+        .sort((a, b) => (b.data.localRevision ?? 0) - (a.data.localRevision ?? 0))[0];
+      if (!latest) throw new Error('Dados locais ausentes ou inválidos. Conecte-se e autentique-se novamente para preparar o aplicativo.');
+      this.state = latest.data;
+      this.state = { ...this.state, outbox: pending.map(item => item.command) };
+      this.notify();
+      this.hydrationFailed = false;
+    } catch (error) {
+      this.hydrationFailed = true;
+      this.state = this.createInitialState();
+      this.notify();
+      throw error;
     }
-    this.notify();
+  }
+
+  private mutate<T extends AtomicCommandEnvelope>(action: () => T): Promise<T> {
+    const operation = this.mutationQueue.then(async () => {
+      await this.ready;
+      if (this.hydrationFailed) throw new Error('Dados locais indisponíveis; alteração não gravada.');
+      const previous = this.state;
+      const draft = structuredClone(previous);
+      this.state = draft;
+      try {
+        const command = action();
+        this.state.localRevision = (previous.localRevision ?? 0) + 1;
+        await this.localData.commitMutation({
+          expectedModuleRevision: previous.localRevision ?? 0,
+          command,
+          snapshot: {
+            aggregateType: command.aggregate_type, aggregateId: command.aggregate_id,
+            version: command.base_version + 1, data: this.state as unknown as Record<string, unknown>,
+            modifiedAt: command.occurred_at_local
+          },
+          attachments: []
+        });
+        this.notify();
+        return command;
+      } catch (error) {
+        this.state = previous;
+        if (error instanceof Error && /Estado local desatualizado/.test(error.message)) await this.hydrate();
+        throw error;
+      }
+    });
+    this.mutationQueue = operation.then(() => undefined, () => undefined);
+    return operation;
+  }
+
+  public refreshFromLocalData(): Promise<void> {
+    const operation = this.mutationQueue.then(() => this.hydrate());
+    this.mutationQueue = operation.then(() => undefined, () => undefined);
+    return operation;
   }
 
   public subscribe(listener: () => void): () => void {
@@ -227,12 +124,16 @@ export class FabricaStore {
     return this.state;
   }
 
+  public getContextKey(): string {
+    return JSON.stringify(this.context);
+  }
+
   private createEnvelope<T>(
     commandType: string,
     aggregateType: string,
     aggregateId: string,
     payload: T,
-    profileId: UserProfileId = 'fabrica'
+    profileId: ModuleExecutionContext['profileId'] = 'fabrica'
   ): AtomicCommandEnvelope<T> {
     const currentVersion = this.state.baseVersions[aggregateId] ?? 0;
     const commandId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -245,13 +146,13 @@ export class FabricaStore {
       aggregate_type: aggregateType,
       aggregate_id: aggregateId,
       base_version: currentVersion,
-      user_id: 'user-fabrica-synthetic',
-      tenant_id: 'tenant-default',
-      product_id: 'consubov',
-      fazenda_id: 'fazenda-01',
-      retiro_id: null,
+      user_id: this.context.userId,
+      tenant_id: this.context.tenantId,
+      product_id: this.context.productId,
+      fazenda_id: this.context.farmId,
+      retiro_id: this.context.retreatId,
       profile_id: profileId,
-      device_id: 'device-local-pwa',
+      device_id: this.context.deviceId,
       schema_version: 1,
       payload,
       correlation_id: commandId,
@@ -268,166 +169,96 @@ export class FabricaStore {
     return envelope;
   }
 
-  public salvarFormula(payload: CriarFormulaRacaoPayload): AtomicCommandEnvelope<CriarFormulaRacaoPayload> {
+  public salvarFormula(payload: CriarFormulaRacaoPayload): Promise<AtomicCommandEnvelope<CriarFormulaRacaoPayload>> {
     // Validação matemática estrita de 100% de inclusão
     const totalInclusao = payload.ingredientes.reduce((sum, item) => sum + item.porcentagem_inclusao, 0);
     if (Math.abs(totalInclusao - 100) > 0.01) {
       throw new Error(`Soma das porcentagens de inclusão deve ser exatamente 100%. Total atual: ${totalInclusao}%`);
     }
 
+    return this.mutate(() => {
     const envelope = this.createEnvelope(
       'fabrica.formulas.salvar',
       'formula',
       payload.formula_id,
       payload
     );
-
-    const existingIndex = this.state.formulas.findIndex(f => f.formula_id === payload.formula_id);
-    if (existingIndex >= 0) {
-      this.state.formulas[existingIndex] = payload;
-    } else {
-      this.state.formulas.push(payload);
-    }
-
-    this.persist();
+    this.state = applyModuleCommand('fabrica', this.state, envelope);
     return envelope;
+    });
   }
 
-  public iniciarBatida(payload: IniciarBatidaPayload): AtomicCommandEnvelope<IniciarBatidaPayload> {
+  public iniciarBatida(payload: IniciarBatidaPayload): Promise<AtomicCommandEnvelope<IniciarBatidaPayload>> {
+    return this.mutate(() => {
     const envelope = this.createEnvelope(
       'fabrica.batidas.iniciar',
       'batida',
       payload.batida_id,
       payload
     );
-
-    this.state.batidas.unshift({
-      batida_id: payload.batida_id,
-      ordem_producao_id: payload.ordem_producao_id,
-      formula_id: payload.formula_id,
-      misturador_id: payload.misturador_id,
-      quantidade_planejada_kg: payload.quantidade_planejada_kg,
-      operador_id: payload.operador_id,
-      iniciado_em: payload.iniciado_em,
-      status: 'em_andamento'
-    });
-
-    const mixer = this.state.misturadores.find(m => m.misturador_id === payload.misturador_id);
-    if (mixer) {
-      mixer.status = 'misturando';
-      mixer.batida_atual_id = payload.batida_id;
-    }
-
-    this.persist();
+    this.state = applyModuleCommand('fabrica', this.state, envelope);
     return envelope;
+    });
   }
 
-  public concluirBatida(payload: ConcluirBatidaPayload): AtomicCommandEnvelope<ConcluirBatidaPayload> {
+  public concluirBatida(payload: ConcluirBatidaPayload): Promise<AtomicCommandEnvelope<ConcluirBatidaPayload>> {
+    return this.mutate(() => {
     const envelope = this.createEnvelope(
       'fabrica.batidas.concluir',
       'batida',
       payload.batida_id,
       payload
     );
-
-    const batida = this.state.batidas.find(b => b.batida_id === payload.batida_id);
-    if (batida) {
-      batida.quantidade_realizada_kg = payload.quantidade_realizada_kg;
-      batida.tempo_mistura_segundos = payload.tempo_mistura_segundos;
-      batida.finalizado_em = payload.finalizado_em;
-      batida.desvio_peso_kg = payload.desvio_peso_kg;
-      batida.status = 'concluida';
-
-      const mixer = this.state.misturadores.find(m => m.misturador_id === batida.misturador_id);
-      if (mixer) {
-        mixer.status = 'ocioso';
-        mixer.batida_atual_id = undefined;
-      }
-
-      // Baixa automática proporcional das matérias-primas nos silos correspondentes
-      const formula = this.state.formulas.find(f => f.formula_id === batida.formula_id);
-      if (formula) {
-        for (const ing of formula.ingredientes) {
-          const consumoKg = (payload.quantidade_realizada_kg * ing.porcentagem_inclusao) / 100;
-          const silo = this.state.silos.find(s => s.materia_prima_id === ing.materia_prima_id);
-          if (silo) {
-            silo.nivel_atual_kg = Math.max(0, silo.nivel_atual_kg - consumoKg);
-            silo.ocupacao_pct = Math.round((silo.nivel_atual_kg / silo.capacidade_total_kg) * 1000) / 10;
-          }
-        }
-      }
-
-      this.state.kpis.producaoHojeKg += payload.quantidade_realizada_kg;
-    }
-
-    this.persist();
+    this.state = applyModuleCommand('fabrica', this.state, envelope);
     return envelope;
+    });
   }
 
-  public ajustarEstoque(payload: AjustarEstoqueMateriaPrimaPayload): AtomicCommandEnvelope<AjustarEstoqueMateriaPrimaPayload> {
+  public ajustarEstoque(payload: AjustarEstoqueMateriaPrimaPayload): Promise<AtomicCommandEnvelope<AjustarEstoqueMateriaPrimaPayload>> {
+    return this.mutate(() => {
     const envelope = this.createEnvelope(
       'fabrica.estoque.ajustar',
       'silo',
       payload.silo_id,
       payload
     );
-
-    const silo = this.state.silos.find(s => s.silo_id === payload.silo_id);
-    if (silo) {
-      silo.nivel_atual_kg = payload.quantidade_ajustada_kg;
-      silo.ocupacao_pct = Math.round((payload.quantidade_ajustada_kg / silo.capacidade_total_kg) * 1000) / 10;
-    }
-
-    this.persist();
+    this.state = applyModuleCommand('fabrica', this.state, envelope);
     return envelope;
+    });
   }
 
-  public receberMateriaPrima(payload: ReceberMateriaPrimaPayload): AtomicCommandEnvelope<ReceberMateriaPrimaPayload> {
+  public receberMateriaPrima(payload: ReceberMateriaPrimaPayload): Promise<AtomicCommandEnvelope<ReceberMateriaPrimaPayload>> {
+    return this.mutate(() => {
     const envelope = this.createEnvelope(
       'fabrica.materia_prima.receber',
       'silo',
       payload.silo_destino_id,
       payload
     );
-
-    const silo = this.state.silos.find(s => s.silo_id === payload.silo_destino_id);
-    if (silo) {
-      silo.nivel_atual_kg += payload.quantidade_kg;
-      silo.ocupacao_pct = Math.round((silo.nivel_atual_kg / silo.capacidade_total_kg) * 1000) / 10;
-    }
-
-    this.persist();
+    this.state = applyModuleCommand('fabrica', this.state, envelope);
     return envelope;
+    });
   }
 
-  public calibrarBalanca(payload: CalibrarBalancaMisturadorPayload): AtomicCommandEnvelope<CalibrarBalancaMisturadorPayload> {
+  public calibrarBalanca(payload: CalibrarBalancaMisturadorPayload): Promise<AtomicCommandEnvelope<CalibrarBalancaMisturadorPayload>> {
+    return this.mutate(() => {
     const envelope = this.createEnvelope(
       'fabrica.balanca.calibrar',
       'balanca',
       payload.balanca_id,
       payload
     );
-
-    this.state.calibracoes.unshift({
-      balanca_id: payload.balanca_id,
-      equipamento_tipo: payload.equipamento_tipo,
-      peso_padrao_kg: payload.peso_padrao_afericao_kg,
-      peso_medido_kg: payload.peso_medido_kg,
-      desvio_pct: payload.desvio_percentual,
-      calibrado: payload.calibrado,
-      data_calibracao: payload.data_calibracao
-    });
-
-    this.persist();
+    this.state = applyModuleCommand('fabrica', this.state, envelope);
     return envelope;
+    });
   }
 }
 
 let defaultFabricaStore: FabricaStore | null = null;
 
-export function getFabricaStore(partitionKey?: string): FabricaStore {
-  if (!defaultFabricaStore || partitionKey) {
-    defaultFabricaStore = new FabricaStore(partitionKey);
+export function getFabricaStore(context: ModuleExecutionContext, localData: ModuleLocalDataAPI): FabricaStore {
+  if (!defaultFabricaStore || defaultFabricaStore.getContextKey() !== JSON.stringify(context)) {
+    defaultFabricaStore = new FabricaStore(context, localData);
   }
   return defaultFabricaStore;
 }

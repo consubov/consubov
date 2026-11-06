@@ -5,17 +5,20 @@ import {
   CapatazStore,
   resetCapatazStoresForTesting
 } from '../../apps/fazenda/capataz/src';
+import { createCapatazTestStore, resetCapatazTestData } from '../harness/capataz-test-runtime';
 
 describe('Q5.5: Resolução de Conflitos Especializada por Domínio SEM Last-Write-Wins (LWW)', () => {
   let store: CapatazStore;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     resetCapatazStoresForTesting();
-    store = new CapatazStore('consubov:tenant-conflict:user-01:fazenda-01:capataz');
+    resetCapatazTestData();
+    store = createCapatazTestStore('consubov:tenant-conflict:user-01:fazenda-01:capataz');
+    await store.ready;
   });
 
-  it('Q5.5.1: Leituras de Cocho devem aplicar Merge Aditivo cronológico sem perda de histórico (Anti-LWW)', () => {
-    const { envelope: cmdLeituraLocal } = store.registrarLeituraCocho({
+  it('Q5.5.1: Leituras de Cocho devem aplicar Merge Aditivo cronológico sem perda de histórico (Anti-LWW)', async () => {
+    const { envelope: cmdLeituraLocal } = await store.registrarLeituraCocho({
       pasto_id: 'pasto-01',
       produto_id: 'prod-sal-mineral-80',
       escore_cocho: 3,
@@ -76,7 +79,8 @@ describe('Q5.5: Resolução de Conflitos Especializada por Domínio SEM Last-Wri
     expect(resolution.auditTrail.action).toBe('OCC_CONFLICT_DETECTED');
   });
 
-  it('Q5.5.3: deve permitir resolução explícita pelo operador ("Manter Local" recalculando base_version)', () => {
+  it('Q5.5.3: deve permitir resolução explícita pelo operador ("Manter Local" recalculando base_version)', async () => {
+    await store.ready;
     (store as any).state.isLeader = true;
 
     // Simula um conflito inserido na lista de conflitos do store
@@ -110,7 +114,8 @@ describe('Q5.5: Resolução de Conflitos Especializada por Domínio SEM Last-Wri
     expect(reQueued!.idempotency_key).toContain('recalc');
   });
 
-  it('Q5.5.4: deve permitir resolução explícita pelo operador ("Aceitar Servidor" descartando a mutação local)', () => {
+  it('Q5.5.4: deve permitir resolução explícita pelo operador ("Aceitar Servidor" descartando a mutação local)', async () => {
+    await store.ready;
     (store as any).state.isLeader = true;
 
     const conflictingCommand: any = {

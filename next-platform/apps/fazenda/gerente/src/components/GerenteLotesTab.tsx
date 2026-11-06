@@ -1,3 +1,4 @@
+import { QuiescentForm } from '@consubov/ui';
 import React, { useState } from 'react';
 import { useTranslation, Card, Button, Input } from '@consubov/ui';
 import { GerenteState, GerenteStore } from '../store/gerenteStore';
@@ -16,13 +17,16 @@ export const GerenteLotesTab: React.FC<GerenteLotesTabProps> = ({ state, store }
   const [motivoMovimentacao, setMotivoMovimentacao] = useState<'rotacionamento' | 'apartacao' | 'tratamento' | 'pesagem' | 'venda' | 'confinamento'>('rotacionamento');
   const [responsavelNome, setResponsavelNome] = useState('Carlos Gestor');
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleTransferirPasto = (e: React.FormEvent) => {
+  const handleTransferirPasto = async (e: React.FormEvent) => {
     e.preventDefault();
     const lote = state.lotes.find(l => l.lote_id === selectedLoteId);
     if (!lote) return;
 
-    store.transferirPasto({
+    setErrorMessage(null);
+    try {
+    await store.transferirPasto({
       lote_id: selectedLoteId,
       pasto_origem_id: lote.pasto_id,
       pasto_destino_id: pastoDestinoId,
@@ -33,10 +37,13 @@ export const GerenteLotesTab: React.FC<GerenteLotesTabProps> = ({ state, store }
     });
 
     setFeedbackMessage(t('gerente.transfer.success', 'Movimentação de lote confirmada com sucesso!'));
+      return true;
+    } catch (error) { setErrorMessage(error instanceof Error ? error.message : String(error)); }
   };
 
   return (
     <div data-testid="gerente-lotes-tab" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {errorMessage && <Card elevation="elevated" style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA', padding: 12 }}><p role="alert" style={{ margin: 0, color: '#991B1B' }}>{errorMessage}</p></Card>}
       {feedbackMessage && (
         <Card elevation="elevated" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', padding: 12 }}>
           <p style={{ margin: 0, color: '#166534', fontWeight: 600 }}>{feedbackMessage}</p>
@@ -45,17 +52,18 @@ export const GerenteLotesTab: React.FC<GerenteLotesTabProps> = ({ state, store }
 
       {/* Formulário de Transferência de Pasto */}
       <Card elevation="elevated">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.2rem' }}>
           {t('gerente.transfer.title', 'Transferência de Pasto')}
-        </h3>
+        </h2>
 
-        <form onSubmit={handleTransferirPasto} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <QuiescentForm onSubmit={handleTransferirPasto} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
+              <label htmlFor="gerente-transferencia-lote" style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: '0.875rem' }}>
                 {t('gerente.lote.nome', 'Identificação do Lote')}
               </label>
               <select
+                id="gerente-transferencia-lote"
                 value={selectedLoteId}
                 onChange={e => setSelectedLoteId(e.target.value)}
                 style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #CBD5E1' }}
@@ -94,19 +102,19 @@ export const GerenteLotesTab: React.FC<GerenteLotesTabProps> = ({ state, store }
               {t('gerente.lote.transferir', 'Movimentar para Pasto')}
             </Button>
           </div>
-        </form>
+        </QuiescentForm>
       </Card>
 
       {/* Relação Detalhada dos Lotes */}
       <Card elevation="flat">
-        <h3 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>
           {t('gerente.tabs.lotes', 'Gestão de Lotes')}
-        </h3>
+        </h2>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
           {state.lotes.map(lote => (
             <Card key={lote.lote_id} elevation="elevated" style={{ backgroundColor: '#F8FAFC' }}>
-              <h4 style={{ margin: '0 0 8px', fontSize: '1.05rem', color: '#1E293B' }}>{lote.nome_lote}</h4>
+              <h3 style={{ margin: '0 0 8px', fontSize: '1.05rem', color: '#1E293B' }}>{lote.nome_lote}</h3>
               <p style={{ margin: '4px 0', fontSize: '0.875rem', color: '#64748B' }}>
                 <span>{t('gerente.transfer.originLabel', 'Pasto de Origem')}: </span>
                 <strong style={{ color: '#334155' }}>{lote.pasto_nome}</strong>

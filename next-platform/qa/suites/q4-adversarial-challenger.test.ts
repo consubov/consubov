@@ -1,11 +1,35 @@
+import { createApiTestAccount, authorizedEnvelope } from '../harness/api-auth';
+import { moduleSeedSnapshot } from '../harness/module-seed';
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { createApiServer } from '@consubov/platform-api';
 import { allocateAvailablePort } from '../harness/port-allocator';
 import { installNetworkGuard } from '../harness/network-guard';
-import { signSyntheticJwt } from '@consubov/auth-client';
-import { AtomicCommandEnvelope } from '@consubov/contracts';
+import { signSyntheticJwt, SYNTHETIC_USERS } from '@consubov/auth-client';
+import { AtomicCommandEnvelope, type ModuleExecutionContext, type ModuleLocalDataAPI, type LocalSnapshot, type LocalPendingCommand } from '@consubov/contracts';
 import { FabricaStore } from '../../apps/fazenda/fabrica/src/store/fabricaStore';
 import { InMemoryLedger } from '../../api/src/ledger/in-memory-ledger';
+
+const fabricaTestContext: ModuleExecutionContext = {
+  userId: 'user-fabrica-challenge', tenantId: 'tenant-test', farmId: 'farm-test', retreatId: null,
+  moduleId: 'fabrica', profileId: 'fabrica', deviceId: 'device-fabrica-challenge', productId: 'consubov'
+};
+function makeFabricaLocalData(): ModuleLocalDataAPI {
+  const snapshots: LocalSnapshot[] = [moduleSeedSnapshot('fabrica')];
+  const commands: LocalPendingCommand[] = [];
+  return {
+    readSnapshot: async () => null,
+    listSnapshots: async <T,>() => snapshots as LocalSnapshot<T>[],
+    commitMutation: async mutation => {
+      snapshots.push(mutation.snapshot);
+      commands.push({ command: mutation.command as unknown as LocalPendingCommand['command'], attachmentRefs: mutation.command.attachment_refs });
+      return { commandId: mutation.command.command_id, committed: true };
+    },
+    readAttachment: async () => null,
+    listPendingCommands: async limit => commands.slice(0, limit),
+    getCursor: async () => null,
+    getSchemaVersion: async () => 1
+  };
+}
 
 describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, Integridade do Ledger e Limites Extremos Zod', () => {
   let restoreNetwork: () => void;
@@ -30,57 +54,22 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
     baseUrl = `http://127.0.0.1:${port}`;
 
     // 3. Emissão de tokens para Tenant Alpha
-    tokenTenantAlphaGerente = await signSyntheticJwt({
-      user_id: 'user-alpha-gerente',
-      tenant_id: 'tenant-lab-alpha',
-      fazenda_id: 'fazenda-alpha-01',
-      profile_id: 'gerente',
-      roles: ['gerente']
-    });
+    tokenTenantAlphaGerente = (await createApiTestAccount(baseUrl, 'gerente', { email: 'q4-alpha-gerente@test.local', userId: 'user-alpha-gerente', tenantId: 'tenant-lab-alpha', farmId: 'fazenda-alpha-01' })).tokens.access_token;
 
-    tokenTenantAlphaEscritorio = await signSyntheticJwt({
-      user_id: 'user-alpha-escritorio',
-      tenant_id: 'tenant-lab-alpha',
-      fazenda_id: 'fazenda-alpha-01',
-      profile_id: 'escritorio',
-      roles: ['escritorio']
-    });
+    tokenTenantAlphaEscritorio = (await createApiTestAccount(baseUrl, 'escritorio', { email: 'q4-alpha-escritorio@test.local', userId: 'user-alpha-escritorio', tenantId: 'tenant-lab-alpha', farmId: 'fazenda-alpha-01' })).tokens.access_token;
 
-    tokenTenantAlphaFabrica = await signSyntheticJwt({
-      user_id: 'user-alpha-fabrica',
-      tenant_id: 'tenant-lab-alpha',
-      fazenda_id: 'fazenda-alpha-01',
-      profile_id: 'fabrica',
-      roles: ['fabrica']
-    });
+    tokenTenantAlphaFabrica = (await createApiTestAccount(baseUrl, 'fabrica', { email: 'q4-alpha-fabrica@test.local', userId: 'user-alpha-fabrica', tenantId: 'tenant-lab-alpha', farmId: 'fazenda-alpha-01' })).tokens.access_token;
 
-    tokenTenantAlphaCapataz = await signSyntheticJwt({
-      user_id: 'user-alpha-capataz',
-      tenant_id: 'tenant-lab-alpha',
-      fazenda_id: 'fazenda-alpha-01',
-      profile_id: 'capataz',
-      roles: ['capataz']
-    });
+    tokenTenantAlphaCapataz = (await createApiTestAccount(baseUrl, 'capataz', { email: 'q4-alpha-capataz@test.local', userId: 'user-alpha-capataz', tenantId: 'tenant-lab-alpha', farmId: 'fazenda-alpha-01' })).tokens.access_token;
 
     // 4. Emissão de tokens para Tenant Beta (para testes cross-tenant)
-    tokenTenantBetaEscritorio = await signSyntheticJwt({
-      user_id: 'user-beta-escritorio',
-      tenant_id: 'tenant-lab-beta',
-      fazenda_id: 'fazenda-beta-01',
-      profile_id: 'escritorio',
-      roles: ['escritorio']
-    });
+    tokenTenantBetaEscritorio = (await createApiTestAccount(baseUrl, 'escritorio', { email: 'q4-beta-escritorio@test.local', userId: 'user-beta-escritorio', tenantId: 'tenant-lab-beta', farmId: 'fazenda-beta-01' })).tokens.access_token;
 
-    tokenTenantBetaFabrica = await signSyntheticJwt({
-      user_id: 'user-beta-fabrica',
-      tenant_id: 'tenant-lab-beta',
-      fazenda_id: 'fazenda-beta-01',
-      profile_id: 'fabrica',
-      roles: ['fabrica']
-    });
+    tokenTenantBetaFabrica = (await createApiTestAccount(baseUrl, 'fabrica', { email: 'q4-beta-fabrica@test.local', userId: 'user-beta-fabrica', tenantId: 'tenant-lab-beta', farmId: 'fazenda-beta-01' })).tokens.access_token;
   });
 
   afterAll(() => {
+    for (const email of Object.keys(SYNTHETIC_USERS)) if (email.startsWith('q4-') && email.endsWith('@test.local')) delete SYNTHETIC_USERS[email];
     if (apiInstance) apiInstance.stop();
     if (restoreNetwork) restoreNetwork();
   });
@@ -134,7 +123,7 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
             'Content-Type': 'application/json',
             Authorization: `Bearer ${tokenTenantAlphaFabrica}`
           },
-          body: JSON.stringify(envelope)
+          body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaFabrica, envelope))
         });
       });
 
@@ -153,16 +142,16 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
       expect(winner).toBeDefined();
       if (!winner) throw new Error('Vencedor da concorrência não encontrado');
       const ackWinner: any = await winner.json();
-      expect(ackWinner.status).toBe('acked');
-      expect(ackWinner.new_version).toBe(1);
-      expect(ackWinner.idempotent_replay).toBe(false);
+      expect(ackWinner.ack.status).toBe('COMMITTED');
+      expect(ackWinner.ack.aggregate_version).toBe(1);
+      expect(ackWinner.success).toBe(true);
 
       // Valida que TODOS os perdedores receberam CONCURRENCY_CONFLICT
       for (const res409 of status409) {
         const body: any = await res409.json();
-        expect(body.error).toBe('CONCURRENCY_CONFLICT');
-        expect(body.expected_base_version).toBe(1);
-        expect(body.received_base_version).toBe(0);
+        expect(body.conflict.error).toBe('CONFLICT_409');
+        expect(body.conflict.current_version).toBe(1);
+        expect(body.conflict.base_version).toBe(0);
       }
     });
 
@@ -207,11 +196,11 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenTenantAlphaFabrica}`
         },
-        body: JSON.stringify(envelopeV1)
+        body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaFabrica, envelopeV1))
       });
       expect(resV1.status).toBe(200);
       const ackV1: any = await resV1.json();
-      expect(ackV1.new_version).toBe(2);
+      expect(ackV1.ack.aggregate_version).toBe(2);
 
       // 2. Tentativa hostil com base_version defasada (base_version=0 ou base_version=1)
       const staleEnvelope: AtomicCommandEnvelope = {
@@ -227,13 +216,13 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenTenantAlphaFabrica}`
         },
-        body: JSON.stringify(staleEnvelope)
+        body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaFabrica, staleEnvelope))
       });
       expect(resStale.status).toBe(409);
       const bodyStale: any = await resStale.json();
-      expect(bodyStale.error).toBe('CONCURRENCY_CONFLICT');
-      expect(bodyStale.expected_base_version).toBe(2);
-      expect(bodyStale.received_base_version).toBe(1);
+      expect(bodyStale.conflict.error).toBe('CONFLICT_409');
+      expect(bodyStale.conflict.current_version).toBe(2);
+      expect(bodyStale.conflict.base_version).toBe(1);
     });
 
     it('CHALLENGE-1.3: Rajada concorrente com 10 agregados DISTINTOS em paralelo -> TODOS os 10 devem ter sucesso (lock granular por agregado)', async () => {
@@ -279,7 +268,7 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
             'Content-Type': 'application/json',
             Authorization: `Bearer ${tokenTenantAlphaFabrica}`
           },
-          body: JSON.stringify(envelope)
+          body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaFabrica, envelope))
         });
       });
 
@@ -289,8 +278,8 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
       for (const res of responses) {
         expect(res.status).toBe(200);
         const data: any = await res.json();
-        expect(data.status).toBe('acked');
-        expect(data.new_version).toBe(1);
+        expect(data.ack.status).toBe('COMMITTED');
+        expect(data.ack.aggregate_version).toBe(1);
       }
     });
 
@@ -333,21 +322,22 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
         error_message: null
       });
 
-      // Primeiro comando (base_version: 0) -> sucesso, versão vai para 1
+      ledger.initialize({ ...createTestEnv('seed', 'seed-idempotency-key', 0), session_id: 'unit-seed' }, moduleSeedSnapshot('fabrica').data, '2026-11-05T08:00:00.000Z');
+      // Primeiro comando aplica a projeção real e avança a versão.
       const res1 = ledger.processCommand(createTestEnv('c1', 'idemp1-uuid-padded', 0));
       expect(res1.success).toBe(true);
       if (res1.success) {
-        expect(res1.ack.new_version).toBe(1);
-        expect(res1.ack.idempotent_replay).toBe(false);
+        expect(res1.ack.aggregate_version).toBe(1);
+        expect(res1.ack.status).toBe('COMMITTED');
       }
       expect(ledger.getAggregateVersion(tenantId, 'batida', aggId)).toBe(1);
 
       // Replay do mesmo comando (mesma idempKey) -> sucesso idempotente
-      const res1Replay = ledger.processCommand(createTestEnv('c1-dup', 'idemp1-uuid-padded', 0));
+      const res1Replay = ledger.processCommand(createTestEnv('c1', 'idemp1-uuid-padded', 0));
       expect(res1Replay.success).toBe(true);
       if (res1Replay.success) {
-        expect(res1Replay.ack.idempotent_replay).toBe(true);
-        expect(res1Replay.ack.new_version).toBe(1);
+        if (res1.success) expect(res1Replay.ack).toEqual(res1.ack);
+        expect(res1Replay.ack.aggregate_version).toBe(1);
       }
 
       // Comando concorrente com nova chave mas base_version defasada (0) -> 409
@@ -355,7 +345,7 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
       expect(resStale.success).toBe(false);
       if (!resStale.success) {
         expect(resStale.status).toBe(409);
-        expect(resStale.error.error).toBe('CONCURRENCY_CONFLICT');
+        expect('conflict' in resStale.error && resStale.error.conflict.error).toBe('CONFLICT_409');
       }
 
       // Comando futuro com base_version saltada (99) -> 409
@@ -363,14 +353,14 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
       expect(resFuture.success).toBe(false);
       if (!resFuture.success) {
         expect(resFuture.status).toBe(409);
-        expect(resFuture.error.error).toBe('CONCURRENCY_CONFLICT');
+        expect('conflict' in resFuture.error && resFuture.error.conflict.error).toBe('CONFLICT_409');
       }
 
       // Comando correto com base_version 1 -> avança para 2
       const res2 = ledger.processCommand(createTestEnv('c4', 'idemp4-uuid-padded', 1));
       expect(res2.success).toBe(true);
       if (res2.success) {
-        expect(res2.ack.new_version).toBe(2);
+        expect(res2.ack.aggregate_version).toBe(2);
       }
       expect(ledger.getAggregateVersion(tenantId, 'batida', aggId)).toBe(2);
     });
@@ -434,57 +424,57 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
             'Content-Type': 'application/json',
             Authorization: `Bearer ${tokenTenantAlphaEscritorio}`
           },
-          body: JSON.stringify(envelope)
+          body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaEscritorio, envelope))
         });
       };
 
-      it('CHALLENGE-2.1.1: Chave de NF-e com 43 dígitos numéricos é sumariamente rejeitada com 400', async () => {
+      it('CHALLENGE-2.1.1: Chave de NF-e com 43 dígitos numéricos é sumariamente rejeitada com 422', async () => {
         const res = await sendNf({
           chave_acesso_nfe: '3526110000000000000055001000044556100000001' // 43 dígitos
         });
-        expect(res.status).toBe(400);
+        expect(res.status).toBe(422);
         const body: any = await res.json();
-        expect(body.error).toBe('INVALID_DOMAIN_PAYLOAD');
-        expect(JSON.stringify(body.issues)).toContain('44 dígitos');
+        expect(body.validation.violations[0].code).toBe('INVALID_DOMAIN_PAYLOAD');
+        expect(JSON.stringify(body.validation.violations)).toContain('44 dígitos');
       });
 
-      it('CHALLENGE-2.1.2: Chave de NF-e com 45 dígitos numéricos é sumariamente rejeitada com 400', async () => {
+      it('CHALLENGE-2.1.2: Chave de NF-e com 45 dígitos numéricos é sumariamente rejeitada com 422', async () => {
         const res = await sendNf({
           chave_acesso_nfe: '352611000000000000005500100004455610000000100' // 45 dígitos
         });
-        expect(res.status).toBe(400);
+        expect(res.status).toBe(422);
         const body: any = await res.json();
-        expect(body.error).toBe('INVALID_DOMAIN_PAYLOAD');
+        expect(body.validation.violations[0].code).toBe('INVALID_DOMAIN_PAYLOAD');
       });
 
-      it('CHALLENGE-2.1.3: Chave de NF-e com 44 caracteres contendo letras ou símbolos é rejeitada com 400', async () => {
+      it('CHALLENGE-2.1.3: Chave de NF-e com 44 caracteres contendo letras ou símbolos é rejeitada com 422', async () => {
         // Letra maiúscula no meio
         const resLetter = await sendNf({
           chave_acesso_nfe: '3526110000000000000055001000044556100000001X'
         });
-        expect(resLetter.status).toBe(400);
+        expect(resLetter.status).toBe(422);
 
         // Espaço ou hífen
         const resSpecial = await sendNf({
           chave_acesso_nfe: '3526110000000000000055001000044556100000001 '
         });
-        expect(resSpecial.status).toBe(400);
+        expect(resSpecial.status).toBe(422);
       });
 
-      it('CHALLENGE-2.1.4: Valor total da NF-e negativo ou zero é rejeitado com 400', async () => {
+      it('CHALLENGE-2.1.4: Valor total da NF-e negativo ou zero é rejeitado com 422', async () => {
         const resNegative = await sendNf({ valor_total_brl: -100 });
-        expect(resNegative.status).toBe(400);
+        expect(resNegative.status).toBe(422);
 
         const resZero = await sendNf({ valor_total_brl: 0 });
-        expect(resZero.status).toBe(400);
+        expect(resZero.status).toBe(422);
       });
 
-      it('CHALLENGE-2.1.5: NF-e com array de itens vazio é rejeitada com 400', async () => {
+      it('CHALLENGE-2.1.5: NF-e com array de itens vazio é rejeitada com 422', async () => {
         const resEmpty = await sendNf({ itens: [] });
-        expect(resEmpty.status).toBe(400);
+        expect(resEmpty.status).toBe(422);
       });
 
-      it('CHALLENGE-2.1.6: Item da NF-e com quantidade ou valor unitário negativo/zero é rejeitado com 400', async () => {
+      it('CHALLENGE-2.1.6: Item da NF-e com quantidade ou valor unitário negativo/zero é rejeitado com 422', async () => {
         const resBadItemQty = await sendNf({
           itens: [
             {
@@ -496,7 +486,7 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
             }
           ]
         });
-        expect(resBadItemQty.status).toBe(400);
+        expect(resBadItemQty.status).toBe(422);
 
         const resBadItemPrice = await sendNf({
           itens: [
@@ -509,14 +499,14 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
             }
           ]
         });
-        expect(resBadItemPrice.status).toBe(400);
+        expect(resBadItemPrice.status).toBe(422);
       });
     });
 
     // 2.2 Fórmulas Nutricionais e Inclusão 100%
     describe('2.2 Limites de Fórmulas e Inclusão Nutricional (Store vs API Zod Schema)', () => {
       it('CHALLENGE-2.2.1: FabricaStore.salvarFormula REJEITA categoricamente fórmula com soma 99.9% de inclusão', () => {
-        const store = new FabricaStore('consubov:tenant-test:user-fabrica:fazenda-01:fabrica-store-99');
+        const store = new FabricaStore(fabricaTestContext, makeFabricaLocalData());
 
         expect(() => {
           store.salvarFormula({
@@ -536,7 +526,7 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
       });
 
       it('CHALLENGE-2.2.2: FabricaStore.salvarFormula REJEITA categoricamente fórmula com soma 100.1% de inclusão', () => {
-        const store = new FabricaStore('consubov:tenant-test:user-fabrica:fazenda-01:fabrica-store-1001');
+        const store = new FabricaStore(fabricaTestContext, makeFabricaLocalData());
 
         expect(() => {
           store.salvarFormula({
@@ -555,10 +545,11 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
         }).toThrow('Soma das porcentagens de inclusão deve ser exatamente 100%');
       });
 
-      it('CHALLENGE-2.2.3: FabricaStore.salvarFormula ACEITA fórmula com soma exatamente 100.0% e gera envelope atômico', () => {
-        const store = new FabricaStore('consubov:tenant-test:user-fabrica:fazenda-01:fabrica-store-100');
+      it('CHALLENGE-2.2.3: FabricaStore.salvarFormula ACEITA fórmula com soma exatamente 100.0% e gera envelope atômico', async () => {
+        const store = new FabricaStore(fabricaTestContext, makeFabricaLocalData());
 
-        const envelope = store.salvarFormula({
+        await store.ready;
+        const envelope = await store.salvarFormula({
           formula_id: 'form-exact-100',
           nome_formula: 'Fórmula Perfeita 100.0%',
           tipo_raca_destino: 'racao_confinamento',
@@ -619,11 +610,11 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
             'Content-Type': 'application/json',
             Authorization: `Bearer ${tokenTenantAlphaFabrica}`
           },
-          body: JSON.stringify(envelope)
+          body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaFabrica, envelope))
         });
-        expect(res.status).toBe(400);
+        expect(res.status).toBe(422);
         const body: any = await res.json();
-        expect(body.error).toBe('INVALID_DOMAIN_PAYLOAD');
+        expect(body.validation.violations[0].code).toBe('INVALID_DOMAIN_PAYLOAD');
       });
 
       it('CHALLENGE-2.2.5: API rejeita via Zod ingrediente com porcentagem de inclusão maior que 100%', async () => {
@@ -667,9 +658,9 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
             'Content-Type': 'application/json',
             Authorization: `Bearer ${tokenTenantAlphaFabrica}`
           },
-          body: JSON.stringify(envelope)
+          body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaFabrica, envelope))
         });
-        expect(res.status).toBe(400);
+        expect(res.status).toBe(422);
       });
 
       it('CHALLENGE-2.2.6: API central Zod schema fabrica.formulas.salvar rejeita via .refine() fórmula com soma 99.9%', async () => {
@@ -717,21 +708,21 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
             'Content-Type': 'application/json',
             Authorization: `Bearer ${tokenTenantAlphaFabrica}`
           },
-          body: JSON.stringify(envelope99)
+          body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaFabrica, envelope99))
         });
 
         // Comprovação da correção:
         // A barreira central Zod da API (packages/contracts/src/validation/commands.schema.ts)
-        // agora rejeita com 400 INVALID_DOMAIN_PAYLOAD graças ao .refine() verificando que soma fecha em 100%.
-        expect(res.status).toBe(400);
+        // agora rejeita com 422 INVALID_DOMAIN_PAYLOAD graças ao .refine() verificando que soma fecha em 100%.
+        expect(res.status).toBe(422);
         const body: any = await res.json();
-        expect(body.error).toBe('INVALID_DOMAIN_PAYLOAD');
+        expect(body.validation.violations[0].code).toBe('INVALID_DOMAIN_PAYLOAD');
       });
     });
 
     // 2.3 Estoque Negativo e Movimentações
     describe('2.3 Limites de Estoque e Baixa de Insumos', () => {
-      it('CHALLENGE-2.3.1: Ajuste de estoque com quantidade negativa é rejeitado via Zod com 400', async () => {
+      it('CHALLENGE-2.3.1: Ajuste de estoque com quantidade negativa é rejeitado via Zod com 422', async () => {
         const envelope: AtomicCommandEnvelope = {
           command_id: 'cmd-stock-negative',
           idempotency_key: `idemp-stock-neg-${Date.now()}-padded`,
@@ -771,14 +762,14 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
             'Content-Type': 'application/json',
             Authorization: `Bearer ${tokenTenantAlphaFabrica}`
           },
-          body: JSON.stringify(envelope)
+          body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaFabrica, envelope))
         });
-        expect(res.status).toBe(400);
+        expect(res.status).toBe(422);
         const body: any = await res.json();
-        expect(body.error).toBe('INVALID_DOMAIN_PAYLOAD');
+        expect(body.validation.violations[0].code).toBe('INVALID_DOMAIN_PAYLOAD');
       });
 
-      it('CHALLENGE-2.3.2: Baixa de matéria-prima com quantidade zero ou negativa é rejeitada com 400', async () => {
+      it('CHALLENGE-2.3.2: Baixa de matéria-prima com quantidade zero ou negativa é rejeitada com 422', async () => {
         const envelope: AtomicCommandEnvelope = {
           command_id: 'cmd-baixa-zero',
           idempotency_key: `idemp-baixa-zero-${Date.now()}-padded`,
@@ -818,15 +809,15 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
             'Content-Type': 'application/json',
             Authorization: `Bearer ${tokenTenantAlphaFabrica}`
           },
-          body: JSON.stringify(envelope)
+          body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaFabrica, envelope))
         });
-        expect(res.status).toBe(400);
+        expect(res.status).toBe(422);
       });
     });
 
     // 2.4 Desvios de Pesagem, Calibração e Metas de GMD
     describe('2.4 Limites de Pesagem Animal, Calibração de Balanças e Metas de GMD', () => {
-      it('CHALLENGE-2.4.1: Calibração com desvio percentual fora de [-10, 10] é rejeitada com 400', async () => {
+      it('CHALLENGE-2.4.1: Calibração com desvio percentual fora de [-10, 10] é rejeitada com 422', async () => {
         const envelope: AtomicCommandEnvelope = {
           command_id: 'cmd-calib-out-of-bounds',
           idempotency_key: `idemp-calib-oob-${Date.now()}-padded`,
@@ -867,12 +858,12 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
             'Content-Type': 'application/json',
             Authorization: `Bearer ${tokenTenantAlphaFabrica}`
           },
-          body: JSON.stringify(envelope)
+          body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaFabrica, envelope))
         });
-        expect(res.status).toBe(400);
+        expect(res.status).toBe(422);
       });
 
-      it('CHALLENGE-2.4.2: Conclusão de batida com tempo de mistura inferior a 30s ou superior a 3600s é rejeitada com 400', async () => {
+      it('CHALLENGE-2.4.2: Conclusão de batida com tempo de mistura inferior a 30s ou superior a 3600s é rejeitada com 422', async () => {
         const makeBatidaConcluir = (tempo: number) => ({
           command_id: `cmd-bat-tempo-${tempo}`,
           idempotency_key: `idemp-bat-tempo-${tempo}-${Date.now()}-padded`,
@@ -911,9 +902,9 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
             'Content-Type': 'application/json',
             Authorization: `Bearer ${tokenTenantAlphaFabrica}`
           },
-          body: JSON.stringify(makeBatidaConcluir(10))
+          body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaFabrica, makeBatidaConcluir(10)))
         });
-        expect(resTooShort.status).toBe(400);
+        expect(resTooShort.status).toBe(422);
 
         // 5000 segundos (> 3600s)
         const resTooLong = await fetch(`${baseUrl}/api/v1/commands`, {
@@ -922,12 +913,12 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
             'Content-Type': 'application/json',
             Authorization: `Bearer ${tokenTenantAlphaFabrica}`
           },
-          body: JSON.stringify(makeBatidaConcluir(5000))
+          body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaFabrica, makeBatidaConcluir(5000)))
         });
-        expect(resTooLong.status).toBe(400);
+        expect(resTooLong.status).toBe(422);
       });
 
-      it('CHALLENGE-2.4.3: Pesagem de animal com peso negativo, zero ou > 2000kg é rejeitada com 400', async () => {
+      it('CHALLENGE-2.4.3: Pesagem de animal com peso negativo, zero ou > 2000kg é rejeitada com 422', async () => {
         const makePesagem = (peso: number) => ({
           command_id: `cmd-pesagem-${peso}`,
           idempotency_key: `idemp-pesagem-${peso}-${Date.now()}-padded`,
@@ -975,7 +966,7 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
         }).success).toBe(false);
       });
 
-      it('CHALLENGE-2.4.4: Gerente definindo meta com GMD > 3.5 kg/dia é rejeitado com 400', async () => {
+      it('CHALLENGE-2.4.4: Gerente definindo meta com GMD > 3.5 kg/dia é rejeitado com 422', async () => {
         const envelope: AtomicCommandEnvelope = {
           command_id: 'cmd-gmd-excessivo',
           idempotency_key: `idemp-gmd-excessivo-${Date.now()}-padded`,
@@ -1012,12 +1003,12 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
             'Content-Type': 'application/json',
             Authorization: `Bearer ${tokenTenantAlphaGerente}`
           },
-          body: JSON.stringify(envelope)
+          body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaGerente, envelope))
         });
-        expect(res.status).toBe(400);
+        expect(res.status).toBe(422);
         const body: any = await res.json();
-        expect(body.error).toBe('INVALID_DOMAIN_PAYLOAD');
-        expect(JSON.stringify(body.issues)).toContain('3.5');
+        expect(body.validation.violations[0].code).toBe('INVALID_DOMAIN_PAYLOAD');
+        expect(JSON.stringify(body.validation.violations)).toContain('3.5');
       });
     });
   });
@@ -1047,7 +1038,7 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
         device_id: 'dev-alpha',
         schema_version: 1,
         payload: {
-          lote_id: 'lote-recria-01',
+          lote_id: sharedAggId,
           periodo_mes: 10,
           periodo_ano: 2026,
           custo_nutricao_brl: 30000,
@@ -1072,13 +1063,13 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenTenantAlphaEscritorio}`
         },
-        body: JSON.stringify(envelopeAlpha)
+        body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaEscritorio, envelopeAlpha))
       });
       expect(resAlpha.status).toBe(200);
       const ackAlpha: any = await resAlpha.json();
-      expect(ackAlpha.command_id).toBe('cmd-alpha-cross-001');
-      expect(ackAlpha.idempotent_replay).toBe(false);
-      expect(ackAlpha.new_version).toBe(1);
+      expect(ackAlpha.ack.command_id).toBe('cmd-alpha-cross-001');
+      expect(ackAlpha.success).toBe(true);
+      expect(ackAlpha.ack.aggregate_version).toBe(1);
 
       // 2. Tenant Beta envia comando com a EXATA MESMA chave de idempotência e mesmo aggregate_id
       const envelopeBeta: AtomicCommandEnvelope = {
@@ -1097,7 +1088,7 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
         device_id: 'dev-beta',
         schema_version: 1,
         payload: {
-          lote_id: 'lote-recria-01',
+          lote_id: sharedAggId,
           periodo_mes: 10,
           periodo_ano: 2026,
           custo_nutricao_brl: 60000,
@@ -1122,15 +1113,15 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenTenantBetaEscritorio}`
         },
-        body: JSON.stringify(envelopeBeta)
+        body: JSON.stringify(authorizedEnvelope(tokenTenantBetaEscritorio, envelopeBeta))
       });
       expect(resBeta.status).toBe(200);
       const ackBeta: any = await resBeta.json();
 
       // Prova empírica: NÃO é replay de Alpha! Possui seu próprio command_id e new_version 1 em Beta!
-      expect(ackBeta.command_id).toBe('cmd-beta-cross-002');
-      expect(ackBeta.idempotent_replay).toBe(false);
-      expect(ackBeta.new_version).toBe(1);
+      expect(ackBeta.ack.command_id).toBe('cmd-beta-cross-002');
+      expect(ackBeta.success).toBe(true);
+      expect(ackBeta.ack.aggregate_version).toBe(1);
 
       // 3. Reenvio por Tenant Alpha -> deve retornar replay específico de Alpha
       const resAlphaReplay = await fetch(`${baseUrl}/api/v1/commands`, {
@@ -1139,12 +1130,12 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenTenantAlphaEscritorio}`
         },
-        body: JSON.stringify(envelopeAlpha)
+        body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaEscritorio, envelopeAlpha))
       });
       expect(resAlphaReplay.status).toBe(200);
       const ackAlphaReplay: any = await resAlphaReplay.json();
-      expect(ackAlphaReplay.command_id).toBe('cmd-alpha-cross-001');
-      expect(ackAlphaReplay.idempotent_replay).toBe(true);
+      expect(ackAlphaReplay.ack.command_id).toBe('cmd-alpha-cross-001');
+      expect(ackAlphaReplay).toEqual(ackAlpha);
 
       // 4. Reenvio por Tenant Beta -> deve retornar replay específico de Beta
       const resBetaReplay = await fetch(`${baseUrl}/api/v1/commands`, {
@@ -1153,12 +1144,12 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenTenantBetaEscritorio}`
         },
-        body: JSON.stringify(envelopeBeta)
+        body: JSON.stringify(authorizedEnvelope(tokenTenantBetaEscritorio, envelopeBeta))
       });
       expect(resBetaReplay.status).toBe(200);
       const ackBetaReplay: any = await resBetaReplay.json();
-      expect(ackBetaReplay.command_id).toBe('cmd-beta-cross-002');
-      expect(ackBetaReplay.idempotent_replay).toBe(true);
+      expect(ackBetaReplay.ack.command_id).toBe('cmd-beta-cross-002');
+      expect(ackBetaReplay).toEqual(ackBeta);
     });
 
     it('CHALLENGE-3.2: Tentativa de Cross-Tenant Spoofing (token Alpha com envelope tenant Beta) é barrada com 403 CONTEXT_MISMATCH', async () => {
@@ -1203,11 +1194,11 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenTenantAlphaEscritorio}` // Token do Alpha
         },
-        body: JSON.stringify(spoofEnvelope)
+        body: JSON.stringify({ ...authorizedEnvelope(tokenTenantAlphaEscritorio, spoofEnvelope), tenant_id: 'tenant-lab-beta' })
       });
       expect(res.status).toBe(403);
       const body: any = await res.json();
-      expect(body.error).toBe('CONTEXT_MISMATCH');
+      expect(body.security.error).toBe('FORBIDDEN_403');
     });
   });
 
@@ -1215,7 +1206,7 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
   // BLOCO 4: ATAQUES DE PAYLOAD, STRICT SCHEMA & INJEÇÃO DE CAMPOS ESTRANHOS
   // ==========================================================================
   describe('Bloco 4: Ataques de Schema Injection (Strict Mode Zod) e Allowlist Fail-Closed', () => {
-    it('CHALLENGE-4.1: Injeção de propriedades não declaradas no payload de domínio é rejeitada por strict() Zod com 400', async () => {
+    it('CHALLENGE-4.1: Injeção de propriedades não declaradas no payload de domínio é rejeitada por strict() Zod com 422', async () => {
       const hostilePayload = {
         nota_fiscal_id: 'nf-injection-001',
         numero_nf: '9988',
@@ -1271,12 +1262,12 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenTenantAlphaEscritorio}`
         },
-        body: JSON.stringify(envelope)
+        body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaEscritorio, envelope))
       });
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(422);
       const body: any = await res.json();
-      expect(body.error).toBe('INVALID_DOMAIN_PAYLOAD');
-      expect(JSON.stringify(body.issues)).toContain('unrecognized_keys');
+      expect(body.validation.violations[0].code).toBe('INVALID_DOMAIN_PAYLOAD');
+      expect(JSON.stringify(body.validation.violations)).toContain('unrecognized_keys');
     });
 
     it('CHALLENGE-4.2: Comando arbitrário fora da allowlist é rejeitado com 422 COMMAND_NOT_ALLOWED', async () => {
@@ -1304,11 +1295,11 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenTenantAlphaGerente}`
         },
-        body: JSON.stringify(envelope)
+        body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaGerente, envelope))
       });
       expect(res.status).toBe(422);
       const body: any = await res.json();
-      expect(body.error).toBe('COMMAND_NOT_ALLOWED');
+      expect(body.validation.violations[0].code).toBe('INVALID_ENVELOPE');
     });
 
     it('CHALLENGE-4.3: Perfil cruzado (escritório tentando calibrar balança ou capataz tentando fechar custos) é barrado com 403 FORBIDDEN_COMMAND', async () => {
@@ -1353,11 +1344,11 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenTenantAlphaEscritorio}`
         },
-        body: JSON.stringify(envelopeEscritorioToFabrica)
+        body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaEscritorio, envelopeEscritorioToFabrica))
       });
       expect(resEscritorio.status).toBe(403);
       const bodyEscritorio: any = await resEscritorio.json();
-      expect(bodyEscritorio.error).toBe('FORBIDDEN_COMMAND');
+      expect(bodyEscritorio.security.error).toBe('FORBIDDEN_403');
 
       // Capataz tentando registrar NF (exclusivo de escritório)
       const envelopeCapatazToEscritorio: AtomicCommandEnvelope = {
@@ -1409,11 +1400,11 @@ describe('Adversarial Challenger Suite: FASE 04 — OCC Concorrência Hostil, In
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenTenantAlphaCapataz}`
         },
-        body: JSON.stringify(envelopeCapatazToEscritorio)
+        body: JSON.stringify(authorizedEnvelope(tokenTenantAlphaCapataz, envelopeCapatazToEscritorio))
       });
       expect(resCapataz.status).toBe(403);
       const bodyCapataz: any = await resCapataz.json();
-      expect(bodyCapataz.error).toBe('FORBIDDEN_COMMAND');
+      expect(bodyCapataz.security.error).toBe('FORBIDDEN_403');
     });
 
     it('CHALLENGE-4.4: Envio de JSON corrompido / malformado é rejeitado com 400 INVALID_JSON', async () => {
