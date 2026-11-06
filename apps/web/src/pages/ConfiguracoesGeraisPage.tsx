@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { evaluateArithmeticExpression } from "@/lib/safeArithmetic";
@@ -121,6 +122,8 @@ function testFormula(formula: string): { result: number | null; error?: string }
 }
 
 export default function ConfiguracoesGeraisPage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const { user } = useAuth();
   const nomeAdmin = useNomeUsuario(["administradores"], "admin");
   const [configs, setConfigs] = useState<Configuracao[]>([]);
@@ -163,11 +166,11 @@ export default function ConfiguracoesGeraisPage() {
     );
     setNotifLoading(false);
     if (error) {
-      toast.error("Erro ao salvar: " + error.message);
+      toast.error(uiText("Erro ao salvar: ") + error.message);
       return;
     }
     setNotifAtivas(ativar);
-    toast.success(ativar ? "Notificações ativadas para todos" : "Notificações desativadas para todos");
+    toast.success(ativar ? uiText("Notificações ativadas para todos") : uiText("Notificações desativadas para todos"));
   };
 
 
@@ -199,7 +202,7 @@ export default function ConfiguracoesGeraisPage() {
       .order("criado_em");
     let data = initialData;
     if (error) {
-      toast.error("Erro ao carregar configurações");
+      toast.error(uiText("Erro ao carregar configurações"));
       return;
     }
     if (!data || data.length === 0) {
@@ -237,13 +240,13 @@ export default function ConfiguracoesGeraisPage() {
         if (isFormula && edit.formula) {
           const v = validateFormula(edit.formula);
           if (!v.valid) {
-            toast.error(`Fórmula "${c.titulo}" inválida: ${v.error}`);
+            toast.error(`${uiText('Fórmula "')}${c.titulo}${uiText('" inválida: ')}${v.error}`);
             setSaving(false);
             return;
           }
           const t = testFormula(edit.formula);
           if (t.error) {
-            toast.error(`Teste falhou para "${c.titulo}": ${t.error}`);
+            toast.error(`${uiText('Teste falhou para "')}${c.titulo}": ${t.error}`);
             setSaving(false);
             return;
           }
@@ -268,21 +271,21 @@ export default function ConfiguracoesGeraisPage() {
         } as any);
       }
 
-      toast.success("Configurações salvas com sucesso!");
+      toast.success(uiText("Configurações salvas com sucesso!"));
       setEdits({});
       fetchConfigs();
     } catch (e: any) {
-      toast.error("Erro ao salvar: " + (e.message || ""));
+      toast.error(uiText("Erro ao salvar: ") + (e.message || ""));
     }
     setSaving(false);
   };
 
   const handleRestore = async (c: Configuracao) => {
     const def = DEFAULTS[c.chave];
-    if (!def) { toast.error("Padrão não encontrado"); return; }
+    if (!def) { toast.error(uiText("Padrão não encontrado")); return; }
     const isFormula = c.tipo === "formula";
     setEdit(c.id, isFormula ? { formula: def.formula } : { valor: def.valor });
-    toast.info(`"${c.titulo}" restaurado ao padrão. Salve para persistir.`);
+    toast.info(`"${c.titulo}${uiText('" restaurado ao padrão. Salve para persistir.')}`);
   };
 
   const handleTest = (c: Configuracao) => {
@@ -294,13 +297,13 @@ export default function ConfiguracoesGeraisPage() {
 
   const handleAddFormula = async () => {
     if (!newFormula.titulo || !newFormula.formula || !newFormula.chave) {
-      toast.error("Preencha todos os campos obrigatórios");
+      toast.error(uiText("Preencha todos os campos obrigatórios"));
       return;
     }
     const v = validateFormula(newFormula.formula);
-    if (!v.valid) { toast.error(`Fórmula inválida: ${v.error}`); return; }
+    if (!v.valid) { toast.error(`${uiText("Fórmula inválida: ")}${v.error}`); return; }
     const t = testFormula(newFormula.formula);
-    if (t.error) { toast.error(`Teste falhou: ${t.error}`); return; }
+    if (t.error) { toast.error(`${uiText("Teste falhou: ")}${t.error}`); return; }
 
     const { error } = await supabase.from("configuracoes_gerais").insert({
       tipo: "formula",
@@ -312,10 +315,10 @@ export default function ConfiguracoesGeraisPage() {
     } as any);
 
     if (error) {
-      toast.error("Erro ao salvar: " + error.message);
+      toast.error(uiText("Erro ao salvar: ") + error.message);
       return;
     }
-    toast.success("Nova fórmula adicionada!");
+    toast.success(uiText("Nova fórmula adicionada!"));
     setNewFormula({ titulo: "", descricao: "", chave: "", formula: "" });
     setShowNewFormula(false);
     fetchConfigs();
@@ -376,7 +379,7 @@ export default function ConfiguracoesGeraisPage() {
             checked={notifAtivas}
             disabled={notifLoading}
             onCheckedChange={toggleNotificacoes}
-            aria-label="Ativar ou desativar notificações para todos os usuários"
+            aria-label={uiText("Ativar ou desativar notificações para todos os usuários")}
           />
         </CardContent>
       </Card>
@@ -408,7 +411,7 @@ export default function ConfiguracoesGeraisPage() {
                       onChange={e => setEdit(c.id, { valor: parseFloat(e.target.value) || 0 })}
                       className="flex-1"
                     />
-                    <Button variant="ghost" size="icon" onClick={() => handleRestore(c)} title="Restaurar padrão">
+                    <Button variant="ghost" size="icon" onClick={() => handleRestore(c)} title={uiText("Restaurar padrão")}>
                       <RotateCcw className="w-4 h-4" />
                     </Button>
                   </div>
@@ -445,11 +448,11 @@ export default function ConfiguracoesGeraisPage() {
                     </div>
                     <div className="flex gap-1">
                       {!isClassificacao && (
-                        <Button variant="ghost" size="icon" onClick={() => handleTest(c)} title="Testar fórmula">
+                        <Button variant="ghost" size="icon" onClick={() => handleTest(c)} title={uiText("Testar fórmula")}>
                           <FlaskConical className="w-4 h-4" />
                         </Button>
                       )}
-                      <Button variant="ghost" size="icon" onClick={() => handleRestore(c)} title="Restaurar padrão">
+                      <Button variant="ghost" size="icon" onClick={() => handleRestore(c)} title={uiText("Restaurar padrão")}>
                         <RotateCcw className="w-4 h-4" />
                       </Button>
                     </div>
@@ -458,7 +461,7 @@ export default function ConfiguracoesGeraisPage() {
                     value={edit.formula ?? c.formula ?? ""}
                     onChange={e => setEdit(c.id, { formula: e.target.value })}
                     className="font-mono text-xs min-h-[60px]"
-                    placeholder="Ex: (num_animais * peso_medio_kg) / 100"
+                    placeholder={uiText("Ex: (num_animais * peso_medio_kg) / 100")}
                   />
                   {tr && !isClassificacao && (
                     <div className={`flex items-center gap-2 text-xs ${tr.error ? "text-destructive" : "text-green-600"}`}>
@@ -491,7 +494,7 @@ export default function ConfiguracoesGeraisPage() {
                   <Input
                     value={newFormula.chave}
                     onChange={e => setNewFormula(p => ({ ...p, chave: e.target.value }))}
-                    placeholder="ex: eficiencia_nutricional"
+                    placeholder={uiText("ex: eficiencia_nutricional")}
                   />
                 </div>
                 <div>
@@ -499,7 +502,7 @@ export default function ConfiguracoesGeraisPage() {
                   <Input
                     value={newFormula.titulo}
                     onChange={e => setNewFormula(p => ({ ...p, titulo: e.target.value }))}
-                    placeholder="ex: Eficiência Nutricional"
+                    placeholder={uiText("ex: Eficiência Nutricional")}
                   />
                 </div>
                 <div>
@@ -507,7 +510,7 @@ export default function ConfiguracoesGeraisPage() {
                   <Textarea
                     value={newFormula.descricao}
                     onChange={e => setNewFormula(p => ({ ...p, descricao: e.target.value }))}
-                    placeholder="Para que serve e onde será usada"
+                    placeholder={uiText("Para que serve e onde será usada")}
                     className="min-h-[60px]"
                   />
                 </div>
@@ -556,7 +559,7 @@ export default function ConfiguracoesGeraisPage() {
               <TableBody>
                 {historico.map(h => (
                   <TableRow key={h.id}>
-                    <TableCell className="text-xs">{h.data ? new Date(h.data).toLocaleString("pt-BR") : "-"}</TableCell>
+                    <TableCell className="text-xs">{h.data ? new Date(h.data).toLocaleString(language) : "-"}</TableCell>
                     <TableCell className="text-xs font-mono max-w-[120px] truncate">{h.valor_antigo || "-"}</TableCell>
                     <TableCell className="text-xs font-mono max-w-[120px] truncate">{h.valor_novo || "-"}</TableCell>
                     <TableCell className="text-xs">{h.alterado_por || "-"}</TableCell>

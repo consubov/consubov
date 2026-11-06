@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,13 +40,15 @@ const STATUS_LABEL: Record<string, string> = {
   cancelada: "Cancelada",
 };
 
-function fmtDate(d: string | null) {
+function fmtDate(d: string | null, locale: string) {
   if (!d) return "—";
   const [y, m, day] = d.split("-");
-  return `${day}/${m}/${y}`;
+  return locale === "en-US" ? `${m}/${day}/${y}` : `${day}/${m}/${y}`;
 }
 
 export default function SyncVetFazendaDetalhePage() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const { fazendaId } = useParams<{ fazendaId: string }>();
   const navigate = useNavigate();
   const [fazendaNome, setFazendaNome] = useState("");
@@ -91,7 +94,7 @@ export default function SyncVetFazendaDetalhePage() {
   }
   async function saveLote() {
     if (!fazendaId) return;
-    if (!nome.trim()) { toast.error("Nome do lote é obrigatório"); return; }
+    if (!nome.trim()) { toast.error(uiText("Nome do lote é obrigatório")); return; }
     setLoteSaving(true);
     const { error } = await supabase.from("syncvet_lotes").insert({
       fazenda_id: fazendaId,
@@ -101,7 +104,7 @@ export default function SyncVetFazendaDetalhePage() {
       observacoes: obs || null,
     } as any);
     if (error) toast.error(error.message);
-    else { toast.success("Lote criado"); setLoteOpen(false); load(); }
+    else { toast.success(uiText("Lote criado")); setLoteOpen(false); load(); }
     setLoteSaving(false);
   }
 
@@ -110,7 +113,7 @@ export default function SyncVetFazendaDetalhePage() {
   }
   async function saveEstacao() {
     if (!fazendaId) return;
-    if (!estNome.trim()) { toast.error("Nome da estação é obrigatório"); return; }
+    if (!estNome.trim()) { toast.error(uiText("Nome da estação é obrigatório")); return; }
     setEstSaving(true);
     const { error } = await (supabase as any).from("syncvet_estacoes_monta").insert({
       fazenda_id: fazendaId,
@@ -121,7 +124,7 @@ export default function SyncVetFazendaDetalhePage() {
       observacoes: estObs || null,
     });
     if (error) toast.error(error.message);
-    else { toast.success("Estação criada"); setEstOpen(false); load(); }
+    else { toast.success(uiText("Estação criada")); setEstOpen(false); load(); }
     setEstSaving(false);
   }
 
@@ -157,7 +160,7 @@ export default function SyncVetFazendaDetalhePage() {
                   <DialogHeader><DialogTitle><LocalizedText source={"Novo lote"} /></DialogTitle></DialogHeader>
                   <div className="space-y-3">
                     <div><Label className="text-xs"><LocalizedText source={"Nome*"} /></Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
-                    <div><Label className="text-xs"><LocalizedText source={"Categoria"} /></Label><Input value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Ex: Novilhas, Vacas em lactação" /></div>
+                    <div><Label className="text-xs"><LocalizedText source={"Categoria"} /></Label><Input value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder={uiText("Ex: Novilhas, Vacas em lactação")} /></div>
                     <div><Label className="text-xs"><LocalizedText source={"Quantidade de animais"} /></Label><Input type="number" value={qtd} onChange={(e) => setQtd(e.target.value)} /></div>
                     <div><Label className="text-xs"><LocalizedText source={"Observações"} /></Label><Textarea value={obs} onChange={(e) => setObs(e.target.value)} /></div>
                   </div>
@@ -203,7 +206,7 @@ export default function SyncVetFazendaDetalhePage() {
                 <DialogContent>
                   <DialogHeader><DialogTitle><LocalizedText source={"Nova estação de monta"} /></DialogTitle></DialogHeader>
                   <div className="space-y-3">
-                    <div><Label className="text-xs"><LocalizedText source={"Nome*"} /></Label><Input value={estNome} onChange={(e) => setEstNome(e.target.value)} placeholder="Ex: Estação 2026" /></div>
+                    <div><Label className="text-xs"><LocalizedText source={"Nome*"} /></Label><Input value={estNome} onChange={(e) => setEstNome(e.target.value)} placeholder={uiText("Ex: Estação 2026")} /></div>
                     <div className="grid grid-cols-2 gap-2">
                       <div><Label className="text-xs"><LocalizedText source={"Data início"} /></Label><Input type="date" value={estIni} onChange={(e) => setEstIni(e.target.value)} /></div>
                       <div><Label className="text-xs"><LocalizedText source={"Data fim"} /></Label><Input type="date" value={estFim} onChange={(e) => setEstFim(e.target.value)} /></div>
@@ -235,7 +238,7 @@ export default function SyncVetFazendaDetalhePage() {
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold truncate">{e.nome}</div>
                       <div className="text-xs text-muted-foreground truncate">
-                        {fmtDate(e.data_inicio)} → {fmtDate(e.data_fim)} • {STATUS_LABEL[e.status] ?? e.status}
+                        {fmtDate(e.data_inicio, language)} → {fmtDate(e.data_fim, language)} • {uiText(STATUS_LABEL[e.status] ?? e.status)}
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />

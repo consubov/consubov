@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 
 /** Botão "Atualizar" do topo do Mais Arrobas — avisa se há pesagem em andamento. */
 export function AtualizarAppButton({ className }: { className?: string }) {
+  const uiText = useStaticUiText();
   const [refreshing, setRefreshing] = useState(false);
   const [aviso, setAviso] = useState(false);
 
@@ -22,7 +23,7 @@ export function AtualizarAppButton({ className }: { className?: string }) {
   return (
     <>
       <Button
-        aria-label="Atualizar aplicativo"
+        aria-label={uiText("Atualizar aplicativo")}
         variant="ghost"
         size="icon"
         onClick={() => (hasCriticalOperations() ? setAviso(true) : recarregar())}

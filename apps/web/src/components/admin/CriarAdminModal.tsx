@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AlertTriangle } from "lucide-react";
+import { ProfileProvisioningError, provisionProfileUser } from "@/lib/profileProvisioning";
 
 interface Props {
   open: boolean;
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props) {
+  const uiText = useStaticUiText();
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [telefone, setTelefone] = useState("");
@@ -23,31 +25,6 @@ export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-
-  const getFunctionErrorMessage = async (invokeError: unknown) => {
-    const fallback = invokeError instanceof Error ? invokeError.message : "Erro ao criar administrador";
-
-    if (!invokeError || typeof invokeError !== "object" || !("context" in invokeError)) {
-      return fallback;
-    }
-
-    const context = (invokeError as { context?: Response }).context;
-    if (!context) {
-      return fallback;
-    }
-
-    const contentType = context.headers.get("content-type") || "";
-
-    if (contentType.includes("application/json")) {
-      const payload = await context.clone().json().catch(() => null);
-      if (payload?.error || payload?.message) {
-        return payload.error || payload.message;
-      }
-    }
-
-    const text = await context.clone().text().catch(() => "");
-    return text || fallback;
-  };
 
   const resetForm = () => {
     setNome("");
@@ -60,15 +37,15 @@ export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props
 
   const validate = () => {
     if (!nome.trim() || !email.trim() || !senha) {
-      toast.error("Preencha todos os campos obrigatórios");
+      toast.error(uiText("Preencha todos os campos obrigatórios"));
       return false;
     }
-    if (senha.length < 6) {
-      toast.error("A senha deve ter no mínimo 6 caracteres");
+    if (senha.length < 12) {
+      toast.error(uiText("A senha deve ter no mínimo 12 caracteres"));
       return false;
     }
     if (senha !== confirmarSenha) {
-      toast.error("As senhas não coincidem");
+      toast.error(uiText("As senhas não coincidem"));
       return false;
     }
     return true;
@@ -89,8 +66,6 @@ export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props
         senha,
       };
 
-      console.log("[CriarAdminModal] Payload enviado:", payload);
-
       // Check duplicate email
       const { data: existing } = await supabase
         .from("administradores")
@@ -99,40 +74,27 @@ export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props
         .maybeSingle();
 
       if (existing) {
-        toast.error("Já existe um administrador com este e-mail");
+        toast.error(uiText("Já existe um administrador com este e-mail"));
         setShowConfirm(false);
         setLoading(false);
         return;
       }
 
-      // Create admin via edge function (handles auth + DB insert + rollback)
-      const { data: result, error: invokeError } = await supabase.functions.invoke("create-user", {
-        body: {
-          ...payload,
-          telefone: payload.telefone || null,
-        },
+      // Admin identity and admin record are committed by the Edge Function.
+      // No user/password payload is logged to the browser console.
+      await provisionProfileUser({
+        ...payload,
+        senha,
+        role: "administrador",
       });
 
-      if (invokeError) {
-        toast.error(await getFunctionErrorMessage(invokeError));
-        setShowConfirm(false);
-        setLoading(false);
-        return;
-      }
-
-      if (result?.error || result?.success === false) {
-        toast.error(result?.error || result?.message || "Erro ao criar administrador");
-        setShowConfirm(false);
-        setLoading(false);
-        return;
-      }
-
-      toast.success("Administrador criado com sucesso!");
+      toast.success(uiText("Administrador criado com sucesso!"));
       resetForm();
       onOpenChange(false);
       onCreated();
-    } catch (err: any) {
-      toast.error("Erro inesperado: " + err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof ProfileProvisioningError
+        ? err.message : "Não foi possível criar o administrador.");
     } finally {
       setLoading(false);
       setShowConfirm(false);
@@ -174,7 +136,7 @@ export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="admin-nome"><LocalizedText source={"Nome completo *"} /></Label>
-              <Input id="admin-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do administrador" />
+              <Input id="admin-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder={uiText("Nome do administrador")} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="admin-email">E-mail *</Label>
@@ -186,11 +148,11 @@ export default function CriarAdminModal({ open, onOpenChange, onCreated }: Props
             </div>
             <div className="space-y-2">
               <Label htmlFor="admin-senha"><LocalizedText source={"Senha *"} /></Label>
-              <PasswordInput id="admin-senha" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" />
+              <PasswordInput id="admin-senha" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 12 caracteres" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="admin-confirmar"><LocalizedText source={"Confirmar senha *"} /></Label>
-              <PasswordInput id="admin-confirmar" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} placeholder="Repita a senha" />
+              <PasswordInput id="admin-confirmar" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} placeholder={uiText("Repita a senha")} />
             </div>
             <DialogFooter>
               <Button onClick={handleSubmit} className="w-full bg-primary text-primary-foreground"><LocalizedText source={"Criar Administrador"} /></Button>

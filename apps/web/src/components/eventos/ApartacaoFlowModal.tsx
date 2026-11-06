@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,8 @@ interface PastoOption {
 }
 
 export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, numAnimais, retiroId, userId, userName, fazendaId, fazendaNome, retiroNome, onSaved }: Props) {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [loteCount, setLoteCount] = useState<LoteCount>(2);
   const [lotes, setLotes] = useState<LoteConfig[]>([
@@ -103,7 +106,7 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
         .eq("ativo", true)
         .order("nome");
       if (error) {
-        toast.error("Erro ao carregar pastos: " + error.message);
+        toast.error(uiText("Erro ao carregar pastos: ") + error.message);
         return;
       }
       setPastosDisponiveis((data || []) as PastoOption[]);
@@ -134,7 +137,7 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
     const val = parseFloat(currentPeso.replace(",", "."));
     if (!val || val <= 0) return;
     if (pesosLancados.length >= numAnimais) {
-      toast.error("Total de animais do pasto já atingido.");
+      toast.error(uiText("Total de animais do pasto já atingido."));
       return;
     }
     const ordem = classificarPeso(val);
@@ -173,19 +176,19 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
     const lote = lotes[idx];
     if (idx === lotes.length - 1) {
       const prev = lotes[idx - 1]?.limite || 0;
-      return `acima de ${prev} kg`;
+      return `${uiText("acima de ")}${prev} kg`;
     }
-    if (idx === 0) return `até ${lote.limite} kg`;
-    return `${lotes[idx - 1].limite + 0.1} a ${lote.limite} kg`;
+    if (idx === 0) return `${uiText("até ")}${lote.limite} kg`;
+    return `${lotes[idx - 1].limite + 0.1} ${uiText("a ")}${lote.limite} kg`;
   }
 
   function faixaCurta(idx: number): string {
     const lote = lotes[idx];
     if (idx === lotes.length - 1) {
       const prev = lotes[idx - 1]?.limite || 0;
-      return `acima de ${prev} kg`;
+      return `${uiText("acima de ")}${prev} kg`;
     }
-    return `até ${lote.limite} kg`;
+    return `${uiText("até ")}${lote.limite} kg`;
   }
 
   // ===== Salvar =====
@@ -195,7 +198,7 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
       // Validate all destinos chosen
       for (const lote of lotes) {
         if (stats[lote.ordem].qtd > 0 && !destinos[lote.ordem]) {
-          toast.error(`Selecione destino para ${lote.nome}`);
+          toast.error(`${uiText("Selecione destino para ")}${lote.nome}`);
           setSaving(false);
           return;
         }
@@ -210,7 +213,7 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
           .from("pastos").select("id, categoria").in("id", destIdsCheck);
         if (catErr) throw catErr;
         if ((catRows ?? []).some((r) => !isCategoriaValida(r.categoria))) {
-          toast.error(MSG_CATEGORIA_OBRIGATORIA);
+          toast.error(uiText(MSG_CATEGORIA_OBRIGATORIA));
           setSaving(false);
           return;
         }
@@ -410,14 +413,14 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
         }
       }
 
-      toast.success("Apartação finalizada!");
+      toast.success(uiText("Apartação finalizada!"));
       onSaved?.();
 
       // Open export PDF modal
       const hora = new Date(nowIso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
       setExportData({ pesagemId: pesagemPrincipalId || evento?.id || apart.id, animais: animaisArr, dataPesagem: nowIso, hora });
     } catch (err: any) {
-      toast.error("Erro ao salvar apartação: " + (err.message || ""));
+      toast.error(uiText("Erro ao salvar apartação: ") + (err.message || ""));
     } finally {
       setSaving(false);
     }
@@ -487,7 +490,7 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
                           setLotes((prev) => prev.map((l, i) => (i === idx ? { ...l, nome: e.target.value } : l)))
                         }
                         className="h-9 text-sm"
-                        placeholder={`Lote ${lote.ordem}`}
+                        placeholder={`${uiText("Lote ")}${lote.ordem}`}
                       />
                     </div>
                     {isLast ? (
@@ -582,7 +585,7 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
               <Input
                 type="number"
                 inputMode="decimal"
-                placeholder="Peso (kg)"
+                placeholder={uiText("Peso (kg)")}
                 value={currentPeso}
                 onChange={(e) => setCurrentPeso(e.target.value)}
                 onKeyDown={(e) => {
@@ -631,7 +634,7 @@ export default function ApartacaoFlowModal({ open, onClose, pastoId, pastoNome, 
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground"><LocalizedText source={"Data:"} /></span>
-                  <strong>{new Date().toLocaleDateString("pt-BR")}</strong>
+                  <strong>{new Date().toLocaleDateString(language)}</strong>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground"><LocalizedText source={"Usuário:"} /></span>

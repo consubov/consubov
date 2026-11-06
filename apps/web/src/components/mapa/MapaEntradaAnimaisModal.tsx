@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ interface Props {
 }
 
 export default function MapaEntradaAnimaisModal({ open, onClose, pasto, fazendaId, retiroId, mes, ano, onDone }: Props) {
+  const uiText = useStaticUiText();
   const [origem, setOrigem] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [pesoMedio, setPesoMedio] = useState("");
@@ -48,7 +49,7 @@ export default function MapaEntradaAnimaisModal({ open, onClose, pasto, fazendaI
 
   const handleConfirm = async () => {
     if (!pasto) return;
-    if (faltaCategoria(qtd, categoria)) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
+    if (faltaCategoria(qtd, categoria)) { toast.error(uiText(MSG_CATEGORIA_OBRIGATORIA)); return; }
     if (!isValid) return;
     setSaving(true);
     try {
@@ -63,11 +64,11 @@ export default function MapaEntradaAnimaisModal({ open, onClose, pasto, fazendaI
 
       if (cicloErr) throw cicloErr;
       if (!ciclo) {
-        toast.error("Não há ciclo aberto para este mês. Inicie o mês primeiro.");
+        toast.error(uiText("Não há ciclo aberto para este mês. Inicie o mês primeiro."));
         return;
       }
       if (ciclo.fechado) {
-        toast.error("O ciclo deste mês já foi fechado.");
+        toast.error(uiText("O ciclo deste mês já foi fechado."));
         return;
       }
 
@@ -103,11 +104,11 @@ export default function MapaEntradaAnimaisModal({ open, onClose, pasto, fazendaI
         });
       if (obsErr) throw obsErr;
 
-      toast.success(`✅ ${qtd} animais adicionados ao pasto ${pasto.pasto_nome}`);
+      toast.success(`${qtd} ${uiText(qtd === 1 ? "animal adicionado ao pasto " : "animais adicionados ao pasto ")}${pasto.pasto_nome}`);
       handleOpen(false);
       onDone();
     } catch (err: any) {
-      toast.error(err?.message || "Erro ao registrar entrada");
+      toast.error(err?.message || uiText("Erro ao registrar entrada"));
     } finally {
       setSaving(false);
     }
@@ -128,7 +129,7 @@ export default function MapaEntradaAnimaisModal({ open, onClose, pasto, fazendaI
             <Input
               value={origem}
               onChange={(e) => setOrigem(e.target.value)}
-              placeholder="Ex: Compra, Outro retiro, Recria"
+              placeholder={uiText("Ex: Compra, Outro retiro, Recria")}
             />
           </div>
 
@@ -139,7 +140,7 @@ export default function MapaEntradaAnimaisModal({ open, onClose, pasto, fazendaI
               min={1}
               value={quantidade}
               onChange={(e) => setQuantidade(e.target.value)}
-              placeholder="Ex: 50"
+              placeholder={uiText("Ex: 50")}
             />
           </div>
 
@@ -151,7 +152,7 @@ export default function MapaEntradaAnimaisModal({ open, onClose, pasto, fazendaI
               step="0.1"
               value={pesoMedio}
               onChange={(e) => setPesoMedio(e.target.value)}
-              placeholder="Ex: 350"
+              placeholder={uiText("Ex: 350")}
             />
           </div>
 

@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -60,6 +60,7 @@ const numOrNull = (v: string): number | null => {
 export default function ConferenciaVisitaPastoForm({
   titulo, subtitulo, infoUltimaSalga, numeroInicial, numerosExistentes, saving, edicao, initial, onBack, onSalvar,
 }: Props) {
+  const uiText = useStaticUiText();
   const [observacao, setObservacao] = useState(initial?.observacao ?? "");
   const [qtdAnimais, setQtdAnimais] = useState(initial?.qtd_animais != null ? String(initial.qtd_animais) : "");
   const [pesoMedio, setPesoMedio] = useState(initial?.peso_medio_kg != null ? String(initial.peso_medio_kg) : "");
@@ -81,7 +82,7 @@ export default function ConferenciaVisitaPastoForm({
     if (!files) return;
     const restantes = MAX_FOTOS - total;
     if (restantes <= 0) {
-      toast.error(`Máximo de ${MAX_FOTOS} fotos por pasto.`);
+      toast.error(`${uiText("Máximo de ")}${MAX_FOTOS}${uiText(" fotos por pasto.")}`);
       return;
     }
     setProcessando(true);
@@ -90,7 +91,7 @@ export default function ConferenciaVisitaPastoForm({
       const urls = (await Promise.all(arr.map((f) => compressImageFileToDataUrl(f)))).filter(Boolean) as string[];
       setFotos((prev) => [...prev, ...urls].slice(0, MAX_FOTOS - existentes.length));
     } catch {
-      toast.error("Não foi possível processar a foto.");
+      toast.error(uiText("Não foi possível processar a foto."));
     } finally {
       setProcessando(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -145,7 +146,7 @@ export default function ConferenciaVisitaPastoForm({
               rows={5}
               value={observacao}
               onChange={(e) => setObservacao(e.target.value)}
-              placeholder="Descreva o que foi observado neste pasto..."
+              placeholder={uiText("Descreva o que foi observado neste pasto...")}
             />
           </CardContent>
         </Card>
@@ -173,7 +174,7 @@ export default function ConferenciaVisitaPastoForm({
                       type="button"
                       onClick={() => removerExistente(f)}
                       className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1"
-                      aria-label="Remover foto"
+                      aria-label={uiText("Remover foto")}
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -191,7 +192,7 @@ export default function ConferenciaVisitaPastoForm({
                     type="button"
                     onClick={() => setFotos((p) => p.filter((_, idx) => idx !== i))}
                     className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1"
-                    aria-label="Remover foto"
+                    aria-label={uiText("Remover foto")}
                   >
                     <X className="w-3 h-3" />
                   </button>

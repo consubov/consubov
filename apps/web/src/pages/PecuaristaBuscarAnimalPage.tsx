@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,8 @@ interface Historico {
 }
 
 export default function PecuaristaBuscarAnimalPage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const { fazendaId, loteId } = useParams<{ fazendaId: string; loteId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -56,7 +59,7 @@ export default function PecuaristaBuscarAnimalPage() {
       .eq("animal_id", (an as any).id)
       .order("created_at", { ascending: true });
     setBuscando(false);
-    if (error) return toast.error("Erro: " + error.message);
+    if (error) return toast.error(uiText("Erro: ") + error.message);
     const list: Historico[] = ((rows as any[]) ?? []).map((r) => ({
       peso_kg: Number(r.peso_kg),
       gmd_individual: r.gmd_individual != null ? Number(r.gmd_individual) : null,
@@ -79,7 +82,7 @@ export default function PecuaristaBuscarAnimalPage() {
         <Input
           type="text"
           inputMode="numeric"
-          placeholder="Número do animal"
+          placeholder={uiText("Número do animal")}
           value={numero}
           onChange={(e) => setNumero(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void buscar(); } }}
@@ -107,7 +110,7 @@ export default function PecuaristaBuscarAnimalPage() {
                 <div>
                   <div className="font-semibold">{h.peso_kg.toFixed(1)} kg</div>
                   <div className="text-xs text-muted-foreground">
-                    {new Date(h.data).toLocaleString("pt-BR")}
+                    {new Date(h.data).toLocaleString(language)}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     <LocalizedText source={"Lote:"} />{" "}{h.lote_nome} {h.lote_codigo && `(#${h.lote_codigo})`}

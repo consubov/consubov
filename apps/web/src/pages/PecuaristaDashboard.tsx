@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useOutletContext } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +38,7 @@ type Pesagem = {
 };
 
 export default function PecuaristaDashboard() {
+  const uiText = useStaticUiText();
   const { nome } = useOutletContext<{ nome: string }>() ?? { nome: "" };
   const location = useLocation();
   const isLotes = location.pathname.endsWith("/lotes");
@@ -284,12 +285,12 @@ export default function PecuaristaDashboard() {
         <>
           {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <KpiCard icon={<Warehouse className="w-4 h-4" />} label="Lotes ativos" value={kpis.lotesAtivos.toString()} />
-            <KpiCard icon={<MapPin className="w-4 h-4" />} label="Minhas fazendas" value={kpis.fazendas.toString()} />
-            <KpiCard icon={<TrendingUp className="w-4 h-4" />} label="GMD médio (mês)" value={`${kpis.gmdMedio.toFixed(3)} kg/d`} />
-            <KpiCard icon={<Users className="w-4 h-4" />} label="Total de animais" value={kpis.totalAnimais.toString()} />
-            <KpiCard icon={<Scale className="w-4 h-4" />} label="Pesagens no mês" value={kpis.pesagensMes.toString()} />
-            <KpiCard icon={<AlertTriangle className="w-4 h-4" />} label="Lotes atrasados (>30d)" value={kpis.lotesAtrasados.toString()} accent={kpis.lotesAtrasados > 0} />
+            <KpiCard icon={<Warehouse className="w-4 h-4" />} label={uiText("Lotes ativos")} value={kpis.lotesAtivos.toString()} />
+            <KpiCard icon={<MapPin className="w-4 h-4" />} label={uiText("Minhas fazendas")} value={kpis.fazendas.toString()} />
+            <KpiCard icon={<TrendingUp className="w-4 h-4" />} label={uiText("GMD médio (mês)")} value={`${kpis.gmdMedio.toFixed(3)} kg/d`} />
+            <KpiCard icon={<Users className="w-4 h-4" />} label={uiText("Total de animais")} value={kpis.totalAnimais.toString()} />
+            <KpiCard icon={<Scale className="w-4 h-4" />} label={uiText("Pesagens no mês")} value={kpis.pesagensMes.toString()} />
+            <KpiCard icon={<AlertTriangle className="w-4 h-4" />} label={uiText("Lotes atrasados (>30d)")} value={kpis.lotesAtrasados.toString()} accent={kpis.lotesAtrasados > 0} />
           </div>
 
           {/* Filtros */}

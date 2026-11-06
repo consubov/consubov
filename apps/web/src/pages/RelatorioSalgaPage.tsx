@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { downloadGeneratedPdf, withReportExportDeadline } from "@/lib/reportPdfExport";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,8 @@ interface Props {
 }
 
 export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, retiroId: fixedRetiroId, retiroNome: fixedRetiroNome }: Props) {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const [retirosList, setRetirosList] = useState<{ id: string; nome: string }[]>([]);
   const [selectedRetiroId, setSelectedRetiroId] = useState(fixedRetiroId || "");
   const [selectedRetiroNome, setSelectedRetiroNome] = useState(fixedRetiroNome || "");
@@ -49,6 +52,13 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
   const [resumo, setResumo] = useState<string | null>(null);
   const pdfBlobRef = useRef<Blob | null>(null);
   const fileNameRef = useRef<string>("");
+
+  useEffect(() => {
+    pdfBlobRef.current = null;
+    fileNameRef.current = "";
+    setPdfUrl(null);
+    setResumo(null);
+  }, [language]);
 
   // Load retiros list for gerente/escritorio (when not locked)
   useEffect(() => {
@@ -118,7 +128,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
     if (periodoTipo === "ultima_salga") {
       if (!ultimaSalgaDate) return "Carregando…";
       const d = new Date(ultimaSalgaDate);
-      return `Última salga: ${d.toLocaleDateString("pt-BR")}`;
+      return `Última salga: ${d.toLocaleDateString(language)}`;
     }
     if (periodoTipo === "semanal") return "Últimos 7 dias";
     return `${MESES[mesSel - 1]} ${anoSel}`;
@@ -132,12 +142,12 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
     setPdfUrl(null);
     setResumo(null);
     pdfBlobRef.current = null;
-    toast.info("Gerando PDF…");
+    toast.info(uiText("Gerando PDF…"));
 
     try {
       const range = getDateRange();
       if (!range) {
-        toast.error("Nenhuma salga encontrada.");
+        toast.error(uiText("Nenhuma salga encontrada."));
         setGenerating(false);
         return;
       }
@@ -181,6 +191,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
       rows.sort((a, b) => a.nome.localeCompare(b.nome));
 
       const pdfData: SalgaPdfData = {
+        language,
         fazendaNome,
         retiroNome: selectedRetiroNome,
         periodoLabel: getPeriodoDisplay(),
@@ -199,7 +210,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
         if (uploadError) throw uploadError;
       } catch (uploadError) {
         console.warn("[PDF] Backup remoto não confirmado:", uploadError);
-        toast.warning("PDF gerado localmente; cópia no servidor não confirmada.");
+        toast.warning(uiText("PDF gerado localmente; cópia no servidor não confirmada."));
       }
 
       const totalSacosReais = rows.reduce((s, r) => s + r.sacosUtilizados, 0);
@@ -212,10 +223,10 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
 
       const localUrl = URL.createObjectURL(blob);
       setPdfUrl(localUrl);
-      toast.success("PDF gerado com sucesso!");
+      toast.success(uiText("PDF gerado com sucesso!"));
     } catch (err) {
       console.error("Erro ao gerar PDF de salga:", err);
-      toast.error("Erro ao gerar PDF. Tente novamente.");
+      toast.error(uiText("Erro ao gerar PDF. Tente novamente."));
     } finally {
       setGenerating(false);
     }
@@ -236,7 +247,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
     }
 
     downloadGeneratedPdf(blob, shareFileName);
-    toast.success("PDF baixado!");
+    toast.success(uiText("PDF baixado!"));
   }
 
   const now = new Date();
@@ -271,7 +282,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
                   setNoData(false);
                 }}
               >
-                <SelectTrigger><SelectValue placeholder="Selecione o retiro" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione o retiro")} /></SelectTrigger>
                 <SelectContent>
                   {retirosList.map((r) => (
                     <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
@@ -298,7 +309,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
               {loadingUltima ? (
                 <span className="text-muted-foreground"><LocalizedText source={"Buscando última salga…"} /></span>
               ) : ultimaSalgaDate ? (
-                `Última salga: ${new Date(ultimaSalgaDate).toLocaleDateString("pt-BR")}`
+                `${uiText("Última salga: ")}${new Date(ultimaSalgaDate).toLocaleDateString(language)}`
               ) : (
                 <span className="text-muted-foreground"><LocalizedText source={"Nenhuma salga encontrada"} /></span>
               )}
@@ -313,7 +324,7 @@ export default function RelatorioSalgaPage({ onBack, fazendaId, fazendaNome, ret
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {MESES.map((m, i) => (
-                      <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>
+                      <SelectItem key={m} value={String(i + 1)}>{new Date(2020, i, 1).toLocaleString(language, { month: "long" })}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { maFrom, maGetUser } from "@/lib/maOffline";
@@ -46,6 +47,8 @@ function extractStoragePath(url: string, bucket: string): string | null {
 }
 
 export default function PesadorPesagemPage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const [loading, setLoading] = useState(true);
   const [pesagens, setPesagens] = useState<PesagemRow[]>([]);
   const [clienteNomes, setClienteNomes] = useState<Record<string, string>>({});
@@ -104,11 +107,11 @@ export default function PesadorPesagemPage() {
         const path = extractStoragePath(toDelete.pdf_url, "relatorios");
         if (path) await supabase.storage.from("relatorios").remove([path]);
       }
-      toast.success("Pesagem excluída.");
+      toast.success(uiText("Pesagem excluída."));
       setToDelete(null);
       await load();
     } catch (e: any) {
-      toast.error("Erro ao excluir: " + (e?.message || "desconhecido"));
+      toast.error(uiText("Erro ao excluir: ") + (e?.message || uiText("desconhecido")));
     } finally {
       setDeleting(false);
     }
@@ -118,7 +121,7 @@ export default function PesadorPesagemPage() {
     try {
       await downloadPdfFromUrl(url, `pesagem-${pesagemId}.pdf`, { allowRemoteFallback: false });
     } catch {
-      toast.error("Não foi possível baixar o PDF. Tente novamente.");
+      toast.error(uiText("Não foi possível baixar o PDF. Tente novamente."));
     }
   }
 
@@ -138,8 +141,8 @@ export default function PesadorPesagemPage() {
 
   const shown = filtered.slice(0, visible);
 
-  const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  const fmtDate = (iso: string) => { try { return new Date(iso).toLocaleDateString("pt-BR"); } catch { return iso; } };
+  const brl = (n: number) => n.toLocaleString(language, { style: "currency", currency: "BRL" });
+  const fmtDate = (iso: string) => { try { return new Date(iso).toLocaleDateString(language); } catch { return iso; } };
 
   if (loading) {
     return (
@@ -160,7 +163,7 @@ export default function PesadorPesagemPage() {
         <Input
           value={query}
           onChange={(e) => { setQuery(e.target.value); setVisible(PAGE_SIZE); }}
-          placeholder="Buscar por produtor..."
+          placeholder={uiText("Buscar por produtor...")}
           className="pl-9"
         />
       </div>
@@ -208,7 +211,7 @@ export default function PesadorPesagemPage() {
                       type="button"
                       onClick={() => setToDelete(p)}
                       className="inline-flex items-center gap-1 text-[11px] text-destructive hover:text-destructive/80"
-                      aria-label="Excluir pesagem"
+                      aria-label={uiText("Excluir pesagem")}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

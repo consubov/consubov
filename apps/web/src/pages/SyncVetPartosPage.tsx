@@ -1,3 +1,4 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +20,7 @@ type Raca = { id: string; raca: string; dias_gestacao: number };
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
 export default function SyncVetPartosPage() {
+  const uiText = useStaticUiText();
   const { roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
 
@@ -50,7 +52,7 @@ export default function SyncVetPartosPage() {
       setPartos(p);
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao carregar partos");
+      toast.error(uiText("Erro ao carregar partos"));
     } finally {
       setLoading(false);
     }
@@ -71,13 +73,13 @@ export default function SyncVetPartosPage() {
 
   async function updateRaca(r: Raca, dias: number) {
     const { error } = await supabase.from("syncvet_racas_gestacao").update({ dias_gestacao: dias }).eq("id", r.id);
-    if (error) { toast.error("Erro ao atualizar"); return; }
+    if (error) { toast.error(uiText("Erro ao atualizar")); return; }
     setRacas(prev => prev.map(x => x.id === r.id ? { ...x, dias_gestacao: dias } : x));
   }
   async function removeRaca(r: Raca) {
-    if (!confirm(`Remover raça ${r.raca}?`)) return;
+    if (!confirm(`${uiText("Remover raça ")}${r.raca}?`)) return;
     const { error } = await supabase.from("syncvet_racas_gestacao").delete().eq("id", r.id);
-    if (error) { toast.error("Erro ao remover"); return; }
+    if (error) { toast.error(uiText("Erro ao remover")); return; }
     setRacas(prev => prev.filter(x => x.id !== r.id));
   }
   async function addRaca() {
@@ -86,7 +88,7 @@ export default function SyncVetPartosPage() {
       .from("syncvet_racas_gestacao")
       .insert({ empresa_id: empresaId, raca: novoRaca.trim(), dias_gestacao: novoDias })
       .select("id, raca, dias_gestacao").single();
-    if (error) { toast.error("Erro (raça duplicada?)"); return; }
+    if (error) { toast.error(uiText("Erro (raça duplicada?)")); return; }
     setRacas(prev => [...prev, data as Raca].sort((a, b) => a.raca.localeCompare(b.raca)));
     setNovoRaca(""); setNovoDias(285);
     void load();
@@ -98,16 +100,16 @@ export default function SyncVetPartosPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-primary flex items-center gap-2">
-          <CalfIcon className="w-5 h-5" /> Calendário de Partos
+          <CalfIcon className="w-5 h-5" /> <LocalizedText source={"Calendário de Partos"} />
         </h1>
         <Button variant="outline" size="sm" onClick={() => setCfgOpen(true)}>
-          <Settings2 className="w-3.5 h-3.5 mr-1" /> Raças
+          <Settings2 className="w-3.5 h-3.5 mr-1" /> <LocalizedText source={"Raças"} />
         </Button>
       </div>
 
       {porMes.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">
-          Nenhuma IATF concluída ainda. Conclua manejos de IATF para ver os partos previstos.
+          <LocalizedText source={"Nenhuma IATF concluída ainda. Conclua manejos de IATF para ver os partos previstos."} />
         </Card>
       ) : (
         <div className="space-y-2">
@@ -117,8 +119,8 @@ export default function SyncVetPartosPage() {
             return (
               <Card key={mes} className="p-3">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="font-semibold text-primary">{MESES[m - 1]} de {y}</div>
-                  <Badge className="bg-primary text-primary-foreground">{total} partos previstos</Badge>
+                  <div className="font-semibold text-primary">{MESES[m - 1]} <LocalizedText source={"de"} /> {y}</div>
+                  <Badge className="bg-primary text-primary-foreground">{total} <LocalizedText source={"partos previstos"} /></Badge>
                 </div>
                 <div className="space-y-1">
                   {lista.map((p, i) => (
@@ -126,12 +128,12 @@ export default function SyncVetPartosPage() {
                       <div className="min-w-0">
                         <div className="font-medium truncate">{p.fazenda_nome} • {p.lote_nome}</div>
                         <div className="text-muted-foreground">
-                          IATF: {p.data_iatf.split("-").reverse().join("/")} • {p.raca} ({p.dias_gestacao}d)
+                          <LocalizedText source={"IATF:"} /> {p.data_iatf.split("-").reverse().join("/")} • {p.raca} ({p.dias_gestacao}d)
                         </div>
                       </div>
                       <div className="shrink-0 text-right">
                         <div className="font-bold text-primary">{p.data_prevista_parto.split("-").reverse().join("/")}</div>
-                        <div className="text-[10px] text-muted-foreground">{p.quantidade_animais} animais</div>
+                        <div className="text-[10px] text-muted-foreground">{p.quantidade_animais} <LocalizedText source={"animais"} /></div>
                       </div>
                     </div>
                   ))}
@@ -144,7 +146,7 @@ export default function SyncVetPartosPage() {
 
       <Dialog open={cfgOpen} onOpenChange={setCfgOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Dias de Gestação por Raça</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle><LocalizedText source={"Dias de Gestação por Raça"} /></DialogTitle></DialogHeader>
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
             {racas.map(r => (
               <div key={r.id} className="flex items-center gap-2">
@@ -155,7 +157,7 @@ export default function SyncVetPartosPage() {
                   value={r.dias_gestacao}
                   onChange={(e) => updateRaca(r, Number(e.target.value))}
                 />
-                <span className="text-xs text-muted-foreground">dias</span>
+                <span className="text-xs text-muted-foreground"><LocalizedText source={"dias"} /></span>
                 <Button variant="ghost" size="icon" onClick={() => removeRaca(r)}>
                   <Trash2 className="w-4 h-4 text-destructive" />
                 </Button>
@@ -163,15 +165,15 @@ export default function SyncVetPartosPage() {
             ))}
           </div>
           <div className="border-t pt-3 space-y-2">
-            <Label className="text-xs">Adicionar raça</Label>
+            <Label className="text-xs"><LocalizedText source={"Adicionar raça"} /></Label>
             <div className="flex gap-2">
-              <Input placeholder="Nome da raça" value={novoRaca} onChange={(e) => setNovoRaca(e.target.value)} />
+              <Input placeholder={uiText("Nome da raça")} value={novoRaca} onChange={(e) => setNovoRaca(e.target.value)} />
               <Input type="number" className="w-24" value={novoDias} onChange={(e) => setNovoDias(Number(e.target.value))} />
               <Button onClick={addRaca}><Plus className="w-4 h-4" /></Button>
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => { setCfgOpen(false); void load(); }}>Fechar</Button>
+            <Button onClick={() => { setCfgOpen(false); void load(); }}><LocalizedText source={"Fechar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

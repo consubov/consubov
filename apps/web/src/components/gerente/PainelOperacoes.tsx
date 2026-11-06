@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,9 +23,9 @@ interface Cap { nome: string; user_id: string | null }
 const CINCO_MIN = 5 * 60_000;
 const DOZE_H = 12 * 3600_000;
 const TZ = "America/Sao_Paulo";
-const fmtHora = (iso: string) => new Date(iso).toLocaleTimeString("pt-BR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
-const fmtDataHora = (iso: string) =>
-  new Date(iso).toLocaleString("pt-BR", { timeZone: TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+const fmtHora = (iso: string, language: string) => new Date(iso).toLocaleTimeString(language, { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
+const fmtDataHora = (iso: string, language: string) =>
+  new Date(iso).toLocaleString(language, { timeZone: TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 const diaBR = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { timeZone: TZ });
 
 /** Calcula o status de um capataz num retiro a partir dos eventos (ordem crescente). */
@@ -208,12 +209,14 @@ export default function PainelOperacoes({ fazendaId, retiros }: Props) {
 }
 
 function StatusTag({ st, agora, compacto }: { st: Estado; agora: number; compacto?: boolean }) {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   if (st.k === "nao") return <span className="text-xs text-muted-foreground"><LocalizedText source={"Não iniciado"} /></span>;
   if (st.k === "fin") {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
         <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-        {compacto ? `Finalizado ${fmtDataHora(st.t)}` : `${fmtDataHora(st.t)} · sincronizou`}
+        {compacto ? `${uiText("Finalizado ")}${fmtDataHora(st.t, language)}` : `${fmtDataHora(st.t, language)}${uiText(" · sincronizou")}`}
       </span>
     );
   }
@@ -222,8 +225,8 @@ function StatusTag({ st, agora, compacto }: { st: Estado; agora: number; compact
   return (
     <span className={cn("inline-flex items-center gap-1.5 text-xs font-medium", alerta ? "text-secondary-foreground" : "text-primary")}>
       <span className={cn("h-2.5 w-2.5 rounded-full animate-pulse", alerta ? "bg-secondary" : "bg-primary")} />
-      {alerta ? `Em andamento há ${Math.floor(decorrido / 3600_000)}h` : `Em andamento desde ${fmtHora(st.desde)}`}
-      {st.pend != null && st.pend > 0 && <span className="text-muted-foreground">· {st.pend} <LocalizedText source={"pendente"} />{st.pend > 1 ? "s" : ""}</span>}
+      {alerta ? `${uiText("Em andamento há ")}${Math.floor(decorrido / 3600_000)}h` : `${uiText("Em andamento desde ")}${fmtHora(st.desde, language)}`}
+      {st.pend != null && st.pend > 0 && <span className="text-muted-foreground">· {st.pend} {uiText(st.pend === 1 ? "pendente" : "pendentes")}</span>}
     </span>
   );
 }

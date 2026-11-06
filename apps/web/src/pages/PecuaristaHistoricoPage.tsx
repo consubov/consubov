@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { maFrom, maGetUser } from "@/lib/maOffline";
@@ -72,6 +73,8 @@ function extractStoragePath(url: string, bucket: string): string | null {
 }
 
 export default function PecuaristaHistoricoPage() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<Item[]>([]);
   const [query, setQuery] = useState("");
@@ -84,12 +87,12 @@ export default function PecuaristaHistoricoPage() {
   async function gerarPdf(item: Item) {
     setGerandoId(item.id);
     try {
-      const url = await gerarPdfPesagemPecuaristaHistorico(item.rawId, item.categoria);
+      const url = await gerarPdfPesagemPecuaristaHistorico(item.rawId, item.categoria, language);
       setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, pdfUrl: url } : i)));
       await downloadPdfFromUrl(url, `pesagem-${item.rawId}.pdf`, { allowRemoteFallback: false });
-      toast.success("PDF gerado; download iniciado");
+      toast.success(uiText("PDF gerado; download iniciado"));
     } catch (e) {
-      toast.error("Erro ao gerar PDF: " + (getErrorMessage(e) ?? ""));
+      toast.error(uiText("Erro ao gerar PDF: ") + (getErrorMessage(e) ?? ""));
     }
     setGerandoId(null);
   }
@@ -210,11 +213,11 @@ export default function PecuaristaHistoricoPage() {
         if (path) await supabase.storage.from("relatorios").remove([path]);
       }
 
-      toast.success("Registro excluído.");
+      toast.success(uiText("Registro excluído."));
       setToDelete(null);
       await load();
     } catch (e) {
-      toast.error("Erro ao excluir: " + (getErrorMessage(e) || "desconhecido"));
+      toast.error(uiText("Erro ao excluir: ") + (getErrorMessage(e) || uiText("desconhecido")));
     } finally {
       setDeleting(false);
     }
@@ -229,7 +232,7 @@ export default function PecuaristaHistoricoPage() {
   }, [items, query]);
 
   const shown = filtered.slice(0, visible);
-  const fmtDate = (iso: string) => { try { return new Date(iso).toLocaleDateString("pt-BR"); } catch { return iso; } };
+  const fmtDate = (iso: string) => { try { return new Date(iso).toLocaleDateString(language); } catch { return iso; } };
 
   if (loading) {
     return (
@@ -250,7 +253,7 @@ export default function PecuaristaHistoricoPage() {
         <Input
           value={query}
           onChange={(e) => { setQuery(e.target.value); setVisible(PAGE_SIZE); }}
-          placeholder="Buscar por lote ou fazenda..."
+          placeholder={uiText("Buscar por lote ou fazenda...")}
           className="pl-9"
         />
       </div>
@@ -302,7 +305,7 @@ export default function PecuaristaHistoricoPage() {
                     type="button"
                     onClick={() => setToDelete(p)}
                     className="inline-flex items-center gap-1 text-xs text-destructive hover:text-destructive/80"
-                    aria-label="Excluir registro"
+                    aria-label={uiText("Excluir registro")}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

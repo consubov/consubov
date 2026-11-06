@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +21,7 @@ interface Fazenda {
 }
 
 export default function PecuaristaFazendasPage() {
+  const uiText = useStaticUiText();
   const { user, roleData } = useAuth();
   const navigate = useNavigate();
   const [pecuaristaId, setPecuaristaId] = useState<string | null>(null);
@@ -61,7 +62,7 @@ export default function PecuaristaFazendasPage() {
 
   async function handleSave() {
     if (!pecuaristaId) return;
-    if (!form.nome.trim()) return toast.error("Nome da fazenda é obrigatório");
+    if (!form.nome.trim()) return toast.error(uiText("Nome da fazenda é obrigatório"));
     setSaving(true);
     const id = crypto.randomUUID();
     const nova = {
@@ -73,7 +74,7 @@ export default function PecuaristaFazendasPage() {
     };
     enqueueMa(id, { kind: "insert", table: "fazendas_pecuarista", row: nova });
     setFazendas((prev) => [...prev, nova].sort((a, b) => a.nome_fazenda.localeCompare(b.nome_fazenda, "pt-BR")));
-    toast.success("Fazenda criada!");
+    toast.success(uiText("Fazenda criada!"));
     setDialogOpen(false);
     setForm({ nome: "", cidade: "", uf: "" });
     setSaving(false);
@@ -92,7 +93,7 @@ export default function PecuaristaFazendasPage() {
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Buscar fazenda..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        <Input placeholder={uiText("Buscar fazenda...")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
 
       {filtered.length === 0 ? (

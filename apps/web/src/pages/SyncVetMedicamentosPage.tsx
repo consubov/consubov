@@ -1,3 +1,4 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +34,7 @@ async function resolveSignedUrl(path: string | null): Promise<string | null> {
 }
 
 export default function SyncVetMedicamentosPage() {
+  const uiText = useStaticUiText();
   const { roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
   const [rows, setRows] = useState<Med[]>([]);
@@ -94,7 +96,7 @@ export default function SyncVetMedicamentosPage() {
 
   async function handleSave() {
     if (!empresaId) return;
-    if (!nomeComercial.trim()) { toast.error("Nome comercial é obrigatório"); return; }
+    if (!nomeComercial.trim()) { toast.error(uiText("Nome comercial é obrigatório")); return; }
     setSaving(true);
     try {
       let finalPath = fotoPath;
@@ -118,11 +120,11 @@ export default function SyncVetMedicamentosPage() {
       if (editing) {
         const { error } = await supabase.from("syncvet_medicamentos").update(payload).eq("id", editing.id);
         if (error) throw error;
-        toast.success("Medicamento atualizado");
+        toast.success(uiText("Medicamento atualizado"));
       } else {
         const { error } = await supabase.from("syncvet_medicamentos").insert(payload as any);
         if (error) throw error;
-        toast.success("Medicamento adicionado");
+        toast.success(uiText("Medicamento adicionado"));
       }
       setOpen(false);
       load();
@@ -134,42 +136,42 @@ export default function SyncVetMedicamentosPage() {
   }
 
   async function handleDelete(m: Med) {
-    if (!confirm(`Remover ${m.nome_comercial}?`)) return;
+    if (!confirm(`${uiText("Remover ")}${m.nome_comercial}?`)) return;
     const { error } = await supabase.from("syncvet_medicamentos").delete().eq("id", m.id);
     if (error) toast.error(error.message);
-    else { toast.success("Removido"); load(); }
+    else { toast.success(uiText("Removido")); load(); }
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">Medicamentos</h1>
-          <p className="text-sm text-muted-foreground">Biblioteca da empresa</p>
+          <h1 className="text-xl font-bold"><LocalizedText source={"Medicamentos"} /></h1>
+          <p className="text-sm text-muted-foreground"><LocalizedText source={"Biblioteca da empresa"} /></p>
         </div>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
           <DialogTrigger asChild>
-            <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" />Novo</Button>
+            <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" /><LocalizedText source={"Novo"} /></Button>
           </DialogTrigger>
           <DialogContent className="max-h-[85vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>{editing ? "Editar medicamento" : "Novo medicamento"}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editing ? uiText("Editar medicamento") : uiText("Novo medicamento")}</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <div><Label className="text-xs">Nome comercial*</Label><Input value={nomeComercial} onChange={(e) => setNomeComercial(e.target.value)} /></div>
-              <div><Label className="text-xs">Princípio ativo</Label><Input value={principio} onChange={(e) => setPrincipio(e.target.value)} /></div>
-              <div><Label className="text-xs">Laboratório</Label><Input value={laboratorio} onChange={(e) => setLaboratorio(e.target.value)} /></div>
-              <div><Label className="text-xs">Dosagem padrão</Label><Input value={dosagem} onChange={(e) => setDosagem(e.target.value)} placeholder="Ex: 1 mL / 50 kg" /></div>
-              <div><Label className="text-xs">Via de aplicação</Label><Input value={via} onChange={(e) => setVia(e.target.value)} placeholder="Ex: IM, SC, VO" /></div>
-              <div><Label className="text-xs">Observações</Label><Textarea rows={3} value={obs} onChange={(e) => setObs(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Nome comercial*"} /></Label><Input value={nomeComercial} onChange={(e) => setNomeComercial(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Princípio ativo"} /></Label><Input value={principio} onChange={(e) => setPrincipio(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Laboratório"} /></Label><Input value={laboratorio} onChange={(e) => setLaboratorio(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Dosagem padrão"} /></Label><Input value={dosagem} onChange={(e) => setDosagem(e.target.value)} placeholder={uiText("Ex: 1 mL / 50 kg")} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Via de aplicação"} /></Label><Input value={via} onChange={(e) => setVia(e.target.value)} placeholder={uiText("Ex: IM, SC, VO")} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Observações"} /></Label><Textarea rows={3} value={obs} onChange={(e) => setObs(e.target.value)} /></div>
               <div>
-                <Label className="text-xs">Foto</Label>
+                <Label className="text-xs"><LocalizedText source={"Foto"} /></Label>
                 <Input type="file" accept="image/*" onChange={(e) => setFotoFile(e.target.files?.[0] ?? null)} />
-                {fotoPath && !fotoFile && <p className="text-xs text-muted-foreground mt-1">Foto atual mantida.</p>}
+                {fotoPath && !fotoFile && <p className="text-xs text-muted-foreground mt-1"><LocalizedText source={"Foto atual mantida."} /></p>}
               </div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button variant="ghost" onClick={() => setOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
               <Button onClick={handleSave} disabled={saving}>
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} />
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -179,7 +181,7 @@ export default function SyncVetMedicamentosPage() {
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : rows.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-muted-foreground">Nenhum medicamento cadastrado ainda.</Card>
+        <Card className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum medicamento cadastrado ainda."} /></Card>
       ) : (
         <div className="space-y-2">
           {rows.map((m) => (

@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Bell, Check, Eye, Plus } from "lucide-react";
-import { format } from "date-fns";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MODULOS_AVISO, type ModuloAviso } from "@/lib/avisosModulo";
 import { toast } from "sonner";
@@ -34,6 +34,8 @@ const MODULO_LABEL: Record<string, string> = {
 };
 
 export default function NotificacoesPage() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Notificacao | null>(null);
@@ -65,7 +67,7 @@ export default function NotificacoesPage() {
   };
 
   const criarAviso = async () => {
-    if (!titulo.trim()) { toast.error("Informe o título do aviso."); return; }
+    if (!titulo.trim()) { toast.error(uiText("Informe o título do aviso.")); return; }
     setSalvando(true);
     const { error } = await supabase.from("notificacoes").insert({
       tipo: "aviso",
@@ -74,8 +76,8 @@ export default function NotificacoesPage() {
       modulo,
     });
     setSalvando(false);
-    if (error) { toast.error("Não foi possível criar o aviso."); return; }
-    toast.success("Aviso publicado.");
+    if (error) { toast.error(uiText("Não foi possível criar o aviso.")); return; }
+    toast.success(uiText("Aviso publicado."));
     setTitulo(""); setMensagem(""); setModulo("geral"); setNovoOpen(false);
     fetchNotificacoes();
   };
@@ -88,7 +90,7 @@ export default function NotificacoesPage() {
         <div className="flex items-center gap-3">
           <Bell className="w-6 h-6 text-primary" />
           <h1 className="text-2xl font-bold text-foreground"><LocalizedText source={"Notificações"} /></h1>
-          {naoLidas > 0 && <Badge variant="destructive">{naoLidas} <LocalizedText source={"nova"} />{naoLidas > 1 ? "s" : ""}</Badge>}
+          {naoLidas > 0 && <Badge variant="destructive">{naoLidas} {uiText(naoLidas === 1 ? "nova" : "novas")}</Badge>}
         </div>
         <Button size="sm" onClick={() => setNovoOpen(true)}>
           <Plus className="w-4 h-4 mr-1" /> <LocalizedText source={"Novo aviso"} /></Button>
@@ -123,12 +125,12 @@ export default function NotificacoesPage() {
                     <TableRow key={n.id} className={!n.lida ? "bg-primary/5" : ""}>
                       <TableCell>
                         <Badge variant={n.lida ? "secondary" : "default"} className="text-xs">
-                          {n.lida ? "Lida" : "Nova"}
+                          {uiText(n.lida ? "Lida" : "Nova")}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {MODULO_LABEL[n.modulo ?? "geral"] ?? "Geral"}
+                          {uiText(MODULO_LABEL[n.modulo ?? "geral"] ?? "Geral")}
                         </Badge>
                       </TableCell>
                       <TableCell className="font-medium">{n.dados?.nome || n.titulo}</TableCell>
@@ -136,15 +138,15 @@ export default function NotificacoesPage() {
                       <TableCell className="hidden md:table-cell text-sm">{n.dados?.telefone || "—"}</TableCell>
                       <TableCell className="hidden lg:table-cell text-sm">{n.dados?.whatsapp || "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {format(new Date(n.criado_em), "dd/MM/yy HH:mm")}
+                        {new Date(n.criado_em).toLocaleString(language, { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button size="icon" variant="ghost" onClick={() => setSelected(n)} title="Ver detalhes">
+                          <Button size="icon" variant="ghost" onClick={() => setSelected(n)} title={uiText("Ver detalhes")}>
                             <Eye className="w-4 h-4" />
                           </Button>
                           {!n.lida && (
-                            <Button size="icon" variant="ghost" onClick={() => marcarLida(n.id)} title="Marcar como lida">
+                            <Button size="icon" variant="ghost" onClick={() => marcarLida(n.id)} title={uiText("Marcar como lida")}>
                               <Check className="w-4 h-4" />
                             </Button>
                           )}
@@ -168,7 +170,7 @@ export default function NotificacoesPage() {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="aviso-titulo"><LocalizedText source={"Título"} /></Label>
-              <Input id="aviso-titulo" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex.: Novidades da versão" />
+              <Input id="aviso-titulo" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder={uiText("Ex.: Novidades da versão")} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="aviso-mensagem"><LocalizedText source={"Mensagem"} /></Label>
@@ -180,7 +182,7 @@ export default function NotificacoesPage() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {MODULOS_AVISO.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    <SelectItem key={m.value} value={m.value}>{uiText(m.label)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -190,7 +192,7 @@ export default function NotificacoesPage() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setNovoOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
-            <Button onClick={criarAviso} disabled={salvando}>{salvando ? "Publicando..." : "Publicar"}</Button>
+            <Button onClick={criarAviso} disabled={salvando}>{uiText(salvando ? "Publicando..." : "Publicar")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -203,13 +205,13 @@ export default function NotificacoesPage() {
           </DialogHeader>
           {selected && (
             <div className="space-y-3 text-sm">
-              <div><strong><LocalizedText source={"Módulo:"} /></strong> {MODULO_LABEL[selected.modulo ?? "geral"] ?? "Geral"}</div>
+              <div><strong><LocalizedText source={"Módulo:"} /></strong> {uiText(MODULO_LABEL[selected.modulo ?? "geral"] ?? "Geral")}</div>
               <div><strong><LocalizedText source={"Nome:"} /></strong> {selected.dados?.nome}</div>
               <div><strong>E-mail:</strong> {selected.dados?.email}</div>
               <div><strong><LocalizedText source={"Telefone:"} /></strong> {selected.dados?.telefone}</div>
               <div><strong>WhatsApp:</strong> {selected.dados?.whatsapp}</div>
-              <div><strong><LocalizedText source={"Mensagem:"} /></strong> {selected.dados?.mensagem || selected.mensagem || "Sem mensagem"}</div>
-              <div><strong><LocalizedText source={"Data:"} /></strong> {format(new Date(selected.criado_em), "dd/MM/yyyy HH:mm:ss")}</div>
+              <div><strong><LocalizedText source={"Mensagem:"} /></strong> {selected.dados?.mensagem || selected.mensagem || uiText("Sem mensagem")}</div>
+              <div><strong><LocalizedText source={"Data:"} /></strong> {new Date(selected.criado_em).toLocaleString(language, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}</div>
               {!selected.lida && (
                 <Button size="sm" onClick={() => { marcarLida(selected.id); setSelected({ ...selected, lida: true }); }}>
                   <LocalizedText source={"Marcar como lida"} /></Button>

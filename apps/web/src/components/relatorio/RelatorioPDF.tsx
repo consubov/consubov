@@ -353,8 +353,8 @@ function PrevisaoAbateTable({ rows, totals }: { rows: PrevisaoAbatePDFRow[]; tot
       {totals && (
         <View style={[s.tableRow, { backgroundColor: lightGreen, borderTop: `1 solid ${green}` }]} wrap={false}>
           <Text style={[s.tableCell, { width: "37%", fontFamily: "Helvetica-Bold", color: green }]}><PdfCopy text="TOTAL" /></Text>
-          <Text style={[s.tableCell, { width: "16%", fontFamily: "Helvetica-Bold" }]}>{totals.pastos} pasto(s)</Text>
-          <Text style={[s.tableCell, { width: "47%", fontFamily: "Helvetica-Bold" }]}>{fmtNum(totals.animais)} animais</Text>
+          <Text style={[s.tableCell, { width: "16%", fontFamily: "Helvetica-Bold" }]}>{totals.pastos} <PdfCopy text="pasto(s)" /></Text>
+          <Text style={[s.tableCell, { width: "47%", fontFamily: "Helvetica-Bold" }]}>{fmtNum(totals.animais)} <PdfCopy text="animais" /></Text>
         </View>
       )}
     </View>
@@ -372,7 +372,7 @@ function PrevisaoAbatePages({ previsao, data }: { previsao: PrevisaoAbatePDFData
           <Header data={data} />
           <Text style={s.sectionTitle}><PdfCopy text="SEÇÃO 4 — PREVISÃO DE ABATE" /></Text>
           <Text style={{ fontSize: 7, color: "#666", marginBottom: 6 }}>
-            <PdfCopy text="Calculada em" /> {previsao.calculadaEm} · Peso-alvo e janela conforme configuração da fazenda/retiro
+            <PdfCopy text="Calculada em" /> {previsao.calculadaEm} <PdfCopy text="· Peso-alvo e janela conforme configuração da fazenda/retiro" />
           </Text>
           {rows.length > 0 ? (
             <PrevisaoAbateTable
@@ -415,7 +415,7 @@ function MetricasCategoria({ metrics }: { metrics: CatMetricsPDF[] }) {
             <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: green, marginBottom: 2 }}>{m.categoria}</Text>
             <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: "#333" }}>{fmtNum(m.consumoMedio, 1)} <Text style={{ fontSize: 6, color: "#888" }}><PdfCopy text="g/cab/dia" /></Text></Text>
             <View style={{ marginTop: 2 }}>
-              <Text style={{ fontSize: 6, color: "#666" }}><PdfCopy text="Animais:" /> {fmtNum(m.totalAnimais)} · Sacos: {fmtNum(m.totalSacos)}</Text>
+              <Text style={{ fontSize: 6, color: "#666" }}><PdfCopy text="Animais:" /> {fmtNum(m.totalAnimais)} <PdfCopy text="· Sacos:" /> {fmtNum(m.totalSacos)}</Text>
               <Text style={{ fontSize: 6, color: "#666" }}><PdfCopy text="R$/cab/mês:" /> {fmtBRL(m.custoMedio)}</Text>
               <Text style={{ fontSize: 6, color: "#666" }}><PdfCopy text="R$/kg ganho:" /> {m.custoPorKgGanho > 0 ? fmtBRL(m.custoPorKgGanho) : "—"}</Text>
               <Text style={{ fontSize: 6, color: "#666" }}><PdfCopy text="GMD:" /> {m.gmd > 0 ? `${fmtNum(m.gmd, 3)} kg/dia` : "—"}</Text>
@@ -630,7 +630,7 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
     <View>
       <View style={s.retiroHeader}>
         <Text style={s.retiroTitle}>{r.nome}</Text>
-        <Text style={s.retiroSub}><PdfCopy text="Capataz:" /> {r.capataz} · Produto: {r.produtoNome} · R$ {fmtNum(r.precoKg, 2)}/kg</Text>
+        <Text style={s.retiroSub}><PdfCopy text="Capataz:" /> {r.capataz} <PdfCopy text="· Produto:" /> {r.produtoNome} · R$ {fmtNum(r.precoKg, 2)}/kg</Text>
       </View>
 
       <View style={s.cardsRow}>
@@ -684,9 +684,9 @@ function DetalheRetiro({ r }: { r: RetiroReportData }) {
       </View>
 
       <Text style={{ fontSize: 6, color: "#888", marginTop: 2 }}>
-        {"\u2713 = lançado via QR Code"}
-        {" · Consumo Médio do Mês = média de todas as salgas do mês (g/cab/dia), diferente do Consumo Real pontual das telas"}
-        {" · Dias do Ciclo = dias do ciclo do retiro, não o intervalo de consumo de cada pasto"}
+        <PdfCopy text="✓ = lançado via QR Code" />
+        <PdfCopy text="· Consumo Médio do Mês = média de todas as salgas do mês (g/cab/dia), diferente do Consumo Real pontual das telas" />
+        <PdfCopy text="· Dias do Ciclo = dias do ciclo do retiro, não o intervalo de consumo de cada pasto" />
         {limiteDias != null ? ` (em vermelho = acima do intervalo padrão de ${limiteDias} dias)` : ""}
       </Text>
     </View>

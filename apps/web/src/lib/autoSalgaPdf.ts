@@ -1,9 +1,11 @@
 import { downloadGeneratedPdf } from "@/lib/reportPdfExport";
+import type { SiteLanguage } from "@/lib/siteLanguage";
 import { supabase } from "@/integrations/supabase/client";
 import { gerarPdfSalga, type PastoSalgaRow, type SalgaPdfData } from "@/utils/gerarPdfSalga";
 import { saveLastPdf, type LastPdfEntry } from "@/lib/offlineDb";
 
 export interface AutoSalgaPdfArgs {
+  language?: SiteLanguage;
   fazendaId: string;
   fazendaNome: string;
   retiroId: string;
@@ -112,6 +114,7 @@ export async function generateAndStoreSalgaPdf(args: AutoSalgaPdfArgs): Promise<
 
   const periodoLabel = buildLabel(start, end);
   const pdfData: SalgaPdfData = {
+    language: args.language ?? "pt-BR",
     fazendaNome: args.fazendaNome,
     retiroNome: args.retiroNome,
     periodoLabel,

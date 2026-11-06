@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -61,6 +62,8 @@ interface Lote {
 interface CatCustom { id: string; nome: string; }
 
 export default function PecuaristaFazendaDetalhePage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const { fazendaId } = useParams<{ fazendaId: string }>();
   const { user, roleData } = useAuth();
   const navigate = useNavigate();
@@ -205,7 +208,7 @@ export default function PecuaristaFazendaDetalhePage() {
 
   async function handleSave() {
     if (!pecuaristaId || !fazendaId) return;
-    if (!form.nome.trim()) return toast.error("Nome do lote é obrigatório");
+    if (!form.nome.trim()) return toast.error(uiText("Nome do lote é obrigatório"));
 
     setSaving(true);
     try {
@@ -235,7 +238,7 @@ export default function PecuaristaFazendaDetalhePage() {
         }
         const { error } = await maFrom("lotes_pecuarista").update(payload).eq("id", editingId);
         if (error) throw error;
-        toast.success("Lote atualizado!");
+        toast.success(uiText("Lote atualizado!"));
       } else {
         // Pesagem inicial opcional (validação antes de criar qualquer coisa)
         const hojeSP = dataLocalSP(new Date());
@@ -298,26 +301,26 @@ export default function PecuaristaFazendaDetalhePage() {
         }
         setCodigosOcupados((prev) => [...prev, codigo]);
         setLotes((prev) => [{ ...novo, ultima_data: ultimaData, ultimo_gmd: null, qtd_animais: inicial?.qtd ?? null }, ...prev]);
-        toast.success(`Lote ${codigo} criado!`);
+        toast.success(`${uiText("Lote ")}${codigo}${uiText(" criado!")}`);
       }
       setDialogOpen(false);
       resetForm();
       if (editingId) await Promise.all([loadLotes(), loadCats(pecuaristaId)]);
       else void loadCats(pecuaristaId);
     } catch (e: any) {
-      toast.error("Erro: " + (e?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (e?.message || uiText("desconhecido")));
     } finally {
       setSaving(false);
     }
   }
 
   async function encerrar(id: string) {
-    if (!confirm("Encerrar este lote?")) return;
+    if (!confirm(uiText("Encerrar este lote?"))) return;
     const { error } = await maFrom("lotes_pecuarista")
       .update({ status: "encerrado", encerrado_at: new Date().toISOString() })
       .eq("id", id);
-    if (error) toast.error("Erro: " + error.message);
-    else { toast.success("Lote encerrado"); loadLotes(); }
+    if (error) toast.error(uiText("Erro: ") + error.message);
+    else { toast.success(uiText("Lote encerrado")); loadLotes(); }
   }
 
   async function apagar(l: Lote) {
@@ -331,7 +334,7 @@ export default function PecuaristaFazendaDetalhePage() {
       setLoteParaApagar(l);
       return;
     }
-    if (!confirm(`Tem certeza que deseja apagar o lote ${l.nome_lote}? Essa ação não pode ser desfeita.`)) return;
+    if (!confirm(`${uiText("Tem certeza que deseja apagar o lote ")}${l.nome_lote}${uiText("? Essa ação não pode ser desfeita.")}`)) return;
     await executarApagar(l);
   }
 
@@ -341,7 +344,7 @@ export default function PecuaristaFazendaDetalhePage() {
       // Lote ainda não enviado: cancela o envio e limpa só o aparelho.
       if (await loteAindaNaoEnviado(l.id)) {
         await limparLoteLocal(l.id);
-        toast.success("Lote apagado.");
+        toast.success(uiText("Lote apagado."));
         setLoteParaApagar(null);
         setLotes((prev) => prev.filter((x) => x.id !== l.id));
         await loadLotes();
@@ -428,11 +431,11 @@ export default function PecuaristaFazendaDetalhePage() {
       await limparLoteLocal(l.id);
       setLotes((prev) => prev.filter((x) => x.id !== l.id));
 
-      toast.success("Lote e histórico apagados.");
+      toast.success(uiText("Lote e histórico apagados."));
       setLoteParaApagar(null);
       await loadLotes();
     } catch (e: any) {
-      toast.error("Erro ao apagar: " + (e?.message || "desconhecido"));
+      toast.error(uiText("Erro ao apagar: ") + (e?.message || uiText("desconhecido")));
     } finally {
       setApagando(false);
     }
@@ -447,7 +450,7 @@ export default function PecuaristaFazendaDetalhePage() {
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={() => navigate("/pecuarista/fazendas")}><ArrowLeft className="w-4 h-4" /></Button>
         <h1 className="text-xl font-bold text-foreground flex-1">{fazendaNome || "Fazenda"}</h1>
-        <Button variant="ghost" size="icon" onClick={() => setConfigOpen(true)} title="Configurações da fazenda">
+        <Button variant="ghost" size="icon" onClick={() => setConfigOpen(true)} title={uiText("Configurações da fazenda")}>
           <Settings className="w-4 h-4" />
         </Button>
         <Button onClick={openCreate} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
@@ -461,7 +464,7 @@ export default function PecuaristaFazendaDetalhePage() {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar lote pelo nome..."
+          placeholder={uiText("Buscar lote pelo nome...")}
           className="pl-9"
         />
       </div>
@@ -498,21 +501,21 @@ export default function PecuaristaFazendaDetalhePage() {
                     </div>
                     {l.ultima_data && (
                       <div className="text-xs text-muted-foreground mt-1">
-                        <LocalizedText source={"Última pesagem:"} />{" "}{new Date(l.ultima_data).toLocaleDateString("pt-BR")}
+                        <LocalizedText source={"Última pesagem:"} />{" "}{new Date(l.ultima_data).toLocaleDateString(language)}
                         {l.ultimo_gmd != null && ` • GMD ${l.ultimo_gmd.toFixed(3)} kg/dia`}
                       </div>
                     )}
                   </button>
                   <div className="flex items-center gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(l)} title="Editar lote">
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(l)} title={uiText("Editar lote")}>
                       <Pencil className="w-4 h-4" />
                     </Button>
                     {l.status === "ativo" && (
-                      <Button variant="ghost" size="icon" onClick={() => encerrar(l.id)} title="Encerrar lote">
+                      <Button variant="ghost" size="icon" onClick={() => encerrar(l.id)} title={uiText("Encerrar lote")}>
                         <Archive className="w-4 h-4 text-destructive" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" onClick={() => apagar(l)} title="Apagar lote">
+                    <Button variant="ghost" size="icon" onClick={() => apagar(l)} title={uiText("Apagar lote")}>
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                     <ChevronRight className="w-5 h-5 text-muted-foreground" />
@@ -558,7 +561,7 @@ export default function PecuaristaFazendaDetalhePage() {
                 ><LocalizedText source={"+ Criar nova categoria"} /></button>
               </div>
               {form.criandoNova && (
-                <Input className="mt-2" placeholder="Nome da nova categoria" value={form.novaCategoria} onChange={e => setForm(f => ({ ...f, novaCategoria: e.target.value }))} />
+                <Input className="mt-2" placeholder={uiText("Nome da nova categoria")} value={form.novaCategoria} onChange={e => setForm(f => ({ ...f, novaCategoria: e.target.value }))} />
               )}
             </div>
 
@@ -597,9 +600,9 @@ export default function PecuaristaFazendaDetalhePage() {
                           <Button type="button" size="icon" onClick={() => {
                             const numero = pesInicial.numero.trim();
                             const peso = parseFloat(pesInicial.peso.replace(",", "."));
-                            if (!numero) return toast.error("Informe o número do animal");
-                            if (!Number.isFinite(peso) || peso <= 0) return toast.error("Informe um peso válido");
-                            if (pesInicial.animais.some((a) => a.numero === numero)) return toast.error(`Animal ${numero} já foi adicionado`);
+                            if (!numero) return toast.error(uiText("Informe o número do animal"));
+                            if (!Number.isFinite(peso) || peso <= 0) return toast.error(uiText("Informe um peso válido"));
+                            if (pesInicial.animais.some((a) => a.numero === numero)) return toast.error(`${uiText("Animal ")}${numero}${uiText(" já foi adicionado")}`);
                             setPesInicial((p) => ({ ...p, animais: [...p.animais, { numero, peso: String(peso) }], numero: "", peso: "" }));
                           }}><Plus className="w-4 h-4" /></Button>
                         </div>
@@ -607,7 +610,7 @@ export default function PecuaristaFazendaDetalhePage() {
                           <div className="space-y-1">
                             {pesInicial.animais.map((a, i) => (
                               <div key={a.numero} className="flex items-center justify-between text-sm bg-muted rounded px-2 py-1">
-                                <span>Animal <strong>{a.numero}</strong> — {a.peso} kg</span>
+                                <span>{uiText("Animal")} <strong>{a.numero}</strong> — {a.peso} kg</span>
                                 <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPesInicial((p) => ({ ...p, animais: p.animais.filter((_, j) => j !== i) }))}>
                                   <Trash2 className="w-3.5 h-3.5 text-destructive" />
                                 </Button>

@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Loader2, RefreshCw, CheckCircle2, WifiOff } from "lucide-react";
 import { useSyncStatus } from "@/lib/consultorOffline/useSyncStatus";
@@ -22,6 +22,7 @@ interface Props {
  * Auto-sincroniza em segundo plano ao detectar internet; o clique força/repete.
  */
 export default function SyncBadge({ className, compact, hideWhenIdle }: Props) {
+  const uiText = useStaticUiText();
   const { pending, photoPending, mutPending, photoFailures, syncing, stuck, stuckMinutes, syncNow } = useSyncStatus();
   const [showDone, setShowDone] = useState(false);
   const [wasPending, setWasPending] = useState(false);
@@ -56,11 +57,11 @@ export default function SyncBadge({ className, compact, hideWhenIdle }: Props) {
   useEffect(() => {
     if (!stuck || stuckAlerted.current) return;
     stuckAlerted.current = true;
-    toast.warning(`Há ${pending} visita(s) sem sincronizar há ${stuckMinutes} min mesmo com internet. Abra a fila para ver o motivo técnico.`, {
+    toast.warning(`${uiText("Há ")}${pending} ${uiText(pending === 1 ? "visita" : "visitas")}${uiText(" sem sincronizar há ")}${stuckMinutes} ${uiText("min mesmo com internet. Abra a fila para ver o motivo técnico.")}`, {
       duration: 10000,
-      action: { label: "Ver fila", onClick: () => setDebugOpen(true) },
+      action: { label: uiText("Ver fila"), onClick: () => setDebugOpen(true) },
     });
-  }, [stuck, stuckMinutes, pending]);
+  }, [stuck, stuckMinutes, pending, uiText]);
 
   const handleSync = async () => {
     try {
@@ -68,14 +69,14 @@ export default function SyncBadge({ className, compact, hideWhenIdle }: Props) {
       const failures = await getPhotoFailures();
       if (failures.length > 0) {
         const first = failures[0];
-        toast.error(`${failures.length} foto(s) com falha. ${first.label}: ${first.lastError} (${first.mime}, ${first.sizeLabel}).`, {
-          action: { label: `Reenviar ${first.ordem}`, onClick: () => void retryQueuedPhoto(first.localId) },
+        toast.error(`${failures.length} ${uiText(failures.length === 1 ? "foto com falha. " : "fotos com falha. ")}${first.label}: ${first.lastError} (${first.mime}, ${first.sizeLabel}).`, {
+          action: { label: `${uiText("Reenviar ")}${first.ordem}`, onClick: () => void retryQueuedPhoto(first.localId) },
         });
       }
     } catch (err) {
       const motivo = getErrorMessage(err);
-      toast.error(`Não foi possível sincronizar. ${motivo}. Tentar novamente?`, {
-        action: { label: "Tentar novamente", onClick: () => void handleSync() },
+      toast.error(`${uiText("Não foi possível sincronizar. ")}${motivo}${uiText(". Tentar novamente?")}`, {
+        action: { label: uiText("Tentar novamente"), onClick: () => void handleSync() },
       });
     }
   };
@@ -88,14 +89,14 @@ export default function SyncBadge({ className, compact, hideWhenIdle }: Props) {
   const label = (() => {
     if (syncing) {
       const total = pending || 1;
-      return `Sincronizando… ${total} visita${total === 1 ? "" : "s"} pendente${total === 1 ? "" : "s"}`;
+      return `${uiText("Sincronizando… ")}${total} ${uiText(total === 1 ? "visita pendente" : "visitas pendentes")}`;
     }
-    if (hasPhotoFailures) return `${photoFailures.length} foto${photoFailures.length === 1 ? "" : "s"} com falha`;
-    if (!online && hasPending) return `Sem conexão · ${pending} visita${pending === 1 ? "" : "s"} pendente${pending === 1 ? "" : "s"}`;
-    if (stuck) return `Parado há ${stuckMinutes} min · toque para forçar envio`;
-    if (hasPending) return `Sincronizar (${pending} visita${pending === 1 ? "" : "s"} pendente${pending === 1 ? "" : "s"})`;
-    if (showDone) return "Sincronização concluída ✓";
-    return "Tudo sincronizado";
+    if (hasPhotoFailures) return `${photoFailures.length} ${uiText(photoFailures.length === 1 ? "foto com falha" : "fotos com falha")}`;
+    if (!online && hasPending) return `${uiText("Sem conexão · ")}${pending} ${uiText(pending === 1 ? "visita pendente" : "visitas pendentes")}`;
+    if (stuck) return `${uiText("Parado há ")}${stuckMinutes} ${uiText("min · toque para forçar envio")}`;
+    if (hasPending) return `${uiText("Sincronizar (")}${pending} ${uiText(pending === 1 ? "visita pendente" : "visitas pendentes")})`;
+    if (showDone) return uiText("Sincronização concluída ✓");
+    return uiText("Tudo sincronizado");
   })();
 
   const Icon = syncing

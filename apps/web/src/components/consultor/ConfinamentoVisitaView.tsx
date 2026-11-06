@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +48,7 @@ interface CurralComAmostras extends VisitaCurralRow {
 interface Props { visitaId: string; visita: Visita; fazenda: Fazenda | null; }
 
 export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita, fazenda }: Props) {
+  const uiText = useStaticUiText();
   const navigate = useNavigate();
   const [visita, setVisita] = useState<Visita>(initialVisita);
   const [currais, setCurrais] = useState<CurralComAmostras[]>([]);
@@ -172,7 +173,7 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
       onConflict: "visita_id",
       applyToSnapshot: (curr, payload) => ({ ...curr, avaliacao_fabrica_visita: { id: rowId, ...payload } }),
     });
-    if (!res.ok && !res.queued) toast.error("Erro ao salvar avaliação da fábrica");
+    if (!res.ok && !res.queued) toast.error(uiText("Erro ao salvar avaliação da fábrica"));
   }
 
   function openNew() { setEditing(null); setModalOpen(true); }
@@ -210,11 +211,11 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
 
       setCurrais(prev => prev.filter(c => c.id !== alvo.id));
       setCurralExcluir(null);
-      toast.success(queued ? "Curral excluído (será sincronizado)" : "Curral excluído");
+      toast.success(uiText(queued ? "Curral excluído (será sincronizado)" : "Curral excluído"));
       await load();
     } catch (err) {
       console.error("[confinamento] excluir curral", err);
-      toast.error("Não foi possível excluir o curral.");
+      toast.error(uiText("Não foi possível excluir o curral."));
     } finally {
       setExcluindo(false);
     }
@@ -233,11 +234,11 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
         status: "rascunho",
         },
       });
-      toast.success(queued ? "Visita salva off-line." : "Visita salva!");
+      toast.success(uiText(queued ? "Visita salva off-line." : "Visita salva!"));
       setFinalizarOpen(false);
       load();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setFinalizando(false); }
   }
 
@@ -267,8 +268,8 @@ export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita
         <div className="text-sm font-semibold text-foreground"><LocalizedText source={"Avaliação da Fábrica"} /></div>
         <div className="text-[11px] text-muted-foreground -mt-2">
           <LocalizedText source={"Avaliada uma única vez por visita"} /></div>
-        <FabricaScore label="Organização de Fábrica" value={fabricaNota} onChange={n => upsertFabrica({ organizacao_fabrica_nota: n })} disabled={readOnly} />
-        <FabricaScore label="Organização de Insumos" value={insumosNota} onChange={n => upsertFabrica({ organizacao_insumos_nota: n })} disabled={readOnly} />
+        <FabricaScore label={uiText("Organização de Fábrica")} value={fabricaNota} onChange={n => upsertFabrica({ organizacao_fabrica_nota: n })} disabled={readOnly} />
+        <FabricaScore label={uiText("Organização de Insumos")} value={insumosNota} onChange={n => upsertFabrica({ organizacao_insumos_nota: n })} disabled={readOnly} />
       </Card>
 
       {/* Indicadores Zootécnicos (única por visita) */}

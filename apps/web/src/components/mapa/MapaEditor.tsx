@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { computeLabelLayout, PastoPin } from "@/components/mapa/MapaViewer";
 import type { PastoMapaData } from "@/hooks/useMapaData";
+import { planMapaCollectionChanges } from "@/lib/mapaEditorSavePlan";
 
 interface PastoOption {
   id: string;
@@ -89,6 +90,7 @@ type EditorMode = "idle" | "drawPolygon" | "drawLine" | "placeElement";
 export default function MapaEditor({
   fazendaId, retiroId, mapaId, imagemUrl, existingPolygons, existingLines, existingElements, onSaved,
 }: Props) {
+  const uiText = useStaticUiText();
   const [uploading, setUploading] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState(imagemUrl || "");
   const [pastos, setPastos] = useState<PastoOption[]>([]);
@@ -111,6 +113,8 @@ export default function MapaEditor({
   const [saving, setSaving] = useState(false);
   const [naturalSize, setNaturalSize] = useState({ width: 1, height: 1 });
   const [imgSize, setImgSize] = useState({ width: 0, height: 0 });
+  const [imageError, setImageError] = useState(false);
+  const [requiresReload, setRequiresReload] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -141,21 +145,48 @@ export default function MapaEditor({
   }, [retiroId]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
+    const types: Record<string, string> = {
+      "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp",
+    };
+    const ext = types[file.type];
+    if (!ext) {
+      toast.error(uiText("Escolha uma imagem PNG, JPG ou WebP. PDF não pode ser usado como imagem."));
+      input.value = "";
+      return;
+    }
     setUploading(true);
-    const ext = file.name.split(".").pop() || "png";
-    const path = `${fazendaId}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("mapas").upload(path, file);
-    if (error) { toast.error("Erro ao enviar imagem."); setUploading(false); return; }
-    const { data: urlData } = supabase.storage.from("mapas").getPublicUrl(path);
-    setCurrentImageUrl(urlData.publicUrl);
-    setUploading(false);
-    toast.success("Imagem enviada!");
+    try {
+      const path = `${fazendaId}/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("mapas").upload(path, file, {
+        contentType: file.type,
+      });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("mapas").getPublicUrl(path);
+      if (!urlData.publicUrl) throw new Error("Imagem sem URL");
+      setImageError(false);
+      setImgSize({ width: 0, height: 0 });
+      setNaturalSize({ width: 1, height: 1 });
+      setCurrentImageUrl(urlData.publicUrl);
+      toast.success(uiText("Imagem enviada!"));
+    } catch {
+      toast.error(uiText("Erro ao enviar imagem. Confira sua conexão e tente novamente."));
+    } finally {
+      setUploading(false);
+      input.value = "";
+    }
   };
 
   const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
+    if (!img.naturalWidth || !img.naturalHeight) {
+      setImageError(true);
+      setImgSize({ width: 0, height: 0 });
+      return;
+    }
+    setImageError(false);
     setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
     setImgSize({ width: img.clientWidth, height: img.clientHeight });
   }, []);
@@ -169,8 +200,8 @@ export default function MapaEditor({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const scaleX = imgSize.width / naturalSize.width;
-  const scaleY = imgSize.height / naturalSize.height;
+  const scaleX = imgSize.width > 0 ? imgSize.width / naturalSize.width : 1;
+  const scaleY = imgSize.height > 0 ? imgSize.height / naturalSize.height : 1;
 
   const getSvgCoords = useCallback((clientX: number, clientY: number) => {
     const svg = svgRef.current;
@@ -196,7 +227,7 @@ export default function MapaEditor({
         posicao_y: y,
         rotulo: elementLabel,
       }]);
-      toast.success("Elemento adicionado!");
+      toast.success(uiText("Elemento adicionado!"));
       setMode("idle");
       setPlacingElement(null);
       setElementLabel("");
@@ -216,9 +247,9 @@ export default function MapaEditor({
 
   // --- Polygon functions ---
   const finishPolygon = () => {
-    if (currentPoints.length < 3) { toast.error("Desenhe pelo menos 3 pontos."); return; }
-    if (!selectedPastoId) { toast.error("Selecione um pasto para vincular."); return; }
-    if (polygons.some((p) => p.pasto_id === selectedPastoId)) { toast.error("Este pasto já está vinculado."); return; }
+    if (currentPoints.length < 3) { toast.error(uiText("Desenhe pelo menos 3 pontos.")); return; }
+    if (!selectedPastoId) { toast.error(uiText("Selecione um pasto para vincular.")); return; }
+    if (polygons.some((p) => p.pasto_id === selectedPastoId)) { toast.error(uiText("Este pasto já está vinculado.")); return; }
     const selectedPasto = pastos.find((p) => p.id === selectedPastoId);
     setPolygons((prev) => [...prev, {
       pasto_id: selectedPastoId,
@@ -237,17 +268,17 @@ export default function MapaEditor({
     setCurrentPoints([]);
     setSelectedPastoId("");
     setMode("idle");
-    toast.success("Pasto adicionado!");
+    toast.success(uiText("Pasto adicionado!"));
   };
 
   // --- Line functions ---
   const finishLine = () => {
-    if (currentPoints.length < 2) { toast.error("Desenhe pelo menos 2 pontos."); return; }
+    if (currentPoints.length < 2) { toast.error(uiText("Desenhe pelo menos 2 pontos.")); return; }
     setLines((prev) => [...prev, { coordenadas: currentPoints, cor: selectedColor, tipo: lineType, rotulo: lineLabel }]);
     setCurrentPoints([]);
     setLineLabel("");
     setMode("idle");
-    toast.success("Linha adicionada!");
+    toast.success(uiText("Linha adicionada!"));
   };
 
   // --- Remove ---
@@ -344,7 +375,7 @@ export default function MapaEditor({
     e.stopPropagation(); e.preventDefault();
     const minPts = target === "poly" ? 3 : 2;
     const arr = target === "poly" ? polygons[idx].coordenadas : lines[idx].coordenadas;
-    if (arr.length <= minPts) { toast.error(`Mínimo ${minPts} pontos.`); return; }
+    if (arr.length <= minPts) { toast.error(`${uiText("Mínimo ")}${minPts}${uiText(" pontos.")}`); return; }
     if (target === "poly") {
       setPolygons((prev) => prev.map((p, pi) => pi !== idx ? p : { ...p, coordenadas: p.coordenadas.filter((_, vi) => vi !== vertIdx) }));
     } else {
@@ -357,67 +388,132 @@ export default function MapaEditor({
     else setLines((prev) => prev.map((l, li) => li === idx ? { ...l, cor: color } : l));
   };
 
-  // --- Save ---
+  // --- Save (delta only; never delete existing geometry before saving replacements) ---
   const handleSave = async () => {
-    if (!currentImageUrl) { toast.error("Envie uma imagem do mapa."); return; }
-    setSaving(true);
-    let currentMapaId = mapaId;
-    if (!currentMapaId) {
-      const { data, error } = await supabase.from("mapas").insert({ fazenda_id: fazendaId, retiro_id: retiroId, imagem_url: currentImageUrl }).select("id").single();
-      if (error || !data) { toast.error("Erro ao criar mapa."); setSaving(false); return; }
-      currentMapaId = data.id;
-    } else {
-      await supabase.from("mapas").update({ imagem_url: currentImageUrl }).eq("id", currentMapaId);
-    }
-
-    // Delete old data and re-insert
-    await Promise.all([
-      supabase.from("pastos_mapa").delete().eq("mapa_id", currentMapaId),
-      supabase.from("linhas_mapa").delete().eq("mapa_id", currentMapaId),
-      supabase.from("elementos_mapa").delete().eq("mapa_id", currentMapaId),
-    ]);
-
-    const insertOps = [];
-    if (polygons.length > 0) {
-      insertOps.push(supabase.from("pastos_mapa").insert(polygons.map((p) => ({
-        mapa_id: currentMapaId!, pasto_id: p.pasto_id, coordenadas: p.coordenadas, cor: p.cor,
-      }))));
-    }
-    if (lines.length > 0) {
-      insertOps.push(supabase.from("linhas_mapa").insert(lines.map((l) => ({
-        mapa_id: currentMapaId!, coordenadas: l.coordenadas, cor: l.cor, tipo: l.tipo, rotulo: l.rotulo || null,
-      }))));
-    }
-    if (elements.length > 0) {
-      insertOps.push(supabase.from("elementos_mapa").insert(elements.map((el) => ({
-        mapa_id: currentMapaId!, tipo: el.tipo, emoji: el.emoji, posicao_x: el.posicao_x, posicao_y: el.posicao_y, rotulo: el.rotulo || null,
-      }))));
-    }
-
-    const results = await Promise.all(insertOps);
-    if (results.some((r) => r.error)) {
-      toast.error("Erro ao salvar dados do mapa.");
-      setSaving(false);
+    if (saving || uploading || requiresReload) return;
+    if (!currentImageUrl || imageError || imgSize.width <= 0) {
+      toast.error(uiText("A imagem do mapa precisa estar carregada antes de salvar."));
       return;
     }
 
-    const labelResults = await Promise.all(polygons.map((polygon) => supabase
-      .from("pastos")
-      .update({
-        label_offset_x: polygon.label_offset_x || 0,
-        label_offset_y: polygon.label_offset_y || 0,
-        label_rotation: polygon.label_rotation || 0,
-      })
-      .eq("id", polygon.pasto_id)));
-    if (labelResults.some((result) => result.error)) {
-      toast.error("Mapa salvo, mas não foi possível salvar a posição de alguns rótulos.");
-      setSaving(false);
-      return;
-    }
+    let writeAttempted = false;
+    try {
+      const polygonPlan = planMapaCollectionChanges(existingPolygons ?? [], polygons, (a, b) =>
+        a.pasto_id === b.pasto_id && a.cor === b.cor
+        && JSON.stringify(a.coordenadas) === JSON.stringify(b.coordenadas));
+      const linePlan = planMapaCollectionChanges(existingLines ?? [], lines, (a, b) =>
+        a.cor === b.cor && a.tipo === b.tipo && (a.rotulo || "") === (b.rotulo || "")
+        && JSON.stringify(a.coordenadas) === JSON.stringify(b.coordenadas));
+      const elementPlan = planMapaCollectionChanges(existingElements ?? [], elements, (a, b) =>
+        a.tipo === b.tipo && a.emoji === b.emoji && (a.rotulo || "") === (b.rotulo || "")
+        && a.posicao_x === b.posicao_x && a.posicao_y === b.posicao_y);
+      if (polygons.some((p) => p.coordenadas.length < 3) || lines.some((l) => l.coordenadas.length < 2)) {
+        throw new Error("Geometria incompleta");
+      }
+      setSaving(true);
 
-    setSaving(false);
-    toast.success("Mapa salvo com sucesso!");
-    onSaved();
+      let currentMapaId = mapaId;
+      if (!currentMapaId) {
+        writeAttempted = true;
+        const { data, error } = await supabase.from("mapas")
+          .insert({ fazenda_id: fazendaId, retiro_id: retiroId, imagem_url: currentImageUrl })
+          .select("id").single();
+        if (error || !data) throw new Error("Falha ao criar mapa");
+        currentMapaId = data.id;
+      }
+      const targetId = currentMapaId;
+
+      // Upserts first: a failed write must not erase polygons, roads or icons.
+      for (const polygon of polygonPlan.toSave) {
+        const payload = {
+          mapa_id: targetId, pasto_id: polygon.pasto_id,
+          coordenadas: polygon.coordenadas, cor: polygon.cor,
+        };
+        writeAttempted = true;
+        const result = polygon.id
+          ? await supabase.from("pastos_mapa").update(payload).eq("id", polygon.id).eq("mapa_id", targetId).select("id").maybeSingle()
+          : await supabase.from("pastos_mapa").insert(payload).select("id").maybeSingle();
+        if (result.error || !result.data) throw new Error("Falha ao salvar polígono");
+      }
+      for (const line of linePlan.toSave) {
+        const payload = {
+          mapa_id: targetId, coordenadas: line.coordenadas, cor: line.cor,
+          tipo: line.tipo, rotulo: line.rotulo || null,
+        };
+        writeAttempted = true;
+        const result = line.id
+          ? await supabase.from("linhas_mapa").update(payload).eq("id", line.id).eq("mapa_id", targetId).select("id").maybeSingle()
+          : await supabase.from("linhas_mapa").insert(payload).select("id").maybeSingle();
+        if (result.error || !result.data) throw new Error("Falha ao salvar linha");
+      }
+      for (const element of elementPlan.toSave) {
+        const payload = {
+          mapa_id: targetId, tipo: element.tipo, emoji: element.emoji,
+          posicao_x: element.posicao_x, posicao_y: element.posicao_y, rotulo: element.rotulo || null,
+        };
+        writeAttempted = true;
+        const result = element.id
+          ? await supabase.from("elementos_mapa").update(payload).eq("id", element.id).eq("mapa_id", targetId).select("id").maybeSingle()
+          : await supabase.from("elementos_mapa").insert(payload).select("id").maybeSingle();
+        if (result.error || !result.data) throw new Error("Falha ao salvar elemento");
+      }
+
+      // Position of labels belongs to the pasture, not the map polygon row.
+      for (const polygon of polygons) {
+        const previous = (existingPolygons ?? []).find((item) => item.pasto_id === polygon.pasto_id);
+        const values = [polygon.label_offset_x || 0, polygon.label_offset_y || 0, polygon.label_rotation || 0];
+        if (previous && values.every((v, i) => v === [
+          previous.label_offset_x || 0,
+          previous.label_offset_y || 0,
+          previous.label_rotation || 0,
+        ][i])) continue;
+        writeAttempted = true;
+        const { data, error } = await supabase.from("pastos").update({
+          label_offset_x: values[0], label_offset_y: values[1], label_rotation: values[2],
+        }).eq("id", polygon.pasto_id).eq("retiro_id", retiroId).select("id").maybeSingle();
+        if (error || !data) throw new Error("Falha ao salvar posição de rótulo");
+      }
+
+      if (mapaId && imagemUrl !== currentImageUrl) {
+        writeAttempted = true;
+        const { data, error } = await supabase.from("mapas").update({ imagem_url: currentImageUrl })
+          .eq("id", targetId).eq("retiro_id", retiroId).eq("fazenda_id", fazendaId)
+          .select("id").maybeSingle();
+        if (error || !data) throw new Error("Falha ao atualizar imagem");
+      }
+
+      // Remove only explicitly deleted rows and only after all writes above succeeded.
+      for (const id of polygonPlan.toRemoveIds) {
+        writeAttempted = true;
+        const { data, error } = await supabase.from("pastos_mapa")
+          .delete().eq("id", id).eq("mapa_id", targetId).select("id").maybeSingle();
+        if (error || !data) throw new Error("Falha ao remover polígono");
+      }
+      for (const id of linePlan.toRemoveIds) {
+        writeAttempted = true;
+        const { data, error } = await supabase.from("linhas_mapa")
+          .delete().eq("id", id).eq("mapa_id", targetId).select("id").maybeSingle();
+        if (error || !data) throw new Error("Falha ao remover linha");
+      }
+      for (const id of elementPlan.toRemoveIds) {
+        writeAttempted = true;
+        const { data, error } = await supabase.from("elementos_mapa")
+          .delete().eq("id", id).eq("mapa_id", targetId).select("id").maybeSingle();
+        if (error || !data) throw new Error("Falha ao remover elemento");
+      }
+
+      toast.success(uiText("Mapa salvo com sucesso!"));
+      onSaved();
+    } catch {
+      if (writeAttempted) {
+        setRequiresReload(true);
+        toast.error(uiText("O mapa pode ter alterações parciais. Reabra a tela antes de tentar salvar novamente."));
+      } else {
+        toast.error(uiText("Mapa inválido. Revise os elementos antes de salvar."));
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toPoints = (coords: number[][]) => coords.map(([x, y]) => `${x * scaleX},${y * scaleY}`).join(" ");
@@ -460,11 +556,11 @@ export default function MapaEditor({
             <Label htmlFor="mapa-upload" className="cursor-pointer">
               <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary transition-colors">
                 {uploading ? <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" /> : (
-                  <><Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" /><p className="text-sm text-muted-foreground"><LocalizedText source={"Clique para enviar PNG, JPG ou PDF"} /></p></>
+                  <><Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" /><p className="text-sm text-muted-foreground"><LocalizedText source={"Clique para enviar PNG, JPG ou WebP"} /></p></>
                 )}
               </div>
             </Label>
-            <Input id="mapa-upload" type="file" accept="image/png,image/jpeg,image/jpg,application/pdf" className="hidden" onChange={handleImageUpload} />
+            <Input id="mapa-upload" type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleImageUpload} />
           </CardContent>
         </Card>
       )}
@@ -473,7 +569,9 @@ export default function MapaEditor({
         <>
           {/* SVG Canvas */}
           <div ref={containerRef} className="relative w-full overflow-hidden rounded-lg border bg-muted">
-            <img src={currentImageUrl} alt="Mapa" className="w-full h-auto block" onLoad={handleImageLoad} draggable={false} />
+            <img src={currentImageUrl} alt="Imagem cadastrada do retiro" className="w-full h-auto block"
+              onLoad={handleImageLoad} onError={() => { setImageError(true); setImgSize({ width: 0, height: 0 }); }}
+              draggable={false} />
             {imgSize.width > 0 && (
               <svg ref={svgRef} className="absolute inset-0 w-full h-full" viewBox={`0 0 ${imgSize.width} ${imgSize.height}`}
                 preserveAspectRatio="none" onClick={handleCanvasClick}
@@ -617,6 +715,19 @@ export default function MapaEditor({
             )}
           </div>
 
+          {imageError && (
+            <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              <LocalizedText source={"A imagem do mapa não carregou. Envie uma imagem válida antes de salvar."} />
+            </p>
+          )}
+          <div className="flex items-center gap-2">
+            <Label htmlFor="mapa-replace-upload" className="cursor-pointer rounded-md border px-3 py-2 text-xs font-medium">
+              <LocalizedText source={"Substituir imagem"} />
+            </Label>
+            <Input id="mapa-replace-upload" type="file" accept="image/png,image/jpeg,image/webp"
+              className="hidden" onChange={handleImageUpload} disabled={uploading || saving} />
+            {uploading && <Loader2 className="h-4 w-4 animate-spin" />}
+          </div>
           {/* Editing toolbar for selected polygon or line */}
           {editingTarget !== null && (
             <Card className="border-primary/40">
@@ -647,7 +758,7 @@ export default function MapaEditor({
                         (editingTarget === "poly" ? polygons[editingIdx]?.cor : lines[editingIdx]?.cor) === c.value
                           ? "border-foreground scale-110" : "border-transparent"
                       }`}
-                      style={{ backgroundColor: c.value }} title={c.label}
+                      style={{ backgroundColor: c.value }} title={uiText(c.label)}
                       onClick={() => changeColor(editingTarget, editingIdx, c.value)} />
                   ))}
                 </div>
@@ -709,7 +820,7 @@ export default function MapaEditor({
               <>
                 <div className="flex-1 min-w-[120px]">
                   <Select value={selectedPastoId} onValueChange={setSelectedPastoId}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="Vincular a pasto..." /></SelectTrigger>
+                    <SelectTrigger className="h-9"><SelectValue placeholder={uiText("Vincular a pasto...")} /></SelectTrigger>
                     <SelectContent>
                       {availablePastos.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
                     </SelectContent>
@@ -736,7 +847,7 @@ export default function MapaEditor({
                     </SelectContent>
                   </Select>
                 </div>
-                <Input value={lineLabel} onChange={(e) => setLineLabel(e.target.value)} placeholder="Rótulo (opcional)" className="h-9 w-28" />
+                <Input value={lineLabel} onChange={(e) => setLineLabel(e.target.value)} placeholder={uiText("Rótulo (opcional)")} className="h-9 w-28" />
                 <ColorPickerButton color={selectedColor} onChange={setSelectedColor} />
                 <Button size="sm" onClick={finishLine} disabled={currentPoints.length < 2} className="gap-1.5">
                   <Save className="w-4 h-4" /> <LocalizedText source={"Concluir"} /></Button>
@@ -749,7 +860,7 @@ export default function MapaEditor({
               <>
                 <span className="text-sm flex items-center gap-1.5">
                   {placingElement?.emoji} <LocalizedText source={"Clique no mapa para posicionar"} /></span>
-                <Input value={elementLabel} onChange={(e) => setElementLabel(e.target.value)} placeholder="Rótulo (opcional)" className="h-9 w-28" />
+                <Input value={elementLabel} onChange={(e) => setElementLabel(e.target.value)} placeholder={uiText("Rótulo (opcional)")} className="h-9 w-28" />
                 <Button size="sm" variant="ghost" onClick={resetMode}><X className="w-4 h-4" /> <LocalizedText source={"Cancelar"} /></Button>
               </>
             ) : null}
@@ -805,7 +916,12 @@ export default function MapaEditor({
             </Card>
           )}
 
-          <Button onClick={handleSave} disabled={saving} className="w-full gap-1.5">
+          {requiresReload && (
+            <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              <LocalizedText source={"Salvamento incompleto. Saia do editor e reabra o mapa para conferir os dados antes de tentar novamente."} />
+            </p>
+          )}
+          <Button onClick={handleSave} disabled={saving || uploading || imageError || imgSize.width <= 0 || requiresReload} className="w-full gap-1.5">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             <LocalizedText source={"Salvar Mapa"} /></Button>
         </>

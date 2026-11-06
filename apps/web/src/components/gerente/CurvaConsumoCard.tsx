@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CartesianGrid, Customized, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -10,7 +11,7 @@ import { screenCacheKey, useScreenCacheInvalidation } from "@/lib/screenCache";
 import { Loader2 } from "lucide-react";
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-const fmt1 = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const fmtNumber = (n: number, locale: string) => n.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 interface Props {
   sessionId?: string | null;
@@ -24,6 +25,9 @@ interface Props {
 interface Dados { anos: number[]; valores: (number | null)[] }
 
 export default function CurvaConsumoCard({ sessionId, fazendaId, retiroId, produtoId, mes, ano }: Props) {
+  const { language } = useTranslation();
+  const fmt1 = (n: number) => fmtNumber(n, language);
+  const uiText = useStaticUiText();
   const [anoSel, setAnoSel] = useState(ano);
   useEffect(() => { setAnoSel(ano); }, [ano]);
   const prod = produtoId && produtoId !== "todos" ? produtoId : null;
@@ -204,7 +208,7 @@ export default function CurvaConsumoCard({ sessionId, fazendaId, retiroId, produ
         <div className="flex items-center gap-2">
           {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
           <Select value={String(anoSel)} onValueChange={(v) => setAnoSel(Number(v))}>
-            <SelectTrigger className="h-7 w-[84px] text-xs" aria-label="Ano da curva de consumo">
+            <SelectTrigger className="h-7 w-[84px] text-xs" aria-label={uiText("Ano da curva de consumo")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

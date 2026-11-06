@@ -1,3 +1,4 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,6 +32,7 @@ type Med = { id: string; nome_comercial: string; dosagem_padrao: string | null }
 type PrecoOpt = { tipo_servico: string; descricao: string | null; valor: number };
 
 export default function SyncVetProtocoloDetalhePage() {
+  const uiText = useStaticUiText();
   const { protocoloId } = useParams<{ protocoloId: string }>();
   const navigate = useNavigate();
   const { user, roleData } = useAuth();
@@ -108,7 +110,7 @@ export default function SyncVetProtocoloDetalhePage() {
       .update({ nome: headerNome.trim(), descricao: headerDesc || null })
       .eq("id", proto.id);
     if (error) toast.error(error.message);
-    else { toast.success("Protocolo atualizado"); setEditHeader(false); load(); }
+    else { toast.success(uiText("Protocolo atualizado")); setEditHeader(false); load(); }
   }
 
   function openNewEtapa() {
@@ -122,7 +124,7 @@ export default function SyncVetProtocoloDetalhePage() {
   async function saveEtapa() {
     if (!protocoloId) return;
     const d = parseInt(dia, 10);
-    if (isNaN(d) || d < 0) { toast.error("Dia (D+) deve ser um número ≥ 0"); return; }
+    if (isNaN(d) || d < 0) { toast.error(uiText("Dia (D+) deve ser um número ≥ 0")); return; }
     const payload = {
       protocolo_id: protocoloId,
       dia_offset: d,
@@ -136,14 +138,14 @@ export default function SyncVetProtocoloDetalhePage() {
       const { error } = await supabase.from("syncvet_protocolo_etapas").insert(payload as any);
       if (error) return toast.error(error.message);
     }
-    toast.success("Etapa salva");
+    toast.success(uiText("Etapa salva"));
     setEtapaOpen(false); load();
   }
   async function deleteEtapa(e: Etapa) {
-    if (!confirm(`Remover etapa D+${e.dia_offset}?`)) return;
+    if (!confirm(`${uiText("Remover etapa D+")}${e.dia_offset}?`)) return;
     const { error } = await supabase.from("syncvet_protocolo_etapas").delete().eq("id", e.id);
     if (error) toast.error(error.message);
-    else { toast.success("Removida"); load(); }
+    else { toast.success(uiText("Removida")); load(); }
   }
 
   function openNewItem(etapaId: string) {
@@ -168,8 +170,8 @@ export default function SyncVetProtocoloDetalhePage() {
   }
   async function saveItem() {
     if (!itemEtapaId) return;
-    if (itemTipo === "medicamento" && !itemMedId) { toast.error("Selecione um medicamento"); return; }
-    if (!itemDesc.trim()) { toast.error("Descrição é obrigatória"); return; }
+    if (itemTipo === "medicamento" && !itemMedId) { toast.error(uiText("Selecione um medicamento")); return; }
+    if (!itemDesc.trim()) { toast.error(uiText("Descrição é obrigatória")); return; }
     const currentCount = itens.filter((x) => x.etapa_id === itemEtapaId).length;
     const payload = {
       etapa_id: itemEtapaId,
@@ -186,14 +188,14 @@ export default function SyncVetProtocoloDetalhePage() {
       const { error } = await supabase.from("syncvet_protocolo_etapa_itens").insert(payload as any);
       if (error) return toast.error(error.message);
     }
-    toast.success("Item salvo");
+    toast.success(uiText("Item salvo"));
     setItemOpen(false); load();
   }
   async function deleteItem(it: Item) {
-    if (!confirm("Remover item?")) return;
+    if (!confirm(uiText("Remover item?"))) return;
     const { error } = await supabase.from("syncvet_protocolo_etapa_itens").delete().eq("id", it.id);
     if (error) toast.error(error.message);
-    else { toast.success("Removido"); load(); }
+    else { toast.success(uiText("Removido")); load(); }
   }
 
   const itensPorEtapa = useMemo(() => {
@@ -206,23 +208,23 @@ export default function SyncVetProtocoloDetalhePage() {
     return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   }
   if (!proto) {
-    return <Card className="p-6 text-center text-sm text-muted-foreground">Protocolo não encontrado.</Card>;
+    return <Card className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Protocolo não encontrado."} /></Card>;
   }
 
   return (
     <div className="space-y-4">
       <Button variant="ghost" size="sm" onClick={() => navigate("/syncvet/protocolos")}>
-        <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
+        <ArrowLeft className="w-4 h-4 mr-1" /> <LocalizedText source={"Voltar"} />
       </Button>
 
       <Card className="p-4">
         {editHeader ? (
           <div className="space-y-3">
-            <div><Label className="text-xs">Nome*</Label><Input value={headerNome} onChange={(e) => setHeaderNome(e.target.value)} /></div>
-            <div><Label className="text-xs">Descrição</Label><Textarea rows={2} value={headerDesc} onChange={(e) => setHeaderDesc(e.target.value)} /></div>
+            <div><Label className="text-xs"><LocalizedText source={"Nome*"} /></Label><Input value={headerNome} onChange={(e) => setHeaderNome(e.target.value)} /></div>
+            <div><Label className="text-xs"><LocalizedText source={"Descrição"} /></Label><Textarea rows={2} value={headerDesc} onChange={(e) => setHeaderDesc(e.target.value)} /></div>
             <div className="flex gap-2">
-              <Button variant="ghost" onClick={() => { setEditHeader(false); setHeaderNome(proto.nome); setHeaderDesc(proto.descricao ?? ""); }}>Cancelar</Button>
-              <Button onClick={saveHeader}><Save className="w-4 h-4 mr-1" />Salvar</Button>
+              <Button variant="ghost" onClick={() => { setEditHeader(false); setHeaderNome(proto.nome); setHeaderDesc(proto.descricao ?? ""); }}><LocalizedText source={"Cancelar"} /></Button>
+              <Button onClick={saveHeader}><Save className="w-4 h-4 mr-1" /><LocalizedText source={"Salvar"} /></Button>
             </div>
           </div>
         ) : (
@@ -239,7 +241,7 @@ export default function SyncVetProtocoloDetalhePage() {
       {/* Resumo visual — linha do tempo */}
       {etapas.length > 0 && (
         <Card className="p-3">
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Linha do tempo</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2"><LocalizedText source={"Linha do tempo"} /></div>
           <div className="flex items-center gap-1 flex-wrap">
             {etapas.map((e, idx) => (
               <div key={e.id} className="flex items-center gap-1">
@@ -254,12 +256,12 @@ export default function SyncVetProtocoloDetalhePage() {
       )}
 
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-bold">Etapas</h2>
-        <Button size="sm" onClick={openNewEtapa}><Plus className="w-4 h-4 mr-1" />Etapa</Button>
+        <h2 className="text-base font-bold"><LocalizedText source={"Etapas"} /></h2>
+        <Button size="sm" onClick={openNewEtapa}><Plus className="w-4 h-4 mr-1" /><LocalizedText source={"Etapa"} /></Button>
       </div>
 
       {etapas.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-muted-foreground">Adicione a primeira etapa (ex: D+0).</Card>
+        <Card className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Adicione a primeira etapa (ex: D+0)."} /></Card>
       ) : (
         <div className="space-y-3">
           {etapas.map((e) => {
@@ -271,7 +273,7 @@ export default function SyncVetProtocoloDetalhePage() {
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold truncate">{e.nome_etapa || `Etapa D+${e.dia_offset}`}</div>
                     {e.codigo_preco && (
-                      <div className="text-[10px] text-muted-foreground">Preço: <span className="font-semibold text-primary">{e.codigo_preco}</span></div>
+                      <div className="text-[10px] text-muted-foreground"><LocalizedText source={"Preço:"} /> <span className="font-semibold text-primary">{e.codigo_preco}</span></div>
                     )}
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => openEditEtapa(e)}><Pencil className="w-4 h-4" /></Button>
@@ -279,7 +281,7 @@ export default function SyncVetProtocoloDetalhePage() {
                 </div>
 
                 {list.length === 0 ? (
-                  <div className="text-xs text-muted-foreground pl-1 mb-2">Sem itens ainda.</div>
+                  <div className="text-xs text-muted-foreground pl-1 mb-2"><LocalizedText source={"Sem itens ainda."} /></div>
                 ) : (
                   <div className="space-y-1.5 mb-2">
                     {list.map((it) => (
@@ -301,7 +303,7 @@ export default function SyncVetProtocoloDetalhePage() {
                 )}
 
                 <Button variant="outline" size="sm" onClick={() => openNewItem(e.id)}>
-                  <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar item
+                  <Plus className="w-3.5 h-3.5 mr-1" /> <LocalizedText source={"Adicionar item"} />
                 </Button>
               </Card>
             );
@@ -312,16 +314,16 @@ export default function SyncVetProtocoloDetalhePage() {
       {/* Etapa dialog */}
       <Dialog open={etapaOpen} onOpenChange={setEtapaOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{etapaEditing ? "Editar etapa" : "Nova etapa"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{etapaEditing ? uiText("Editar etapa") : uiText("Nova etapa")}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label className="text-xs">Dia (D+)*</Label><Input type="number" min="0" value={dia} onChange={(e) => setDia(e.target.value)} /></div>
-            <div><Label className="text-xs">Nome da etapa</Label><Input value={nomeEtapa} onChange={(e) => setNomeEtapa(e.target.value)} placeholder="Ex: Implante + BE" /></div>
+            <div><Label className="text-xs"><LocalizedText source={"Dia (D+)*"} /></Label><Input type="number" min="0" value={dia} onChange={(e) => setDia(e.target.value)} /></div>
+            <div><Label className="text-xs"><LocalizedText source={"Nome da etapa"} /></Label><Input value={nomeEtapa} onChange={(e) => setNomeEtapa(e.target.value)} placeholder={uiText("Ex: Implante + BE")} /></div>
             <div>
-              <Label className="text-xs">Vincular à Tabela de Preços</Label>
+              <Label className="text-xs"><LocalizedText source={"Vincular à Tabela de Preços"} /></Label>
               <Select value={codigoPreco} onValueChange={setCodigoPreco}>
-                <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Nenhum")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">— não vincular —</SelectItem>
+                  <SelectItem value="__none__"><LocalizedText source={"— não vincular —"} /></SelectItem>
                   {precos.map((p) => (
                     <SelectItem key={p.tipo_servico} value={p.tipo_servico}>
                       {p.tipo_servico}{p.descricao ? ` — ${p.descricao}` : ""}
@@ -331,14 +333,14 @@ export default function SyncVetProtocoloDetalhePage() {
               </Select>
               {precos.length === 0 && (
                 <div className="text-[10px] text-muted-foreground mt-1">
-                  Nenhum item cadastrado na sua Tabela de Preços.
+                  <LocalizedText source={"Nenhum item cadastrado na sua Tabela de Preços."} />
                 </div>
               )}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setEtapaOpen(false)}>Cancelar</Button>
-            <Button onClick={saveEtapa}>Salvar</Button>
+            <Button variant="ghost" onClick={() => setEtapaOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
+            <Button onClick={saveEtapa}><LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -346,46 +348,46 @@ export default function SyncVetProtocoloDetalhePage() {
       {/* Item dialog */}
       <Dialog open={itemOpen} onOpenChange={setItemOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{itemEditing ? "Editar item" : "Novo item"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{itemEditing ? uiText("Editar item") : uiText("Novo item")}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="text-xs">Tipo</Label>
+              <Label className="text-xs"><LocalizedText source={"Tipo"} /></Label>
               <Select value={itemTipo} onValueChange={(v) => setItemTipo(v as any)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="medicamento">Medicamento</SelectItem>
-                  <SelectItem value="procedimento">Procedimento (sem medicamento)</SelectItem>
+                  <SelectItem value="medicamento"><LocalizedText source={"Medicamento"} /></SelectItem>
+                  <SelectItem value="procedimento"><LocalizedText source={"Procedimento (sem medicamento)"} /></SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {itemTipo === "medicamento" ? (
               <>
                 <div>
-                  <Label className="text-xs">Medicamento*</Label>
+                  <Label className="text-xs"><LocalizedText source={"Medicamento*"} /></Label>
                   <Select value={itemMedId} onValueChange={onMedChange}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={uiText("Selecione...")} /></SelectTrigger>
                     <SelectContent>
                       {meds.length === 0 ? (
-                        <div className="p-2 text-xs text-muted-foreground">Nenhum medicamento cadastrado.</div>
+                        <div className="p-2 text-xs text-muted-foreground"><LocalizedText source={"Nenhum medicamento cadastrado."} /></div>
                       ) : meds.map((m) => (
                         <SelectItem key={m.id} value={m.id}>{m.nome_comercial}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label className="text-xs">Descrição*</Label><Input value={itemDesc} onChange={(e) => setItemDesc(e.target.value)} /></div>
-                <div><Label className="text-xs">Dosagem</Label><Input value={itemDosagem} onChange={(e) => setItemDosagem(e.target.value)} placeholder="Padrão do medicamento — pode sobrescrever" /></div>
+                <div><Label className="text-xs"><LocalizedText source={"Descrição*"} /></Label><Input value={itemDesc} onChange={(e) => setItemDesc(e.target.value)} /></div>
+                <div><Label className="text-xs"><LocalizedText source={"Dosagem"} /></Label><Input value={itemDosagem} onChange={(e) => setItemDosagem(e.target.value)} placeholder={uiText("Padrão do medicamento — pode sobrescrever")} /></div>
               </>
             ) : (
               <>
-                <div><Label className="text-xs">Descrição*</Label><Input value={itemDesc} onChange={(e) => setItemDesc(e.target.value)} placeholder="Ex: Ultrassom, IATF, DG" /></div>
+                <div><Label className="text-xs"><LocalizedText source={"Descrição*"} /></Label><Input value={itemDesc} onChange={(e) => setItemDesc(e.target.value)} placeholder={uiText("Ex: Ultrassom, IATF, DG")} /></div>
               </>
             )}
-            <div><Label className="text-xs">Observações</Label><Textarea rows={2} value={itemObs} onChange={(e) => setItemObs(e.target.value)} /></div>
+            <div><Label className="text-xs"><LocalizedText source={"Observações"} /></Label><Textarea rows={2} value={itemObs} onChange={(e) => setItemObs(e.target.value)} /></div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setItemOpen(false)}>Cancelar</Button>
-            <Button onClick={saveItem}>Salvar</Button>
+            <Button variant="ghost" onClick={() => setItemOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
+            <Button onClick={saveItem}><LocalizedText source={"Salvar"} /></Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

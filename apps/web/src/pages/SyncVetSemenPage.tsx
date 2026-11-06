@@ -1,3 +1,4 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +24,7 @@ type Semen = {
 };
 
 export default function SyncVetSemenPage() {
+  const uiText = useStaticUiText();
   const { roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
   const [rows, setRows] = useState<Semen[]>([]);
@@ -70,7 +72,7 @@ export default function SyncVetSemenPage() {
 
   async function handleSave() {
     if (!empresaId) return;
-    if (!touro.trim()) { toast.error("Touro é obrigatório"); return; }
+    if (!touro.trim()) { toast.error(uiText("Touro é obrigatório")); return; }
     setSaving(true);
     const payload = {
       empresa_id: empresaId,
@@ -84,47 +86,47 @@ export default function SyncVetSemenPage() {
     if (editing) {
       const { error } = await supabase.from("syncvet_semen").update(payload).eq("id", editing.id);
       if (error) toast.error(error.message);
-      else { toast.success("Sêmen atualizado"); setOpen(false); load(); }
+      else { toast.success(uiText("Sêmen atualizado")); setOpen(false); load(); }
     } else {
       const { error } = await supabase.from("syncvet_semen").insert(payload as any);
       if (error) toast.error(error.message);
-      else { toast.success("Sêmen adicionado"); setOpen(false); load(); }
+      else { toast.success(uiText("Sêmen adicionado")); setOpen(false); load(); }
     }
     setSaving(false);
   }
 
   async function handleDelete(s: Semen) {
-    if (!confirm(`Remover ${s.touro}?`)) return;
+    if (!confirm(`${uiText("Remover ")}${s.touro}?`)) return;
     const { error } = await supabase.from("syncvet_semen").delete().eq("id", s.id);
     if (error) toast.error(error.message);
-    else { toast.success("Removido"); load(); }
+    else { toast.success(uiText("Removido")); load(); }
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">Sêmen</h1>
-          <p className="text-sm text-muted-foreground">Biblioteca da empresa</p>
+          <h1 className="text-xl font-bold"><LocalizedText source={"Sêmen"} /></h1>
+          <p className="text-sm text-muted-foreground"><LocalizedText source={"Biblioteca da empresa"} /></p>
         </div>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
           <DialogTrigger asChild>
-            <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" />Novo</Button>
+            <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" /><LocalizedText source={"Novo"} /></Button>
           </DialogTrigger>
           <DialogContent className="max-h-[85vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>{editing ? "Editar sêmen" : "Novo sêmen"}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editing ? uiText("Editar sêmen") : uiText("Novo sêmen")}</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <div><Label className="text-xs">Touro*</Label><Input value={touro} onChange={(e) => setTouro(e.target.value)} /></div>
-              <div><Label className="text-xs">Central</Label><Input value={central} onChange={(e) => setCentral(e.target.value)} /></div>
-              <div><Label className="text-xs">Raça</Label><Input value={raca} onChange={(e) => setRaca(e.target.value)} /></div>
-              <div><Label className="text-xs">Código</Label><Input value={codigo} onChange={(e) => setCodigo(e.target.value)} /></div>
-              <div><Label className="text-xs">Lote</Label><Input value={lote} onChange={(e) => setLote(e.target.value)} /></div>
-              <div><Label className="text-xs">Observações</Label><Textarea rows={3} value={obs} onChange={(e) => setObs(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Touro*"} /></Label><Input value={touro} onChange={(e) => setTouro(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Central"} /></Label><Input value={central} onChange={(e) => setCentral(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Raça"} /></Label><Input value={raca} onChange={(e) => setRaca(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Código"} /></Label><Input value={codigo} onChange={(e) => setCodigo(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Lote"} /></Label><Input value={lote} onChange={(e) => setLote(e.target.value)} /></div>
+              <div><Label className="text-xs"><LocalizedText source={"Observações"} /></Label><Textarea rows={3} value={obs} onChange={(e) => setObs(e.target.value)} /></div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button variant="ghost" onClick={() => setOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
               <Button onClick={handleSave} disabled={saving}>
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Salvar"} />
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -134,7 +136,7 @@ export default function SyncVetSemenPage() {
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : rows.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-muted-foreground">Nenhum sêmen cadastrado ainda.</Card>
+        <Card className="p-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum sêmen cadastrado ainda."} /></Card>
       ) : (
         <div className="space-y-2">
           {rows.map((s) => (

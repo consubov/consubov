@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,8 +29,11 @@ interface Fazenda {
 }
 
 const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const monthsEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export default function CiclosPage() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const { user } = useAuth();
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
@@ -76,10 +80,10 @@ export default function CiclosPage() {
     setActionLoading(true);
     const { error } = await supabase.from("ciclos").update({ fechado: false, fechado_em: null }).eq("id", ciclo.id);
     if (error) {
-      toast.error("Erro ao reabrir ciclo");
+      toast.error(uiText("Erro ao reabrir ciclo"));
     } else {
       await logAuditoria(ciclo, "reabertura");
-      toast.success("Ciclo reaberto com sucesso");
+      toast.success(uiText("Ciclo reaberto com sucesso"));
       load();
     }
     setActionLoading(false);
@@ -92,10 +96,10 @@ export default function CiclosPage() {
     await supabase.from("lancamentos").delete().eq("fazenda_id", ciclo.fazenda_id).eq("mes_referencia", ciclo.mes).eq("ano_referencia", ciclo.ano);
     const { error } = await supabase.from("ciclos").delete().eq("id", ciclo.id);
     if (error) {
-      toast.error("Erro ao excluir ciclo");
+      toast.error(uiText("Erro ao excluir ciclo"));
     } else {
       await logAuditoria(ciclo, "exclusao");
-      toast.success("Ciclo excluído com sucesso");
+      toast.success(uiText("Ciclo excluído com sucesso"));
       load();
     }
     setActionLoading(false);
@@ -140,7 +144,7 @@ export default function CiclosPage() {
                   {ciclos.map(c => (
                     <TableRow key={c.id}>
                       <TableCell className="font-medium">{fazendaMap[c.fazenda_id] ?? "—"}</TableCell>
-                      <TableCell>{meses[c.mes - 1]}/{c.ano}</TableCell>
+                      <TableCell>{(language === "en-US" ? monthsEn : meses)[c.mes - 1]}/{c.ano}</TableCell>
                       <TableCell>
                         {c.fechado ? (
                           <Badge variant="secondary"><LocalizedText source={"Fechado"} /></Badge>
@@ -149,13 +153,13 @@ export default function CiclosPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {c.data_inicio ? new Date(c.data_inicio).toLocaleDateString("pt-BR") : "—"}
+                        {c.data_inicio ? new Date(c.data_inicio).toLocaleDateString(language) : "—"}
                       </TableCell>
                       <TableCell>
-                        {c.fechado_em ? new Date(c.fechado_em).toLocaleDateString("pt-BR") : "—"}
+                        {c.fechado_em ? new Date(c.fechado_em).toLocaleDateString(language) : "—"}
                       </TableCell>
                       <TableCell>
-                        {c.duracao_dias ? `${c.duracao_dias} dias` : "—"}
+                        {c.duracao_dias ? `${c.duracao_dias} ${uiText(c.duracao_dias === 1 ? "dia" : "dias")}` : "—"}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -190,12 +194,12 @@ export default function CiclosPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmAction?.type === "reabrir" ? "Reabrir Ciclo" : "Excluir Ciclo"}
+              {uiText(confirmAction?.type === "reabrir" ? "Reabrir Ciclo" : "Excluir Ciclo")}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction?.type === "reabrir"
-                ? "Deseja reabrir este ciclo? Ele voltará para edição."
-                : "Tem certeza que deseja excluir este ciclo? Essa ação não poderá ser desfeita."}
+                ? uiText("Deseja reabrir este ciclo? Ele voltará para edição.")
+                : uiText("Tem certeza que deseja excluir este ciclo? Essa ação não poderá ser desfeita.")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -209,7 +213,7 @@ export default function CiclosPage() {
                 else if (confirmAction?.type === "excluir") handleExcluir(confirmAction.ciclo);
               }}
             >
-              {actionLoading ? "Processando..." : confirmAction?.type === "reabrir" ? "Reabrir" : "Excluir"}
+              {uiText(actionLoading ? "Processando..." : confirmAction?.type === "reabrir" ? "Reabrir" : "Excluir")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

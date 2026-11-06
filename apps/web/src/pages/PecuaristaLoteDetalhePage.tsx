@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +31,8 @@ interface UltimaPesagem {
 }
 
 export default function PecuaristaLoteDetalhePage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const { fazendaId, loteId } = useParams<{ fazendaId: string; loteId: string }>();
   const navigate = useNavigate();
   const [lote, setLote] = useState<Lote | null>(null);
@@ -45,7 +48,7 @@ export default function PecuaristaLoteDetalhePage() {
   const [avisoData, setAvisoData] = useState<null | "simples" | "apartacao">(null);
 
   function seguir(acao: "simples" | "apartacao", confirmado = false) {
-    if (!dataEscolhida || dataEscolhida > hojeSP) return toast.error("Escolha uma data de hoje ou anterior.");
+    if (!dataEscolhida || dataEscolhida > hojeSP) return toast.error(uiText("Escolha uma data de hoje ou anterior."));
     if (!confirmado && ultima && dataEscolhida < dataLocalSP(ultima.data_pesagem)) { setAvisoData(acao); return; }
     setChoiceOpen(false);
     if (acao === "simples") void iniciarPesagem();
@@ -119,7 +122,7 @@ export default function PecuaristaLoteDetalhePage() {
         <div className="text-sm text-muted-foreground"><LocalizedText source={"Categoria:"} />{" "}{categoriaLabel}</div>
         {ultima && (
           <div className="mt-2 text-sm border-t pt-2">
-            <div><LocalizedText source={"Última pesagem:"} />{" "}<strong>{new Date(ultima.data_pesagem).toLocaleDateString("pt-BR")}</strong></div>
+            <div><LocalizedText source={"Última pesagem:"} />{" "}<strong>{new Date(ultima.data_pesagem).toLocaleDateString(language)}</strong></div>
             <div><LocalizedText source={"Peso médio:"} />{" "}<strong>{Number(ultima.peso_medio).toFixed(1)} kg</strong> — {ultima.quantidade_animais} <LocalizedText source={"animais"} /></div>
             {ultima.gmd != null && <div><LocalizedText source={"GMD do lote:"} />{" "}<strong>{Number(ultima.gmd).toFixed(3)} <LocalizedText source={"kg/dia"} /></strong></div>}
           </div>
@@ -208,7 +211,7 @@ export default function PecuaristaLoteDetalhePage() {
           <AlertDialogHeader>
             <AlertDialogTitle><LocalizedText source={"Data anterior à última pesagem"} /></AlertDialogTitle>
             <AlertDialogDescription>
-              <LocalizedText source={"Essa data é anterior à última pesagem registrada em"} />{" "}{ultima ? new Date(ultima.data_pesagem).toLocaleDateString("pt-BR") : ""}<LocalizedText source={". O cálculo de GMD pode ficar incorreto. Confirma mesmo assim?"} /></AlertDialogDescription>
+              <LocalizedText source={"Essa data é anterior à última pesagem registrada em"} />{" "}{ultima ? new Date(ultima.data_pesagem).toLocaleDateString(language) : ""}<LocalizedText source={". O cálculo de GMD pode ficar incorreto. Confirma mesmo assim?"} /></AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel><LocalizedText source={"Voltar"} /></AlertDialogCancel>

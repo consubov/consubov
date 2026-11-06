@@ -1,4 +1,6 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText, translateStaticUiText } from "@/components/i18n/LocalizedText";
+import type { SiteLanguage } from "@/lib/siteLanguage";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -61,26 +63,26 @@ function isMateriaEmSaco(mp?: MateriaPrima) {
   return mp?.unidade === "saco" && Number(mp.peso_por_saco ?? 0) > 0;
 }
 
-function formatNumber(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+function formatNumber(value: number, language: SiteLanguage) {
+  return Number.isInteger(value) ? String(value) : value.toLocaleString(language, { maximumFractionDigits: 2 });
 }
 
-function formatMateriaQuantidade(quantidadeKg: number | null | undefined, mp?: MateriaPrima, arredondarSacos = true) {
+function formatMateriaQuantidade(quantidadeKg: number | null | undefined, mp?: MateriaPrima, arredondarSacos = true, language: SiteLanguage = "pt-BR") {
   const raw = Number(quantidadeKg ?? 0);
   if (isMateriaEmSaco(mp)) {
     const peso = Number(mp?.peso_por_saco ?? 0);
     const sacos = raw / peso;
-    return `${formatNumber(arredondarSacos ? Math.ceil(sacos) : sacos)} sacos`;
+    return `${formatNumber(arredondarSacos ? Math.ceil(sacos) : sacos, language)}${translateStaticUiText(language, " sacos")}`;
   }
-  return `${formatNumber(raw)} ${mp?.unidade || ""}`.trim();
+  return `${formatNumber(raw, language)} ${mp?.unidade || ""}`.trim();
 }
 
-function formatMateriaEstoque(estoqueKg: number | null | undefined, mp?: MateriaPrima) {
+function formatMateriaEstoque(estoqueKg: number | null | undefined, mp?: MateriaPrima, language: SiteLanguage = "pt-BR") {
   const raw = Number(estoqueKg ?? 0);
   if (isMateriaEmSaco(mp)) {
-    return `${formatNumber(raw)} sacos`;
+    return `${formatNumber(raw, language)}${translateStaticUiText(language, " sacos")}`;
   }
-  return `${formatNumber(raw)} ${mp?.unidade || ""}`.trim();
+  return `${formatNumber(raw, language)} ${mp?.unidade || ""}`.trim();
 }
 
 function getMateriaQuantidadeEmEstoque(quantidadeKg: number, mp?: MateriaPrima) {
@@ -111,6 +113,8 @@ export default function ProducaoTab({ fabricaId }: { fabricaId: string }) {
 /* -------------------- NOVA BATIDA + EM ANDAMENTO -------------------- */
 
 function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const { user } = useAuth();
   const [operadorId, setOperadorId] = useState<string | null>(null);
   const [formulas, setFormulas] = useState<Formula[]>([]);
@@ -237,7 +241,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
     const videoWidth = video.videoWidth || 960;
     const videoHeight = video.videoHeight || 720;
     if (videoWidth <= 0 || videoHeight <= 0) {
-      toast.error("A câmera ainda não está pronta");
+      toast.error(uiText("A câmera ainda não está pronta"));
       return;
     }
 
@@ -266,9 +270,9 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
       if (cameraTarget === "inicio") setFoto(fotoCapturada);
       else setFotoFim(fotoCapturada);
       setCameraTarget(null);
-      toast.success("Foto capturada");
+      toast.success(uiText("Foto capturada"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível capturar a foto");
+      toast.error(err instanceof Error ? err.message : uiText("Não foi possível capturar a foto"));
     }
   }
 
@@ -292,25 +296,25 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
     const alt = fabricaId.trim();
     if (scanned && (scanned === esperado || scanned === alt)) {
       setScannerOpen(false);
-      toast.success("Fábrica identificada");
+      toast.success(uiText("Fábrica identificada"));
       openIniciar();
     } else {
       setScannerOpen(false);
-      toast.error("QR Code não corresponde à sua fábrica");
+      toast.error(uiText("QR Code não corresponde à sua fábrica"));
     }
   }
 
 
   async function iniciarBatida() {
-    if (!formulaId) return toast.error("Selecione uma fórmula");
-    if (!foto) return toast.error("Foto do setup inicial é obrigatória");
-    if (ingsDaFormula.length === 0) return toast.error("Fórmula sem ingredientes");
+    if (!formulaId) return toast.error(uiText("Selecione uma fórmula"));
+    if (!foto) return toast.error(uiText("Foto do setup inicial é obrigatória"));
+    if (ingsDaFormula.length === 0) return toast.error(uiText("Fórmula sem ingredientes"));
 
     // Checar estoque
     const faltando = ingsDaFormula.filter(i => !hasEstoqueSuficiente(Number(i.quantidade), mpMap[i.materia_prima_id]));
     if (faltando.length > 0) {
       const nomes = faltando.map(i => mpMap[i.materia_prima_id]?.nome || "?").join(", ");
-      if (!confirm(`Estoque insuficiente para: ${nomes}. Continuar mesmo assim?`)) return;
+      if (!confirm(`${uiText("Estoque insuficiente para: ")}${nomes}${uiText(". Continuar mesmo assim?")}`)) return;
     }
 
     setSaving(true);
@@ -348,11 +352,11 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
         await supabase.from("materias_primas").update({ estoque_atual: novo }).eq("id", i.materia_prima_id);
       }
 
-      toast.success("Batida iniciada! Estoque baixado.");
+      toast.success(uiText("Batida iniciada! Estoque baixado."));
       setDialogOpen(false);
       load();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setSaving(false); }
   }
 
@@ -369,8 +373,8 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
   async function finalizarBatida() {
     if (!batidaFinalizando) return;
     const qtd = parseFloat(qtdProduzida);
-    if (!qtd || qtd <= 0) return toast.error("Quantidade produzida inválida");
-    if (!fotoFim) return toast.error("Foto obrigatória");
+    if (!qtd || qtd <= 0) return toast.error(uiText("Quantidade produzida inválida"));
+    if (!fotoFim) return toast.error(uiText("Foto obrigatória"));
 
     setSaving(true);
     try {
@@ -400,7 +404,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
       const formula = formulas.find(f => f.id === batidaFinalizando.formula_id);
       const produto = produtos.find(p => p.id === formula?.produto_id);
       if (!formula?.produto_id) {
-        toast.warning("Fórmula sem produto vinculado — estoque de produto acabado NÃO foi atualizado. Edite a fórmula.");
+        toast.warning(uiText("Fórmula sem produto vinculado — estoque de produto acabado NÃO foi atualizado. Edite a fórmula."));
       } else {
         // Preferir peso_saco_kg do produto; fallback para peso_por_saco da fórmula
         const pesoPorSaco = Number(produto?.peso_saco_kg ?? formula.peso_por_saco ?? 0);
@@ -429,15 +433,15 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
       const esperada = formula?.producao_esperada ?? 0;
       const dif = esperada > 0 ? ((qtd - esperada) / esperada) * 100 : 0;
       const msg = esperada > 0
-        ? `Batida finalizada! Esperado: ${esperada} sc • Produzido: ${qtd} sc • ${dif >= 0 ? "+" : ""}${dif.toFixed(1)}%`
-        : "Batida finalizada!";
-      if (Math.abs(dif) > TOLERANCIA_PCT) toast.warning(msg + " (divergência acima da tolerância)");
+        ? `${uiText("Batida finalizada! Esperado: ")}${esperada} sc • ${uiText("Produzido: ")}${qtd} sc • ${dif >= 0 ? "+" : ""}${dif.toFixed(1)}%`
+        : uiText("Batida finalizada!");
+      if (Math.abs(dif) > TOLERANCIA_PCT) toast.warning(msg + uiText(" (divergência acima da tolerância)"));
       else toast.success(msg);
 
       setFinalizarOpen(false);
       load();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setSaving(false); }
   }
 
@@ -480,7 +484,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
                     return (
                       <TableRow key={b.id}>
                         <TableCell className="text-xs">
-                          {new Date(b.data_inicio).toLocaleDateString("pt-BR")} {b.hora_inicio?.slice(0, 5)}
+                          {new Date(b.data_inicio).toLocaleDateString(language)} {b.hora_inicio?.slice(0, 5)}
                         </TableCell>
                         <TableCell className="font-medium">{f?.nome || "—"}</TableCell>
                         <TableCell className="text-right">
@@ -508,7 +512,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
             <div>
               <Label><LocalizedText source={"Fórmula *"} /></Label>
               <Select value={formulaId} onValueChange={setFormulaId}>
-                <SelectTrigger><SelectValue placeholder="Selecione a fórmula" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione a fórmula")} /></SelectTrigger>
                 <SelectContent>
                   {formulas.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
                 </SelectContent>
@@ -520,8 +524,8 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
                 <p className="text-xs font-semibold text-muted-foreground"><LocalizedText source={"Ingredientes necessários"} /></p>
                 {ingsDaFormula.map((i, idx) => {
                   const mp = mpMap[i.materia_prima_id];
-                  const qtdExibida = formatMateriaQuantidade(i.quantidade, mp);
-                  const estExibido = formatMateriaEstoque(mp?.estoque_atual, mp);
+                  const qtdExibida = formatMateriaQuantidade(i.quantidade, mp, true, language);
+                  const estExibido = formatMateriaEstoque(mp?.estoque_atual, mp, language);
                   const falta = !hasEstoqueSuficiente(Number(i.quantidade), mp);
                   return (
                     <div key={idx} className="flex justify-between text-sm">
@@ -579,7 +583,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
                 {prodFinalizar.map(p => (
                   <div key={p.id} className="flex justify-between text-sm">
                     <span>{mpMap[p.materia_prima_id]?.nome || "?"}</span>
-                    <span>{formatMateriaQuantidade(p.quantidade_esperada, mpMap[p.materia_prima_id])}</span>
+                    <span>{formatMateriaQuantidade(p.quantidade_esperada, mpMap[p.materia_prima_id], true, language)}</span>
                   </div>
                 ))}
               </div>
@@ -627,7 +631,7 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
       <Dialog open={!!cameraTarget} onOpenChange={open => !open && setCameraTarget(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{cameraTarget === "fim" ? "Foto final" : "Foto do setup inicial"}</DialogTitle>
+            <DialogTitle>{uiText(cameraTarget === "fim" ? "Foto final" : "Foto do setup inicial")}</DialogTitle>
             <DialogDescription><LocalizedText source={"Capture a foto dentro do aplicativo para evitar reinício do aparelho."} /></DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -663,6 +667,8 @@ function NovaBatidaSection({ fabricaId }: { fabricaId: string }) {
 /* -------------------- HISTÓRICO -------------------- */
 
 function HistoricoSection({ fabricaId }: { fabricaId: string }) {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const [items, setItems] = useState<Batida[]>([]);
   const [formulas, setFormulas] = useState<Formula[]>([]);
   const [materias, setMaterias] = useState<Record<string, MateriaPrima>>({});
@@ -715,7 +721,7 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
                   <TableHead><LocalizedText source={"Fórmula"} /></TableHead>
                   <TableHead className="text-right"><LocalizedText source={"Produzido"} /></TableHead>
                   <TableHead><LocalizedText source={"Divergência"} /></TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead><LocalizedText source={"Status"} /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -728,13 +734,13 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
                   return (
                     <TableRow key={b.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetalhe(b)}>
                       <TableCell className="text-xs whitespace-nowrap">
-                        {new Date(b.data_inicio).toLocaleDateString("pt-BR")}<br />
+                        {new Date(b.data_inicio).toLocaleDateString(language)}<br />
                         <span className="text-muted-foreground">{b.hora_inicio?.slice(0, 5)}</span>
                       </TableCell>
                       <TableCell className="text-xs whitespace-nowrap">
                         {b.data_finalizacao ? (
                           <>
-                            {new Date(b.data_finalizacao).toLocaleDateString("pt-BR")}<br />
+                            {new Date(b.data_finalizacao).toLocaleDateString(language)}<br />
                             <span className="text-muted-foreground">{b.hora_finalizacao?.slice(0, 5)}</span>
                           </>
                         ) : "—"}
@@ -778,9 +784,9 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
             return (
               <div className="space-y-3 text-sm">
                 <div className="grid grid-cols-2 gap-2">
-                  <div><span className="text-muted-foreground"><LocalizedText source={"Início:"} /></span> {new Date(detalhe.data_inicio).toLocaleDateString("pt-BR")} {detalhe.hora_inicio?.slice(0, 5)}</div>
+                  <div><span className="text-muted-foreground"><LocalizedText source={"Início:"} /></span> {new Date(detalhe.data_inicio).toLocaleDateString(language)} {detalhe.hora_inicio?.slice(0, 5)}</div>
                   {detalhe.data_finalizacao && (
-                    <div><span className="text-muted-foreground"><LocalizedText source={"Fim:"} /></span> {new Date(detalhe.data_finalizacao).toLocaleDateString("pt-BR")} {detalhe.hora_finalizacao?.slice(0, 5)}</div>
+                    <div><span className="text-muted-foreground"><LocalizedText source={"Fim:"} /></span> {new Date(detalhe.data_finalizacao).toLocaleDateString(language)} {detalhe.hora_finalizacao?.slice(0, 5)}</div>
                   )}
                   <div><span className="text-muted-foreground"><LocalizedText source={"Esperado:"} /></span> {esp} sc</div>
                   <div><span className="text-muted-foreground"><LocalizedText source={"Produzido:"} /></span> {detalhe.quantidade_produzida ?? "—"} sc</div>
@@ -803,7 +809,7 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
                     {detProd.map(p => (
                       <div key={p.id} className="flex justify-between text-xs py-0.5">
                         <span>{materias[p.materia_prima_id]?.nome || "?"}</span>
-                        <span>{formatMateriaQuantidade(p.quantidade_utilizada ?? p.quantidade_esperada, materias[p.materia_prima_id])}</span>
+                        <span>{formatMateriaQuantidade(p.quantidade_utilizada ?? p.quantidade_esperada, materias[p.materia_prima_id], true, language)}</span>
                       </div>
                     ))}
                   </div>
@@ -812,13 +818,13 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
                   {detalhe.foto_inicio_url && (
                     <div>
                       <p className="text-xs text-muted-foreground mb-1"><LocalizedText source={"Foto inicial"} /></p>
-                      <img src={detalhe.foto_inicio_url} alt="início" className="w-full rounded border" />
+                      <img src={detalhe.foto_inicio_url} alt={uiText("Foto inicial")} className="w-full rounded border" />
                     </div>
                   )}
                   {detalhe.foto_finalizacao_url && (
                     <div>
                       <p className="text-xs text-muted-foreground mb-1"><LocalizedText source={"Foto final"} /></p>
-                      <img src={detalhe.foto_finalizacao_url} alt="fim" className="w-full rounded border" />
+                      <img src={detalhe.foto_finalizacao_url} alt={uiText("Foto final")} className="w-full rounded border" />
                     </div>
                   )}
                 </div>
@@ -834,6 +840,7 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
 /* -------------------- EFICIÊNCIA -------------------- */
 
 function EficienciaSection({ fabricaId }: { fabricaId: string }) {
+  const uiText = useStaticUiText();
   const [periodo, setPeriodo] = useState<"hoje" | "semana" | "mes">("mes");
   const [loading, setLoading] = useState(true);
   const [teorica, setTeorica] = useState(0);
@@ -884,7 +891,7 @@ function EficienciaSection({ fabricaId }: { fabricaId: string }) {
         {(["hoje", "semana", "mes"] as const).map(p => (
           <Button key={p} size="sm" variant={periodo === p ? "default" : "outline"} onClick={() => setPeriodo(p)}
             className={periodo === p ? "bg-primary hover:bg-primary/90" : ""}>
-            {p === "hoje" ? "Hoje" : p === "semana" ? "Semana" : "Mês"}
+            {uiText(p === "hoje" ? "Hoje" : p === "semana" ? "Semana" : "Mês")}
           </Button>
         ))}
       </div>

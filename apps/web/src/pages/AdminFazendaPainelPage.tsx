@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -44,6 +44,7 @@ function MetricCard({ icon: Icon, label, value, sub, iconColor = "text-primary" 
 }
 
 export default function AdminFazendaPainelPage() {
+  const uiText = useStaticUiText();
   const { fazendaId } = useParams<{ fazendaId: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -88,12 +89,12 @@ export default function AdminFazendaPainelPage() {
 
   const handleOpenRetiroPainel = (retiroId?: string) => {
     if (!user) {
-      toast.error("Sua sessão expirou. Faça login novamente.");
+      toast.error(uiText("Sua sessão expirou. Faça login novamente."));
       return;
     }
 
     if (!retiroId) {
-      toast.error("Retiro inválido.");
+      toast.error(uiText("Retiro inválido."));
       return;
     }
 
@@ -144,19 +145,19 @@ export default function AdminFazendaPainelPage() {
       </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <MetricCard icon={Beef} label="Total Animais" value={fmtNum(metrics.totalAnimais)} />
-        <MetricCard icon={Droplets} label="Consumo Real" value={fmtNum(painelMae.consumo_real_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-primary" />
-        <MetricCard icon={Gauge} label="Consumo Global" value={fmtNum(painelMae.consumo_global_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-secondary" />
-        <MetricCard icon={Target} label="Pastos na Meta" value={`${painelMae.pastos_na_meta_num}/${painelMae.pastos_na_meta_den}`}
+        <MetricCard icon={Beef} label={uiText("Total Animais")} value={fmtNum(metrics.totalAnimais)} />
+        <MetricCard icon={Droplets} label={uiText("Consumo Real")} value={fmtNum(painelMae.consumo_real_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-primary" />
+        <MetricCard icon={Gauge} label={uiText("Consumo Global")} value={fmtNum(painelMae.consumo_global_g_cab_dia, 1)} sub="g/cab/dia" iconColor="text-secondary" />
+        <MetricCard icon={Target} label={uiText("Pastos na Meta")} value={`${painelMae.pastos_na_meta_num}/${painelMae.pastos_na_meta_den}`}
           sub={painelMae.pastos_na_meta_den > 0 ? `${fmtNum((painelMae.pastos_na_meta_num / painelMae.pastos_na_meta_den) * 100, 0)}%` : ""} iconColor="text-secondary" />
-        <MetricCard icon={Scale} label="Peso Médio" value={fmtNum(painelMae.peso_medio_kg, 1)} sub="kg" iconColor="text-primary" />
-        <MetricCard icon={Package} label="Sacos Utilizados" value={fmtNum(metrics.sacosUtilizados)} />
-        <MetricCard icon={DollarSign} label="Custo Diário" value={fmtBRL(metrics.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
-        <MetricCard icon={DollarSign} label="Custo Mensal" value={fmtBRL(metrics.custoMensal)} />
-        <MetricCard icon={BarChart3} label="Eficiência" value={`${fmtNum(painelMae.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
-        <MetricCard icon={TrendingUp} label="GMD Médio" value={fmtNum(metrics.gmdMedio, 3)} sub="kg/dia" />
-        <MetricCard icon={Skull} label="Abatidos no mês" value={fmtNum(abatidosMes)} iconColor="text-destructive" />
-        <MetricCard icon={Skull} label="Abatidos no ano" value={fmtNum(abatidosAno)} iconColor="text-destructive" />
+        <MetricCard icon={Scale} label={uiText("Peso Médio")} value={fmtNum(painelMae.peso_medio_kg, 1)} sub="kg" iconColor="text-primary" />
+        <MetricCard icon={Package} label={uiText("Sacos Utilizados")} value={fmtNum(metrics.sacosUtilizados)} />
+        <MetricCard icon={DollarSign} label={uiText("Custo Diário")} value={fmtBRL(metrics.custoDiario)} sub="R$/cab/dia" iconColor="text-secondary" />
+        <MetricCard icon={DollarSign} label={uiText("Custo Mensal")} value={fmtBRL(metrics.custoMensal)} />
+        <MetricCard icon={BarChart3} label={uiText("Eficiência")} value={`${fmtNum(painelMae.eficiencia, 0)}%`} sub="índice médio" iconColor="text-secondary" />
+        <MetricCard icon={TrendingUp} label={uiText("GMD Médio")} value={fmtNum(metrics.gmdMedio, 3)} sub="kg/dia" />
+        <MetricCard icon={Skull} label={uiText("Abatidos no mês")} value={fmtNum(abatidosMes)} iconColor="text-destructive" />
+        <MetricCard icon={Skull} label={uiText("Abatidos no ano")} value={fmtNum(abatidosAno)} iconColor="text-destructive" />
         <MetricCard icon={AlertTriangle} label={`Mortalidade (${ano})`} value={fmtNum(mortalidadesAno)} iconColor="text-destructive" />
       </div>
 

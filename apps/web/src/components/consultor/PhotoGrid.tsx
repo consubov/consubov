@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Camera, X, AlertCircle, RefreshCw, CloudOff, CheckCircle2 } from "lucide-react";
@@ -57,6 +57,7 @@ export default function PhotoGrid({
   const [queuedPreviews, setQueuedPreviews] = useState<Record<number, string>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const slotRef = useRef<number>(1);
+  const uiText = useStaticUiText();
 
   const targetId = visitaCurralId || visitaPastoId || null;
   const targetKind: "pasto" | "curral" | null =
@@ -127,7 +128,7 @@ export default function PhotoGrid({
 
   async function handleUpload(file: File) {
     if (!targetId || !targetKind) {
-      toast.error("Salve antes de anexar fotos");
+      toast.error(uiText("Salve antes de anexar fotos"));
       return;
     }
     const ordem = slotRef.current;
@@ -172,7 +173,7 @@ export default function PhotoGrid({
       setPendings(prev => { const cp = { ...prev }; delete cp[ordem]; return cp; });
     } catch (err: any) {
       setPendings(prev => { const cp = { ...prev }; delete cp[ordem]; return cp; });
-      toast.error("Erro ao preparar foto: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro ao preparar foto: ") + (err?.message || uiText("desconhecido")));
     } finally {
       if (inputRef.current) inputRef.current.value = "";
     }
@@ -201,7 +202,7 @@ export default function PhotoGrid({
         });
       }
     } catch {
-      toast.error("Erro ao remover foto");
+      toast.error(uiText("Erro ao remover foto"));
     }
   }
 
@@ -252,13 +253,13 @@ export default function PhotoGrid({
                   {String(foto.url || "").startsWith("queued:") ? (
                     <div
                       className="absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded bg-background/85 px-1 py-0.5 text-[8px] font-medium text-amber-600"
-                      title="Foto ainda não sincronizada"
+                      title={uiText("Foto ainda não sincronizada")}
                     >
                       <CloudOff className="w-2.5 h-2.5" /> <LocalizedText source={"pendente"} /></div>
                   ) : (
                     <div
                       className="absolute bottom-0.5 left-0.5 rounded-full bg-background/85 p-0.5"
-                      title="Foto sincronizada"
+                      title={uiText("Foto sincronizada")}
                     >
                       <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
                     </div>
@@ -275,7 +276,7 @@ export default function PhotoGrid({
                   <img loading="lazy" decoding="async" src={queuedPreview} alt="" className="w-full h-full object-cover" />
                   <div
                     className="absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded bg-background/85 px-1 py-0.5 text-[8px] font-medium text-amber-600"
-                    title="Foto ainda não sincronizada"
+                    title={uiText("Foto ainda não sincronizada")}
                   >
                     {typeof navigator !== "undefined" && !navigator.onLine
                       ? <><CloudOff className="w-2.5 h-2.5" /> <LocalizedText source={"off-line"} /></>
@@ -286,7 +287,7 @@ export default function PhotoGrid({
                       type="button"
                       onClick={() => cancelQueued(ordem)}
                       className="absolute top-0.5 right-0.5 bg-destructive/90 rounded p-0.5"
-                      title="Cancelar envio"
+                      title={uiText("Cancelar envio")}
                     >
                       <X className="w-3 h-3 text-destructive-foreground" />
                     </button>
@@ -306,7 +307,7 @@ export default function PhotoGrid({
                   disabled={disabled || !targetId}
                   onClick={() => { slotRef.current = ordem; inputRef.current?.click(); }}
                   className="w-full h-full flex items-center justify-center text-muted-foreground disabled:opacity-40"
-                  title={targetId ? "Adicionar foto" : "Salve antes"}
+                  title={uiText(targetId ? "Adicionar foto" : "Salve antes")}
                 >
                   <Camera className="w-4 h-4" />
                 </button>

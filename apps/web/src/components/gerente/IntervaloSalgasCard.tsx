@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ const txtDias = (n: number) => `${n} dia${n === 1 ? "" : "s"}`;
 const valido = (v: string) => { const n = Number(v); return Number.isInteger(n) && n >= MIN && n <= MAX; };
 
 export default function IntervaloSalgasCard({ fazendaId, onEditingChange }: { fazendaId: string; onEditingChange?: (e: boolean) => void }) {
+  const uiText = useStaticUiText();
   const [loading, setLoading] = useState(true);
   const [modo, setModo] = useState<Modo>("fazenda");
   const [fazInt, setFazInt] = useState<number>(4);
@@ -103,10 +104,10 @@ export default function IntervaloSalgasCard({ fazendaId, onEditingChange }: { fa
   }
 
   async function save() {
-    if (!valido(dFaz)) { toast.error(`O intervalo da fazenda deve ser de ${MIN} a ${MAX} dias.`); return; }
+    if (!valido(dFaz)) { toast.error(`${uiText("O intervalo da fazenda deve ser de ")}${MIN}${uiText(" a ")}${MAX}${uiText(" dias.")}`); return; }
     const ruinsR = dModo === "retiro" && Object.values(dRet).some((v) => v !== "" && !valido(v));
     const ruinsP = dModo === "pasto" && Object.values(dPas).some((v) => v !== "" && !valido(v));
-    if (ruinsR || ruinsP) { toast.error(`Os intervalos devem ser de ${MIN} a ${MAX} dias.`); return; }
+    if (ruinsR || ruinsP) { toast.error(`${uiText("Os intervalos devem ser de ")}${MIN}${uiText(" a ")}${MAX}${uiText(" dias.")}`); return; }
     setSaving(true);
     try {
       const { error } = await supabase.from("fazendas").update({ intervalo_padrao_dias: Number(dFaz), intervalo_modo: dModo } as any).eq("id", fazendaId);
@@ -138,10 +139,10 @@ export default function IntervaloSalgasCard({ fazendaId, onEditingChange }: { fa
           if (e) throw e;
         }
       }
-      toast.success("Intervalo salvo");
+      toast.success(uiText("Intervalo salvo"));
       await load();
     } catch (e: any) {
-      toast.error("Erro ao salvar: " + (e?.message ?? ""));
+      toast.error(uiText("Erro ao salvar: ") + (e?.message ?? ""));
     } finally {
       setSaving(false);
     }
@@ -216,7 +217,7 @@ export default function IntervaloSalgasCard({ fazendaId, onEditingChange }: { fa
                               <Button type="button" size="sm" variant="outline"
                                 onClick={() => {
                                   const v = aplicar[r.id] ?? "";
-                                  if (v !== "" && !valido(v)) { toast.error(`Use de ${MIN} a ${MAX} dias.`); return; }
+                                  if (v !== "" && !valido(v)) { toast.error(`${uiText("Use de ")}${MIN}${uiText(" a ")}${MAX}${uiText(" dias.")}`); return; }
                                   setDPas((d) => ({ ...d, ...Object.fromEntries(ps.map((p) => [p.id, v])) }));
                                 }}>
                                 <LocalizedText source={"Aplicar a todos os pastos deste retiro"} /></Button>

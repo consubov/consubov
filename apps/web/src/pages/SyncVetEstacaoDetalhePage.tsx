@@ -1,4 +1,6 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import type { SiteLanguage } from "@/lib/siteLanguage";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,10 +49,10 @@ const ESTACAO_STATUS: Record<string, string> = {
   cancelada: "Cancelada",
 };
 
-function fmtDate(d: string | null) {
+function fmtDate(d: string | null, language: SiteLanguage) {
   if (!d) return "—";
-  const [y, m, day] = d.split("-");
-  return `${day}/${m}/${y}`;
+  const [y, m, day] = d.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, day)).toLocaleDateString(language, { timeZone: "UTC" });
 }
 function addDaysISO(iso: string, days: number): string {
   const [y, m, d] = iso.split("-").map(Number);
@@ -60,6 +62,8 @@ function addDaysISO(iso: string, days: number): string {
 }
 
 export default function SyncVetEstacaoDetalhePage() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const { fazendaId, estacaoId } = useParams<{ fazendaId: string; estacaoId: string }>();
   const navigate = useNavigate();
   const { user, roleData } = useAuth();
@@ -164,22 +168,22 @@ export default function SyncVetEstacaoDetalhePage() {
       .update({ status: statusVal })
       .eq("id", estacaoId);
     if (error) toast.error(error.message);
-    else { toast.success("Status atualizado"); setStatusOpen(false); load(); }
+    else { toast.success(uiText("Status atualizado")); setStatusOpen(false); load(); }
   }
 
   async function deleteEstacao() {
     if (!estacaoId) return;
-    if (!confirm("Remover esta estação e todos os seus vínculos?")) return;
+    if (!confirm(uiText("Remover esta estação e todos os seus vínculos?"))) return;
     const { error } = await (supabase as any).from("syncvet_estacoes_monta").delete().eq("id", estacaoId);
     if (error) toast.error(error.message);
-    else { toast.success("Removida"); navigate(`/syncvet/fazendas/${fazendaId}`); }
+    else { toast.success(uiText("Removida")); navigate(`/syncvet/fazendas/${fazendaId}`); }
   }
 
   async function addProtocolo() {
     if (!estacaoId) return;
-    if (!addProtoId) { toast.error("Selecione um protocolo"); return; }
+    if (!addProtoId) { toast.error(uiText("Selecione um protocolo")); return; }
     const preco = parseFloat(addProtoPreco.replace(",", "."));
-    if (isNaN(preco) || preco < 0) { toast.error("Preço por cabeça inválido"); return; }
+    if (isNaN(preco) || preco < 0) { toast.error(uiText("Preço por cabeça inválido")); return; }
     const { error } = await (supabase as any).from("syncvet_estacao_protocolos").insert({
       estacao_id: estacaoId,
       protocolo_id: addProtoId,
@@ -188,23 +192,23 @@ export default function SyncVetEstacaoDetalhePage() {
     });
     if (error) toast.error(error.message);
     else {
-      toast.success("Protocolo vinculado");
+      toast.success(uiText("Protocolo vinculado"));
       setAddProtoOpen(false); setAddProtoId(""); setAddProtoPreco(""); setAddProtoObs("");
       load();
     }
   }
   async function removeProtocolo(ep: EstProto) {
-    if (!confirm(`Remover protocolo "${protoMap[ep.protocolo_id]?.nome ?? ""}" da estação?`)) return;
+    if (!confirm(`${uiText('Remover protocolo "')}${protoMap[ep.protocolo_id]?.nome ?? ""}${uiText('" da estação?')}`)) return;
     const { error } = await (supabase as any).from("syncvet_estacao_protocolos").delete().eq("id", ep.id);
     if (error) toast.error(error.message);
-    else { toast.success("Removido"); load(); }
+    else { toast.success(uiText("Removido")); load(); }
   }
 
   async function addSemen() {
     if (!estacaoId) return;
-    if (!addSemId) { toast.error("Selecione um sêmen"); return; }
+    if (!addSemId) { toast.error(uiText("Selecione um sêmen")); return; }
     const valor = addSemValor ? parseFloat(addSemValor.replace(",", ".")) : null;
-    if (valor !== null && (isNaN(valor) || valor < 0)) { toast.error("Valor unitário inválido"); return; }
+    if (valor !== null && (isNaN(valor) || valor < 0)) { toast.error(uiText("Valor unitário inválido")); return; }
     const { error } = await (supabase as any).from("syncvet_estacao_semen").insert({
       estacao_id: estacaoId,
       semen_id: addSemId,
@@ -213,16 +217,16 @@ export default function SyncVetEstacaoDetalhePage() {
     });
     if (error) toast.error(error.message);
     else {
-      toast.success("Sêmen vinculado");
+      toast.success(uiText("Sêmen vinculado"));
       setAddSemOpen(false); setAddSemId(""); setAddSemValor(""); setAddSemObs("");
       load();
     }
   }
   async function removeSemen(es: EstSemen) {
-    if (!confirm(`Remover ${semenMap[es.semen_id]?.touro ?? ""} da estação?`)) return;
+    if (!confirm(`${uiText("Remover ")}${semenMap[es.semen_id]?.touro ?? ""}${uiText(" da estação?")}`)) return;
     const { error } = await (supabase as any).from("syncvet_estacao_semen").delete().eq("id", es.id);
     if (error) toast.error(error.message);
-    else { toast.success("Removido"); load(); }
+    else { toast.success(uiText("Removido")); load(); }
   }
 
   function openNovoCiclo(l: Lote) {
@@ -235,8 +239,8 @@ export default function SyncVetEstacaoDetalhePage() {
   }
   async function saveCiclo() {
     if (!estacaoId || !cicloLote) return;
-    if (!cicloProtoId) { toast.error("Selecione o protocolo"); return; }
-    if (!cicloD0) { toast.error("Informe a data do D-0"); return; }
+    if (!cicloProtoId) { toast.error(uiText("Selecione o protocolo")); return; }
+    if (!cicloD0) { toast.error(uiText("Informe a data do D-0")); return; }
     const { data: inserted, error } = await (supabase as any).from("syncvet_lote_ciclos").insert({
       estacao_id: estacaoId,
       lote_id: cicloLote.id,
@@ -247,7 +251,7 @@ export default function SyncVetEstacaoDetalhePage() {
     }).select("id").single();
     if (error) toast.error(error.message);
     else {
-      toast.success("Ciclo criado — agenda calculada");
+      toast.success(uiText("Ciclo criado — agenda calculada"));
       setCicloOpen(false);
       void logAuditoria({
         empresaId, userId: user?.id ?? null,
@@ -264,10 +268,10 @@ export default function SyncVetEstacaoDetalhePage() {
     else load();
   }
   async function deleteCiclo(c: Ciclo) {
-    if (!confirm("Remover ciclo?")) return;
+    if (!confirm(uiText("Remover ciclo?"))) return;
     const { error } = await (supabase as any).from("syncvet_lote_ciclos").delete().eq("id", c.id);
     if (error) toast.error(error.message);
-    else { toast.success("Removido"); load(); }
+    else { toast.success(uiText("Removido")); load(); }
   }
 
   if (loading) {
@@ -288,11 +292,11 @@ export default function SyncVetEstacaoDetalhePage() {
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold truncate">{estacao.nome}</h1>
           <p className="text-xs text-muted-foreground">
-            {fmtDate(estacao.data_inicio)} → {fmtDate(estacao.data_fim)} • {ESTACAO_STATUS[estacao.status] ?? estacao.status}
+            {fmtDate(estacao.data_inicio, language)} → {fmtDate(estacao.data_fim, language)} • {uiText(ESTACAO_STATUS[estacao.status] ?? estacao.status)}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setStatusOpen(true)}>Status</Button>
-        <Button variant="ghost" size="icon" onClick={deleteEstacao}><Trash2 className="w-4 h-4" /></Button>
+        <Button variant="outline" size="sm" onClick={() => setStatusOpen(true)}><LocalizedText source={"Status"} /></Button>
+        <Button variant="ghost" size="icon" onClick={deleteEstacao} title={uiText("Remover")} aria-label={uiText("Remover")}><Trash2 className="w-4 h-4" /></Button>
       </div>
 
       <Tabs defaultValue="protocolos">
@@ -320,7 +324,7 @@ export default function SyncVetEstacaoDetalhePage() {
                       R$ {Number(ep.preco_por_cabeca).toFixed(2)} <LocalizedText source={"/ cabeça"} />{ep.observacoes ? ` • ${ep.observacoes}` : ""}
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => removeProtocolo(ep)}><Trash2 className="w-4 h-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => removeProtocolo(ep)} title={uiText("Remover")} aria-label={uiText("Remover")}><Trash2 className="w-4 h-4" /></Button>
                 </Card>
               ))}
             </div>
@@ -348,7 +352,7 @@ export default function SyncVetEstacaoDetalhePage() {
                         {es.valor_unitario != null ? ` • R$ ${Number(es.valor_unitario).toFixed(2)}` : ""}
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => removeSemen(es)}><Trash2 className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => removeSemen(es)} title={uiText("Remover")} aria-label={uiText("Remover")}><Trash2 className="w-4 h-4" /></Button>
                   </Card>
                 );
               })}
@@ -391,17 +395,17 @@ export default function SyncVetEstacaoDetalhePage() {
                               <div className="flex items-center gap-2">
                                 <div className="flex-1 min-w-0">
                                   <div className="text-sm font-medium truncate">{proto?.nome ?? "Protocolo"}</div>
-                                  <div className="text-xs text-muted-foreground">D-0: {fmtDate(c.data_d0)}</div>
+                                  <div className="text-xs text-muted-foreground">D-0: {fmtDate(c.data_d0, language)}</div>
                                 </div>
                                 <Select value={c.status} onValueChange={(v) => updateCicloStatus(c, v)}>
                                   <SelectTrigger className="h-7 w-[140px] text-xs"><SelectValue /></SelectTrigger>
                                   <SelectContent>
                                     {Object.keys(CICLO_STATUS).map((k) => (
-                                      <SelectItem key={k} value={k}>{CICLO_STATUS[k]}</SelectItem>
+                                      <SelectItem key={k} value={k}>{uiText(CICLO_STATUS[k])}</SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>
-                                <Button variant="ghost" size="icon" onClick={() => deleteCiclo(c)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => deleteCiclo(c)} title={uiText("Remover")} aria-label={uiText("Remover")}><Trash2 className="w-3.5 h-3.5" /></Button>
                               </div>
                               {et.length === 0 ? (
                                 <div className="text-xs text-muted-foreground"><LocalizedText source={"Protocolo sem etapas."} /></div>
@@ -411,7 +415,7 @@ export default function SyncVetEstacaoDetalhePage() {
                                     <div key={e.id} className="px-2 py-1 rounded-md bg-muted text-xs">
                                       <span className="font-bold text-primary">D+{e.dia_offset}</span>{" "}
                                       <span className="text-muted-foreground">→</span>{" "}
-                                      <span>{fmtDate(addDaysISO(c.data_d0, e.dia_offset))}</span>
+                                      <span>{fmtDate(addDaysISO(c.data_d0, e.dia_offset), language)}</span>
                                       {e.nome_etapa && <span className="ml-1 text-muted-foreground">({e.nome_etapa})</span>}
                                     </div>
                                   ))}
@@ -441,7 +445,7 @@ export default function SyncVetEstacaoDetalhePage() {
             <div>
               <Label className="text-xs"><LocalizedText source={"Protocolo*"} /></Label>
               <Select value={addProtoId} onValueChange={setAddProtoId}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione...")} /></SelectTrigger>
                 <SelectContent>
                   {protocolosDisponiveis.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
@@ -467,7 +471,7 @@ export default function SyncVetEstacaoDetalhePage() {
             <div>
               <Label className="text-xs"><LocalizedText source={"Sêmen*"} /></Label>
               <Select value={addSemId} onValueChange={setAddSemId}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione...")} /></SelectTrigger>
                 <SelectContent>
                   {semensDisponiveis.map((s) => (
                     <SelectItem key={s.id} value={s.id}>{s.touro}{s.raca ? ` • ${s.raca}` : ""}</SelectItem>
@@ -495,7 +499,7 @@ export default function SyncVetEstacaoDetalhePage() {
             <div>
               <Label className="text-xs"><LocalizedText source={"Protocolo*"} /></Label>
               <Select value={cicloProtoId} onValueChange={setCicloProtoId}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione...")} /></SelectTrigger>
                 <SelectContent>
                   {estProtos.map((ep) => (
                     <SelectItem key={ep.id} value={ep.protocolo_id}>
@@ -509,12 +513,12 @@ export default function SyncVetEstacaoDetalhePage() {
             </div>
             <div><Label className="text-xs"><LocalizedText source={"Data do D-0*"} /></Label><Input type="date" value={cicloD0} onChange={(e) => setCicloD0(e.target.value)} /></div>
             <div>
-              <Label className="text-xs">Status</Label>
+              <Label className="text-xs"><LocalizedText source={"Status"} /></Label>
               <Select value={cicloStatus} onValueChange={setCicloStatus}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.keys(CICLO_STATUS).map((k) => (
-                    <SelectItem key={k} value={k}>{CICLO_STATUS[k]}</SelectItem>
+                    <SelectItem key={k} value={k}>{uiText(CICLO_STATUS[k])}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -529,7 +533,7 @@ export default function SyncVetEstacaoDetalhePage() {
                     <div key={e.id} className="px-2 py-1 rounded-md bg-background text-xs border">
                       <span className="font-bold text-primary">D+{e.dia_offset}</span>{" "}
                       <span className="text-muted-foreground">→</span>{" "}
-                      <span>{fmtDate(addDaysISO(cicloD0, e.dia_offset))}</span>
+                      <span>{fmtDate(addDaysISO(cicloD0, e.dia_offset), language)}</span>
                       {e.nome_etapa && <span className="ml-1 text-muted-foreground">({e.nome_etapa})</span>}
                     </div>
                   ))}
@@ -553,7 +557,7 @@ export default function SyncVetEstacaoDetalhePage() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {Object.keys(ESTACAO_STATUS).map((k) => (
-                  <SelectItem key={k} value={k}>{ESTACAO_STATUS[k]}</SelectItem>
+                  <SelectItem key={k} value={k}>{uiText(ESTACAO_STATUS[k])}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

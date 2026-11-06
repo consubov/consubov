@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageIcon } from "lucide-react";
@@ -30,6 +30,7 @@ interface Props {
 export default function MentionTextarea({
   fieldId, label, value, onChange, onCommit, rows = 3, placeholder, disabled, className,
 }: Props) {
+  const uiText = useStaticUiText();
   const ref = useRef<HTMLTextAreaElement>(null);
   const caretRef = useRef<number>(value.length);
   const valueRef = useRef(value);
@@ -81,7 +82,7 @@ export default function MentionTextarea({
               key={n}
               type="button"
               onClick={() => {
-                if (!scrollToPhoto(n)) toast.info(`Imagem ${n} não está visível nesta tela.`);
+                if (!scrollToPhoto(n)) toast.info(`${uiText("Imagem ")}${n}${uiText(" não está visível nesta tela.")}`);
               }}
               className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
               style={{ background: "#14432B", color: "#C9A84C" }}

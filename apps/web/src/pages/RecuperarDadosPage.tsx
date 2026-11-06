@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import type { PendingBackup } from "@/lib/backupMirror";
 import SyncCapatazPanel from "@/components/sync/SyncCapatazPanel";
 
 export default function RecuperarDadosPage() {
+  const uiText = useStaticUiText();
   const [importing, setImporting] = useState(false);
 
   const handleImport = async (file: File) => {
@@ -54,9 +55,9 @@ export default function RecuperarDadosPage() {
         } catch { failed++; }
       }
 
-      toast.success(`Importação concluída: ${imported} sucesso(s), ${failed} falha(s)`);
+      toast.success(`${uiText("Importação concluída: ")}${imported} ${uiText(imported === 1 ? "sucesso" : "sucessos")}, ${failed} ${uiText(failed === 1 ? "falha" : "falhas")}`);
     } catch (err: any) {
-      toast.error("Falha ao importar JSON: " + (err?.message ?? "desconhecido"));
+      toast.error(uiText("Falha ao importar JSON: ") + (err?.message ?? uiText("desconhecido")));
     } finally {
       setImporting(false);
     }
@@ -85,14 +86,13 @@ export default function RecuperarDadosPage() {
         </label>
       </div>
 
-      <SyncCapatazPanel title="Sincronização dos Capatazes" />
+      <SyncCapatazPanel title={uiText("Sincronização dos Capatazes")} />
 
       <Card>
         <CardHeader><CardTitle className="text-base"><LocalizedText source={"Como funciona"} /></CardTitle></CardHeader>
         <CardContent>
           <p className="text-xs text-muted-foreground">
-            Os dados de cada capataz são reportados automaticamente após cada tentativa de sincronização.
-            Use "Importar JSON de emergência" se um capataz enviar manualmente o backup exportado pelo PWA.
+            <LocalizedText source={"Os dados de cada capataz são reportados automaticamente após cada tentativa de sincronização. Use \"Importar JSON de emergência\" se um capataz enviar manualmente o backup exportado pelo PWA."} />
           </p>
         </CardContent>
       </Card>

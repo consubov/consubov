@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Camera, Plus, Save, X, PackageOpen } from "lucide-react";
 import type { Observacao, LancamentoOffline } from "@/lib/offlineDb";
 import { useCriticalOperation } from "@/lib/criticalOperations";
-import { compressImageDataUrl } from "@/lib/imageCompression";
+import { prepareCapatazCameraBlob } from "@/lib/capatazPhoto";
+import CapatazCameraCapture from "@/components/capataz/CapatazCameraCapture";
 
 export interface SalgaFormDraft {
   sacos: string;
@@ -54,6 +55,7 @@ export default function SalgaForm({
   pastoId, pastoNome, retiroNome, fazendaNome, cicloId, tipo, justificativaFalhaQr,
   auditoriaExigida, exigirFotoCocho = true, initialDraft, onDraftChange, onSave, onBack, numAnimais, sugestao
 }: SalgaFormProps) {
+  const uiText = useStaticUiText();
   const [sacos, setSacos] = useState<string>(initialDraft?.sacos ?? (sugestao ? String(sugestao.sacosSugeridos) : ""));
   const [observacoes, setObservacoes] = useState<Observacao[]>(initialDraft?.observacoes ?? []);
   const [fotoAuditoria, setFotoAuditoria] = useState<string | null>(initialDraft?.fotoAuditoria ?? null);
@@ -64,36 +66,48 @@ export default function SalgaForm({
   const [saving, setSaving] = useState(false);
   const [cochoChecked, setCochoChecked] = useState(initialDraft?.cochoChecked ?? false);
   const [fotoCocho, setFotoCocho] = useState<string | null>(initialDraft?.fotoCocho ?? null);
+  type PhotoSlot = "auditoria" | "cocho" | "observacao";
+  const [photoProcessing, setPhotoProcessing] = useState<PhotoSlot | null>(null);
+  const [cameraSlot, setCameraSlot] = useState<PhotoSlot | null>(null);
+  const [photoError, setPhotoError] = useState<{ slot: PhotoSlot; message: string } | null>(null);
+  const photoRequestRef = useRef(0);
   const produtoNaoConfigurado = !sugestao && numAnimais > 0;
   useCriticalOperation(true, "salga-form");
 
-  const obsFileRef = useRef<HTMLInputElement>(null);
-  const auditFileRef = useRef<HTMLInputElement>(null);
-  const cochoFileRef = useRef<HTMLInputElement>(null);
+  const capturePhoto = useCallback((slot: PhotoSlot) => {
+    if (photoProcessing !== null || cameraSlot !== null) return;
+    setPhotoError(null);
+    setCameraSlot(slot);
+  }, [photoProcessing, cameraSlot]);
 
-  const capturePhoto = useCallback((callback: (dataUrl: string) => void, inputRef: React.RefObject<HTMLInputElement>) => {
-    if (inputRef.current) {
-      inputRef.current.onchange = async (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = async () => {
-            const compressed = await compressImageDataUrl(reader.result as string);
-            callback(compressed || (reader.result as string));
-          };
-          reader.readAsDataURL(file);
-        }
-        (e.target as HTMLInputElement).value = "";
-      };
-      inputRef.current.click();
+  const handleCapturedPhoto = async (blob: Blob) => {
+    const slot = cameraSlot;
+    if (!slot || photoProcessing !== null) throw new Error("Foto não disponível. Tente novamente.");
+    const request = ++photoRequestRef.current;
+    setPhotoProcessing(slot);
+    setPhotoError(null);
+    try {
+      const dataUrl = await prepareCapatazCameraBlob(blob);
+      if (request !== photoRequestRef.current) throw new Error("Captura cancelada.");
+      if (slot === "auditoria") setFotoAuditoria(dataUrl);
+      if (slot === "cocho") setFotoCocho(dataUrl);
+      if (slot === "observacao") setObsFoto(dataUrl);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Não foi possível carregar a foto. Tente novamente.";
+      if (request === photoRequestRef.current) setPhotoError({ slot, message });
+      throw new Error(message);
+    } finally {
+      if (request === photoRequestRef.current) setPhotoProcessing(null);
     }
-  }, []);
+  };
+
+  useEffect(() => () => { photoRequestRef.current += 1; }, []);
 
   const handleAddObs = () => {
     setAddingObs(true);
     setObsFoto(null);
     setObsTexto("");
-    setTimeout(() => capturePhoto((url) => setObsFoto(url), obsFileRef), 100);
+    capturePhoto("observacao");
   };
 
   const saveObs = () => {
@@ -109,6 +123,8 @@ export default function SalgaForm({
   };
 
   const toggleCochoChecked = () => {
+    if (photoProcessing !== null) return;
+    setPhotoError(null);
     const next = !cochoChecked;
     setCochoChecked(next);
     if (next) {
@@ -126,6 +142,9 @@ export default function SalgaForm({
   }, [addingObs, fotoAuditoria, obsFoto, obsTexto, observacoes, onDraftChange, sacos, cochoChecked, fotoCocho]);
 
   const canSave = () => {
+    if (photoProcessing !== null) return false;
+    if (photoError?.slot === "cocho" && cochoChecked && exigirFotoCocho) return false;
+    if (photoError?.slot === "auditoria" && !cochoChecked && auditoriaExigida) return false;
     if (cochoChecked) {
       return exigirFotoCocho ? !!fotoCocho : true;
     }
@@ -135,7 +154,7 @@ export default function SalgaForm({
   };
 
   const handleSave = async () => {
-    if (saving || !canSave()) return;
+    if (saving || photoProcessing !== null || !canSave()) return;
     setSaving(true);
     try {
       await onSave({
@@ -166,11 +185,6 @@ export default function SalgaForm({
         <h1 className="text-lg font-bold"><LocalizedText source={"Registrar Salga"} /></h1>
       </header>
 
-      {/* Hidden file inputs for camera */}
-      <input ref={obsFileRef} type="file" accept="image/*" capture="environment" className="hidden" />
-      <input ref={auditFileRef} type="file" accept="image/*" capture="environment" className="hidden" />
-      <input ref={cochoFileRef} type="file" accept="image/*" capture="environment" className="hidden" />
-
       <main className="flex-1 px-4 py-4 space-y-4 overflow-y-auto pb-24">
         {/* Pasto name */}
         <Card>
@@ -195,6 +209,7 @@ export default function SalgaForm({
           variant={cochoChecked ? "default" : "outline"}
           className={`w-full gap-2 text-base ${cochoChecked ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'border-blue-400 text-blue-700 hover:bg-blue-50'}`}
           onClick={toggleCochoChecked}
+          disabled={photoProcessing !== null}
         >
           <PackageOpen className="w-5 h-5" />
           {cochoChecked ? '✓ Cocho Cheio selecionado' : 'Cocho Cheio (sem salga)'}
@@ -208,21 +223,27 @@ export default function SalgaForm({
               {!fotoCocho && exigirFotoCocho && (
                 <p className="text-xs text-blue-600 font-semibold"><LocalizedText source={"⚠ Tire a foto do cocho cheio antes de salvar"} /></p>
               )}
+              {photoProcessing === "cocho" && <p role="status" className="text-xs text-blue-700">Processando foto do cocho...</p>}
+              {photoError?.slot === "cocho" && <p role="alert" className="text-xs text-destructive">{photoError.message}</p>}
               {fotoCocho ? (
                 <div className="relative w-20 h-20">
-                  <img src={fotoCocho} className="w-20 h-20 rounded-lg object-cover" onClick={() => setPreviewImg(fotoCocho)} />
+                  <img src={fotoCocho} alt="Foto do cocho capturada" className="w-20 h-20 rounded-lg object-cover" onClick={() => setPreviewImg(fotoCocho)} />
                   <button onClick={() => setFotoCocho(null)} className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
               ) : (
+                <>
                 <Button
-                  variant="outline"
-                  className="gap-2 border-blue-500 text-blue-700 hover:bg-blue-100"
-                  onClick={() => capturePhoto((url) => setFotoCocho(url), cochoFileRef)}
+                  variant={exigirFotoCocho ? "destructive" : "outline"}
+                  size={exigirFotoCocho ? "lg" : "default"}
+                  className={exigirFotoCocho ? "w-full gap-2 text-base" : "gap-2 border-blue-500 text-blue-700 hover:bg-blue-100"}
+                  onClick={() => capturePhoto("cocho")}
+                  disabled={photoProcessing !== null}
                 >
                   <Camera className="w-4 h-4" />
-                  <LocalizedText source={"📷 Tirar Foto do Cocho"} /></Button>
+                  {exigirFotoCocho ? "Tirar foto (obrigatório)" : "Tirar foto do cocho"}</Button>
+                </>
               )}
             </CardContent>
           </Card>
@@ -235,10 +256,10 @@ export default function SalgaForm({
               <Card className="border-primary/30 bg-primary/5">
                 <CardContent className="p-3">
                   <div className="flex items-center gap-2 mb-1">
-                    <Badge className="bg-primary text-primary-foreground"><LocalizedText source={"Sugestão:"} />{" "}{sugestao.sacosSugeridos} {sugestao.sacosSugeridos === 1 ? 'saco' : 'sacos'}</Badge>
+                    <Badge className="bg-primary text-primary-foreground"><LocalizedText source={"Sugestão:"} />{" "}{sugestao.sacosSugeridos} {uiText(sugestao.sacosSugeridos === 1 ? "saco" : "sacos")}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Base: {sugestao.numAnimais} <LocalizedText source={"animais ×"} />{" "}{sugestao.intervaloDias} <LocalizedText source={"dias ×"} />{" "}{sugestao.produtoNome}
+                    <LocalizedText source={"Base:"} />{" "}{sugestao.numAnimais} <LocalizedText source={"animais ×"} />{" "}{sugestao.intervaloDias} <LocalizedText source={"dias ×"} />{" "}{sugestao.produtoNome}
                   </p>
 
                 </CardContent>
@@ -247,7 +268,9 @@ export default function SalgaForm({
               !produtoNaoConfigurado ? null : (
                 <Card className="border-destructive/30 bg-destructive/5">
                   <CardContent className="p-3">
-                    <p className="text-xs text-destructive font-medium"><LocalizedText source={"Produto não configurado"} /></p>
+                    <p className="text-xs text-destructive font-medium">
+                      Sugestão indisponível. Confira produto, peso e parâmetros de consumo do pasto.
+                    </p>
                   </CardContent>
                 </Card>
               )
@@ -282,23 +305,29 @@ export default function SalgaForm({
             {auditoriaExigida && !fotoAuditoria && (
               <p className="text-xs text-destructive mb-2 font-semibold"><LocalizedText source={"⚠ Você deve tirar a foto antes de salvar"} /></p>
             )}
+            {photoProcessing === "auditoria" && <p role="status" className="text-xs text-muted-foreground mb-2">Processando foto, aguarde...</p>}
+            {photoError?.slot === "auditoria" && <p role="alert" className="text-xs text-destructive mb-2">{photoError.message}</p>}
             {fotoAuditoria ? (
               <div className="relative w-20 h-20">
-                <img src={fotoAuditoria} className="w-20 h-20 rounded-lg object-cover" onClick={() => setPreviewImg(fotoAuditoria)} />
+                <img src={fotoAuditoria} alt="Foto de auditoria capturada" className="w-20 h-20 rounded-lg object-cover" onClick={() => setPreviewImg(fotoAuditoria)} />
                 <button onClick={() => setFotoAuditoria(null)} className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center">
                   <X className="w-3 h-3" />
                 </button>
               </div>
             ) : (
+              <>
               <Button
                 variant={auditoriaExigida ? "destructive" : "outline"}
                 size={auditoriaExigida ? "lg" : "default"}
                 className={`gap-2 ${auditoriaExigida ? 'w-full text-base' : ''}`}
-                onClick={() => capturePhoto((url) => setFotoAuditoria(url), auditFileRef)}
+                onClick={() => capturePhoto("auditoria")}
+                disabled={photoProcessing !== null}
               >
                 <Camera className="w-4 h-4" />
-                {auditoriaExigida ? 'Tirar foto (obrigatória)' : '+ Foto de auditoria'}
+                {auditoriaExigida ? 'Tirar foto (obrigatório)' : 'Tirar foto de auditoria'}
               </Button>
+
+              </>
             )}
           </div>
         )}
@@ -321,6 +350,7 @@ export default function SalgaForm({
                 <div key={i} className="relative">
                   <img
                     src={obs.foto_url}
+                    alt={`Foto de observação ${i + 1}`}
                     className="w-16 h-16 rounded-lg object-cover cursor-pointer border border-border"
                     onClick={() => setPreviewImg(obs.foto_url)}
                   />
@@ -334,18 +364,23 @@ export default function SalgaForm({
           )}
 
           {/* Adding obs form */}
+          {photoProcessing === "observacao" && <p role="status" className="text-xs text-muted-foreground">Processando foto da observação...</p>}
+          {photoError?.slot === "observacao" && <p role="alert" className="text-xs text-destructive">{photoError.message}</p>}
           {addingObs && (
             <Card>
               <CardContent className="p-3 space-y-2">
                 {obsFoto ? (
-                  <img src={obsFoto} className="w-full max-h-40 rounded-lg object-cover" />
+                  <img src={obsFoto} alt="Foto de observação capturada" className="w-full max-h-40 rounded-lg object-cover" />
                 ) : (
-                  <Button variant="outline" className="w-full gap-2" onClick={() => capturePhoto((url) => setObsFoto(url), obsFileRef)}>
+                  <>
+                  <Button variant="outline" className="w-full gap-2" disabled={photoProcessing !== null} onClick={() => capturePhoto("observacao")}>
                     <Camera className="w-4 h-4" />
                     <LocalizedText source={"Tirar foto"} /></Button>
+
+                  </>
                 )}
                 <Textarea
-                  placeholder="Descrição (opcional)"
+                  placeholder={uiText("Descrição (opcional)")}
                   value={obsTexto}
                   onChange={(e) => setObsTexto(e.target.value)}
                   rows={2}
@@ -368,10 +403,18 @@ export default function SalgaForm({
         </Button>
       </div>
 
+      {cameraSlot && (
+        <CapatazCameraCapture
+          label={cameraSlot === "cocho" ? "cocho" : cameraSlot === "auditoria" ? "auditoria" : "observação"}
+          onPhoto={handleCapturedPhoto}
+          onClose={() => setCameraSlot(null)}
+        />
+      )}
+
       {/* Image preview modal */}
       {previewImg && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setPreviewImg(null)}>
-          <img src={previewImg} className="max-w-full max-h-full rounded-lg" />
+          <img src={previewImg} alt="Prévia ampliada da foto" className="max-w-full max-h-full rounded-lg" />
         </div>
       )}
     </div>

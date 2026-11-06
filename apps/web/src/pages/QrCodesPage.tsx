@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { withReportExportDeadline, downloadGeneratedPdf } from "@/lib/reportPdfExport";
 import { useEffect, useState, useCallback, useRef } from "react";
 import html2canvas from "html2canvas";
@@ -40,6 +40,7 @@ const QR_LOGO_SRC = "/logo-consubov-print-tight.png";
 const QR_LOGO_FALLBACK_SRC = "/logo-consubov-print.png";
 
 export default function QrCodesPage() {
+  const uiText = useStaticUiText();
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [selectedFazenda, setSelectedFazenda] = useState<string>("");
@@ -53,6 +54,8 @@ export default function QrCodesPage() {
   const [searchPage, setSearchPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState(false);
+  const searchRequestRef = useRef(0);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
@@ -76,31 +79,32 @@ export default function QrCodesPage() {
   }, []);
 
   const searchPastos = useCallback(async (term: string, page: number, append: boolean) => {
+    const requestId = ++searchRequestRef.current;
     setSearching(true);
-
-    let query = supabase
-      .from("pastos")
-      .select("id, qr_uuid, nome, retiro_id")
-      .eq("ativo", true)
-      .order("nome")
-      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-
-    if (term.trim()) {
-      query = query.ilike("nome", `%${term.trim()}%`);
+    setSearchError(false);
+    if (!append) setSearchResults([]);
+    try {
+      let query = supabase.from("pastos")
+        .select("id, qr_uuid, nome, retiro_id")
+        .eq("ativo", true).order("nome").order("id")
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      if (term.trim()) query = query.ilike("nome", "%" + term.trim() + "%");
+      const { data, error } = await query;
+      if (error || !data) throw new Error("QR_LIST_READ_FAILED");
+      const enriched = await enrichPastos(data);
+      if (requestId !== searchRequestRef.current) return;
+      if (append) setSearchResults((prev) => [...prev, ...enriched]);
+      else setSearchResults(enriched);
+      setHasMore(data.length === PAGE_SIZE);
+    } catch {
+      if (requestId !== searchRequestRef.current) return;
+      setSearchError(true);
+      setSearchResults([]);
+      setHasMore(false);
+      toast.error(uiText("Não foi possível consultar os pastos. Tente novamente."));
+    } finally {
+      if (requestId === searchRequestRef.current) setSearching(false);
     }
-
-    const { data } = await query;
-    const pastos = data || [];
-    const enriched = await enrichPastos(pastos);
-
-    if (append) {
-      setSearchResults((prev) => [...prev, ...enriched]);
-    } else {
-      setSearchResults(enriched);
-    }
-
-    setHasMore(pastos.length === PAGE_SIZE);
-    setSearching(false);
   }, []);
 
   useEffect(() => {
@@ -134,16 +138,18 @@ export default function QrCodesPage() {
     }
 
     const retiroIds = [...new Set(pastos.map((p) => p.retiro_id))];
-    const { data: retirosData } = await supabase
+    const { data: retirosData, error: retirosError } = await supabase
       .from("retiros")
       .select("id, nome, fazenda_id")
       .in("id", retiroIds);
+    if (retirosError || !retirosData || retirosData.length !== retiroIds.length) throw new Error("QR_RETIROS_UNAVAILABLE");
 
     const fazendaIds = [...new Set((retirosData || []).map((r) => r.fazenda_id))];
-    const { data: fazendasData } = await supabase
+    const { data: fazendasData, error: fazendasError } = await supabase
       .from("fazendas")
       .select("id, nome")
       .in("id", fazendaIds);
+    if (fazendasError || !fazendasData || fazendasData.length !== fazendaIds.length) throw new Error("QR_FAZENDAS_UNAVAILABLE");
 
     const retiroMap = new Map((retirosData || []).map((r) => [r.id, r]));
     const fazendaMap = new Map((fazendasData || []).map((f) => [f.id, f]));
@@ -162,17 +168,16 @@ export default function QrCodesPage() {
 
   async function generateByRetiro(retiroId: string) {
     setGenerating(true);
-
+    setGeneratedPastos([]);
     try {
-      const { data } = await supabase
-        .from("pastos")
+      const { data, error } = await supabase.from("pastos")
         .select("id, qr_uuid, nome, retiro_id")
-        .eq("retiro_id", retiroId)
-        .eq("ativo", true)
-        .order("nome");
-
-      const enriched = await enrichPastos(data || []);
-      setGeneratedPastos(enriched);
+        .eq("retiro_id", retiroId).eq("ativo", true)
+        .order("nome").order("id");
+      if (error || !data) throw new Error("QR_PASTOS_UNAVAILABLE");
+      setGeneratedPastos(await enrichPastos(data));
+    } catch {
+      toast.error(uiText("Falha ao gerar QR Codes do retiro. Tente novamente."));
     } finally {
       setGenerating(false);
     }
@@ -180,29 +185,21 @@ export default function QrCodesPage() {
 
   async function generateByFazenda(fazendaId: string) {
     setGenerating(true);
-
+    setGeneratedPastos([]);
     try {
-      const { data: retirosData } = await supabase
-        .from("retiros")
-        .select("id")
-        .eq("fazenda_id", fazendaId)
-        .eq("ativo", true);
-
-      const retiroIds = (retirosData || []).map((r) => r.id);
-      if (retiroIds.length === 0) {
-        setGeneratedPastos([]);
-        return;
-      }
-
-      const { data } = await supabase
-        .from("pastos")
+      const { data: retirosData, error: retirosError } = await supabase.from("retiros")
+        .select("id").eq("fazenda_id", fazendaId).eq("ativo", true);
+      if (retirosError || !retirosData) throw new Error("QR_RETIROS_UNAVAILABLE");
+      const retiroIds = retirosData.map((r) => r.id);
+      if (retiroIds.length === 0) return;
+      const { data, error } = await supabase.from("pastos")
         .select("id, qr_uuid, nome, retiro_id")
-        .in("retiro_id", retiroIds)
-        .eq("ativo", true)
-        .order("nome");
-
-      const enriched = await enrichPastos(data || []);
-      setGeneratedPastos(enriched);
+        .in("retiro_id", retiroIds).eq("ativo", true)
+        .order("nome").order("id");
+      if (error || !data) throw new Error("QR_PASTOS_UNAVAILABLE");
+      setGeneratedPastos(await enrichPastos(data));
+    } catch {
+      toast.error(uiText("Falha ao gerar QR Codes da fazenda. Tente novamente."));
     } finally {
       setGenerating(false);
     }
@@ -268,7 +265,7 @@ export default function QrCodesPage() {
       downloadGeneratedPdf(pdfDoc.output("blob"), `qr-codes-${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao gerar o PDF dos QR Codes.");
+      toast.error(uiText("Erro ao gerar o PDF dos QR Codes."));
     } finally {
       setExportingPdf(false);
     }
@@ -297,7 +294,7 @@ export default function QrCodesPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar pasto por nome..."
+              placeholder={uiText("Buscar pasto por nome...")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -319,7 +316,10 @@ export default function QrCodesPage() {
               </button>
             ))}
 
-            {searchResults.length === 0 && !searching && (
+            {searchError && !searching && (
+              <p role="alert" className="py-6 text-center text-sm text-destructive">Erro ao consultar os pastos. Confira a conexão.</p>
+            )}
+            {!searchError && searchResults.length === 0 && !searching && (
               <p className="py-6 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum pasto encontrado"} /></p>
             )}
 
@@ -342,7 +342,7 @@ export default function QrCodesPage() {
               loadRetiros(value);
             }}
           >
-            <SelectTrigger><SelectValue placeholder="Selecione a fazenda" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={uiText("Selecione a fazenda")} /></SelectTrigger>
             <SelectContent>
               {fazendas.map((f) => (
                 <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
@@ -351,7 +351,7 @@ export default function QrCodesPage() {
           </Select>
 
           <Select value={selectedRetiro} onValueChange={setSelectedRetiro} disabled={!selectedFazenda}>
-            <SelectTrigger><SelectValue placeholder="Selecione o retiro" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={uiText("Selecione o retiro")} /></SelectTrigger>
             <SelectContent>
               {retiros.map((r) => (
                 <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
@@ -370,7 +370,7 @@ export default function QrCodesPage() {
 
         <TabsContent value="fazenda" className="space-y-3">
           <Select value={selectedFazenda} onValueChange={setSelectedFazenda}>
-            <SelectTrigger><SelectValue placeholder="Selecione a fazenda" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={uiText("Selecione a fazenda")} /></SelectTrigger>
             <SelectContent>
               {fazendas.map((f) => (
                 <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>

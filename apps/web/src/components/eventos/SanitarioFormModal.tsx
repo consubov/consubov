@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,8 @@ const categorias = [
 ];
 
 export default function SanitarioFormModal({ open, onClose, pastoId, pastoNome, numAnimais, userId, userName, collectOnly, onCollected, onSaved }: Props) {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const [categoria, setCategoria] = useState("vermifugo");
   const [medicamento, setMedicamento] = useState("");
   const [dose, setDose] = useState("");
@@ -118,12 +121,12 @@ export default function SanitarioFormModal({ open, onClose, pastoId, pastoNome, 
       if (dataFimCarencia) updateData.data_fim_carencia = dataFimCarencia;
       await supabase.from("pastos").update(updateData).eq("id", pastoId);
 
-      toast.success("Evento sanitário registrado!");
+      toast.success(uiText("Evento sanitário registrado!"));
       resetForm();
       onClose();
       onSaved?.();
     } catch (err: any) {
-      toast.error("Erro ao salvar: " + (err.message || ""));
+      toast.error(uiText("Erro ao salvar: ") + (err.message || ""));
     } finally {
       setSaving(false);
     }
@@ -162,12 +165,12 @@ export default function SanitarioFormModal({ open, onClose, pastoId, pastoNome, 
 
           <div>
             <Label><LocalizedText source={"Medicamento *"} /></Label>
-            <Input value={medicamento} onChange={(e) => setMedicamento(e.target.value)} placeholder="Nome do medicamento" />
+            <Input value={medicamento} onChange={(e) => setMedicamento(e.target.value)} placeholder={uiText("Nome do medicamento")} />
           </div>
 
           <div>
             <Label><LocalizedText source={"Dose *"} /></Label>
-            <Input value={dose} onChange={(e) => setDose(e.target.value)} placeholder="Ex: 3ml por animal" />
+            <Input value={dose} onChange={(e) => setDose(e.target.value)} placeholder={uiText("Ex: 3ml por animal")} />
           </div>
 
           <div className="flex items-center justify-between">
@@ -196,7 +199,7 @@ export default function SanitarioFormModal({ open, onClose, pastoId, pastoNome, 
 
           <div className="text-xs text-muted-foreground space-y-1">
             <p><strong><LocalizedText source={"Aplicador:"} /></strong> {userName}</p>
-            <p><strong><LocalizedText source={"Data/hora:"} /></strong> {new Date().toLocaleString("pt-BR")}</p>
+            <p><strong><LocalizedText source={"Data/hora:"} /></strong> {new Date().toLocaleString(language)}</p>
           </div>
         </div>
 

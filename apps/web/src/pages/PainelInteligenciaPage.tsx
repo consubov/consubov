@@ -1,3 +1,5 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { usePainelMae } from "@/hooks/usePainelMae";
 import MetricasPorCategoria from "@/components/painel/MetricasPorCategoria";
@@ -98,6 +100,8 @@ function getMapColor(consumo: number, media: number): string {
 }
 
 export default function PainelInteligenciaPage() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const [fazendas, setFazendas] = useState<Fazenda[]>([]);
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [pastos, setPastos] = useState<Pasto[]>([]);
@@ -635,8 +639,8 @@ export default function PainelInteligenciaPage() {
 
       const pdfData: PainelPDFData = {
         fazendaNome: filtroFazenda !== "all" ? (fazendaById[filtroFazenda]?.nome ?? "Fazenda") : "Todas as Fazendas",
-        periodo: `${MESES_NOMES[filtroMes - 1]} ${filtroAno}`,
-        dataGeracao: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+        periodo: `${uiText(MESES_NOMES[filtroMes - 1])} ${filtroAno}`,
+        dataGeracao: new Date().toLocaleDateString(language, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }),
         filtros,
         consumoMedioReal,
         consumoEsperado,
@@ -656,14 +660,14 @@ export default function PainelInteligenciaPage() {
       };
 
       const blob = await withReportExportDeadline(
-        pdf(<PainelInteligenciaPDF data={pdfData} />).toBlob(),
+        pdf(<PainelInteligenciaPDF data={pdfData} language={language} />).toBlob(),
         "Geração PDF do painel", Date.now() + 60_000, 60_000,
       );
       downloadGeneratedPdf(blob, `painel_inteligencia_${MESES_NOMES[filtroMes - 1].toLowerCase()}_${filtroAno}.pdf`);
-      toast.success("PDF exportado com sucesso!");
+      toast.success(uiText("PDF exportado com sucesso!"));
     } catch (e) {
       console.error("Erro ao gerar PDF:", e);
-      toast.error("Erro ao gerar o PDF. Tente novamente.");
+      toast.error(uiText("Erro ao gerar o PDF. Tente novamente."));
     } finally {
       setExportingPDF(false);
     }
@@ -672,7 +676,7 @@ export default function PainelInteligenciaPage() {
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto space-y-4">
-        <h1 className="text-2xl font-bold text-foreground">Painel de Inteligência Nutricional</h1>
+        <h1 className="text-2xl font-bold text-foreground"><LocalizedText source={"Painel de Inteligência Nutricional"} /></h1>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <Card key={i} className="animate-pulse"><CardContent className="p-6 h-24" /></Card>
@@ -686,12 +690,12 @@ export default function PainelInteligenciaPage() {
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-foreground">Painel de Inteligência Nutricional – CONSUBOV</h1>
-          <p className="text-sm text-muted-foreground mt-1">Análise comparativa e insights automáticos</p>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground"><LocalizedText source={"Painel de Inteligência Nutricional – CONSUBOV"} /></h1>
+          <p className="text-sm text-muted-foreground mt-1"><LocalizedText source={"Análise comparativa e insights automáticos"} /></p>
         </div>
         <Button onClick={handleExportPDF} disabled={exportingPDF} className="gap-1.5">
           {exportingPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
-          Exportar em PDF
+          <LocalizedText source={"Exportar em PDF"} />
         </Button>
       </div>
 
@@ -700,21 +704,21 @@ export default function PainelInteligenciaPage() {
         <CardContent className="p-4">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Fazenda</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block"><LocalizedText source={"Fazenda"} /></label>
               <Select value={filtroFazenda} onValueChange={setFiltroFazenda}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Todas" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={uiText("Todas")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="all"><LocalizedText source={"Todas"} /></SelectItem>
                   {fazendas.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Comparar com</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block"><LocalizedText source={"Comparar com"} /></label>
               <Select value={filtroComparar} onValueChange={setFiltroComparar} disabled={filtroFazenda === "all"}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={uiText("Nenhuma")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Nenhuma</SelectItem>
+                  <SelectItem value="none"><LocalizedText source={"Nenhuma"} /></SelectItem>
                   {fazendas.filter(f => f.id !== filtroFazenda).map(f => (
                     <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
                   ))}
@@ -722,68 +726,68 @@ export default function PainelInteligenciaPage() {
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Estado</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block"><LocalizedText source={"Estado"} /></label>
               <Select value={filtroEstado} onValueChange={v => { setFiltroEstado(v); setFiltroCidade("all"); }}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={uiText("Todos")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="all"><LocalizedText source={"Todos"} /></SelectItem>
                   {estados.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Cidade</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block"><LocalizedText source={"Cidade"} /></label>
               <Select value={filtroCidade} onValueChange={setFiltroCidade}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Todas" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={uiText("Todas")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="all"><LocalizedText source={"Todas"} /></SelectItem>
                   {cidades.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Produto</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block"><LocalizedText source={"Produto"} /></label>
               <Select value={filtroProduto} onValueChange={setFiltroProduto}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={uiText("Todos")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="all"><LocalizedText source={"Todos"} /></SelectItem>
                   {produtosUtilizados.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Categoria</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block"><LocalizedText source={"Categoria"} /></label>
               <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Todas" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={uiText("Todas")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="all"><LocalizedText source={"Todas"} /></SelectItem>
                   {categorias.map(c => <SelectItem key={c} value={c!}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Sexo</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block"><LocalizedText source={"Sexo"} /></label>
               <Select value={filtroSexo} onValueChange={setFiltroSexo}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={uiText("Todos")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="all"><LocalizedText source={"Todos"} /></SelectItem>
                   {sexos.map(s => <SelectItem key={s} value={s!}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Mês</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block"><LocalizedText source={"Mês"} /></label>
               <Select value={String(filtroMes)} onValueChange={(v) => setFiltroMes(Number(v))}>
                 <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"].map((m, i) => (
-                    <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+                    <SelectItem key={i + 1} value={String(i + 1)}>{uiText(m)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Ano</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block"><LocalizedText source={"Ano"} /></label>
               <Select value={String(filtroAno)} onValueChange={(v) => setFiltroAno(Number(v))}>
                 <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -803,7 +807,7 @@ export default function PainelInteligenciaPage() {
           {alertas.map((a, i) => (
             <Alert key={i} variant={a.tipo === "warning" ? "destructive" : "default"}>
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>{a.tipo === "warning" ? "Alerta" : "Informação"}</AlertTitle>
+              <AlertTitle>{a.tipo === "warning" ? uiText("Alerta") : uiText("Informação")}</AlertTitle>
               <AlertDescription className="text-sm">{a.texto}</AlertDescription>
             </Alert>
           ))}
@@ -815,33 +819,33 @@ export default function PainelInteligenciaPage() {
         <Card>
           <CardHeader className="pb-2 pt-4 px-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Consumo Real Médio</CardTitle>
+              <CardTitle className="text-xs font-medium text-muted-foreground"><LocalizedText source={"Consumo Real Médio"} /></CardTitle>
               <Activity className="w-4 h-4 text-primary" />
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <p className="text-2xl font-bold text-foreground">{consumoMedioReal.toFixed(1)}</p>
-            <p className="text-xs text-muted-foreground">g/cab/dia</p>
+            <p className="text-xs text-muted-foreground"><LocalizedText source={"g/cab/dia"} /></p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2 pt-4 px-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Consumo Esperado</CardTitle>
+              <CardTitle className="text-xs font-medium text-muted-foreground"><LocalizedText source={"Consumo Esperado"} /></CardTitle>
               <BarChart3 className="w-4 h-4 text-secondary" />
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <p className="text-2xl font-bold text-foreground">{consumoEsperado > 0 ? consumoEsperado.toFixed(1) : "—"}</p>
-            <p className="text-xs text-muted-foreground">{filtroProduto === "all" ? "Selecione um produto" : "g/cab/dia"}</p>
+            <p className="text-xs text-muted-foreground">{filtroProduto === "all" ? uiText("Selecione um produto") : uiText("g/cab/dia")}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2 pt-4 px-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Desvio</CardTitle>
+              <CardTitle className="text-xs font-medium text-muted-foreground"><LocalizedText source={"Desvio"} /></CardTitle>
               {desvioPercent > 0 ? <TrendingUp className="w-4 h-4 text-green-500" /> : <TrendingDown className="w-4 h-4 text-red-500" />}
             </div>
           </CardHeader>
@@ -850,7 +854,7 @@ export default function PainelInteligenciaPage() {
               {consumoEsperado > 0 ? `${desvioPercent > 0 ? "+" : ""}${desvioPercent.toFixed(1)}%` : "—"}
             </p>
             {consumoEsperado > 0 && (
-              <p className="text-xs text-muted-foreground">{statusConsumo.emoji} {statusConsumo.label}</p>
+              <p className="text-xs text-muted-foreground">{statusConsumo.emoji} {uiText(statusConsumo.label)}</p>
             )}
           </CardContent>
         </Card>
@@ -858,13 +862,13 @@ export default function PainelInteligenciaPage() {
         <Card>
           <CardHeader className="pb-2 pt-4 px-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Intervalo Médio</CardTitle>
+              <CardTitle className="text-xs font-medium text-muted-foreground"><LocalizedText source={"Intervalo Médio"} /></CardTitle>
               <Users className="w-4 h-4 text-primary" />
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <p className="text-2xl font-bold text-foreground">{intervaloMedio > 0 ? intervaloMedio.toFixed(1) : "—"}</p>
-            <p className="text-xs text-muted-foreground">dias entre salgas</p>
+            <p className="text-xs text-muted-foreground"><LocalizedText source={"dias entre salgas"} /></p>
           </CardContent>
         </Card>
       </div>
@@ -882,22 +886,22 @@ export default function PainelInteligenciaPage() {
               </CardHeader>
               <CardContent className="px-4 pb-4 grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-muted-foreground">Consumo Real</p>
+                  <p className="text-xs text-muted-foreground"><LocalizedText source={"Consumo Real"} /></p>
                   <p className="text-2xl font-bold text-foreground">{bloco.dados.consumo_real_g_cab_dia.toFixed(1)}</p>
-                  <p className="text-[10px] text-muted-foreground">g/cab/dia</p>
+                  <p className="text-[10px] text-muted-foreground"><LocalizedText source={"g/cab/dia"} /></p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Consumo Global</p>
+                  <p className="text-xs text-muted-foreground"><LocalizedText source={"Consumo Global"} /></p>
                   <p className="text-2xl font-bold text-foreground">{bloco.dados.consumo_global_g_cab_dia.toFixed(1)}</p>
-                  <p className="text-[10px] text-muted-foreground">g/cab/dia</p>
+                  <p className="text-[10px] text-muted-foreground"><LocalizedText source={"g/cab/dia"} /></p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Eficiência</p>
+                  <p className="text-xs text-muted-foreground"><LocalizedText source={"Eficiência"} /></p>
                   <p className="text-2xl font-bold text-foreground">{bloco.dados.eficiencia.toFixed(0)}%</p>
-                  <p className="text-[10px] text-muted-foreground">índice</p>
+                  <p className="text-[10px] text-muted-foreground"><LocalizedText source={"índice"} /></p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Peso Médio</p>
+                  <p className="text-xs text-muted-foreground"><LocalizedText source={"Peso Médio"} /></p>
                   <p className="text-2xl font-bold text-foreground">{bloco.dados.peso_medio_kg.toFixed(1)}</p>
                   <p className="text-[10px] text-muted-foreground">kg</p>
                 </div>
@@ -910,7 +914,7 @@ export default function PainelInteligenciaPage() {
           <Card>
             <CardHeader className="pb-2 pt-4 px-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Consumo Real</CardTitle>
+                <CardTitle className="text-xs font-medium text-muted-foreground"><LocalizedText source={"Consumo Real"} /></CardTitle>
                 <Activity className="w-4 h-4 text-primary" />
               </div>
             </CardHeader>
@@ -918,14 +922,14 @@ export default function PainelInteligenciaPage() {
               <p className="text-2xl font-bold text-foreground">
                 {filtroFazenda !== "all" ? painelMae.consumo_real_g_cab_dia.toFixed(1) : "—"}
               </p>
-              <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "g/cab/dia" : "Selecione uma fazenda"}</p>
+              <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? uiText("g/cab/dia") : uiText("Selecione uma fazenda")}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2 pt-4 px-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Consumo Global</CardTitle>
+                <CardTitle className="text-xs font-medium text-muted-foreground"><LocalizedText source={"Consumo Global"} /></CardTitle>
                 <Gauge className="w-4 h-4 text-secondary" />
               </div>
             </CardHeader>
@@ -933,14 +937,14 @@ export default function PainelInteligenciaPage() {
               <p className="text-2xl font-bold text-foreground">
                 {filtroFazenda !== "all" ? painelMae.consumo_global_g_cab_dia.toFixed(1) : "—"}
               </p>
-              <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "g/cab/dia" : "Selecione uma fazenda"}</p>
+              <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? uiText("g/cab/dia") : uiText("Selecione uma fazenda")}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2 pt-4 px-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Peso Médio</CardTitle>
+                <CardTitle className="text-xs font-medium text-muted-foreground"><LocalizedText source={"Peso Médio"} /></CardTitle>
                 <Scale className="w-4 h-4 text-primary" />
               </div>
             </CardHeader>
@@ -948,7 +952,7 @@ export default function PainelInteligenciaPage() {
               <p className="text-2xl font-bold text-foreground">
                 {filtroFazenda !== "all" ? painelMae.peso_medio_kg.toFixed(1) : "—"}
               </p>
-              <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "kg" : "Selecione uma fazenda"}</p>
+              <p className="text-xs text-muted-foreground">{filtroFazenda !== "all" ? "kg" : uiText("Selecione uma fazenda")}</p>
             </CardContent>
           </Card>
         </div>
@@ -959,7 +963,7 @@ export default function PainelInteligenciaPage() {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-primary" />
-            Tendência de Consumo
+            <LocalizedText source={"Tendência de Consumo"} />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -977,7 +981,7 @@ export default function PainelInteligenciaPage() {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">Sem dados para exibir</p>
+              <p className="text-sm text-muted-foreground text-center py-8"><LocalizedText source={"Sem dados para exibir"} /></p>
             )
           ) : tendencia.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
@@ -993,7 +997,7 @@ export default function PainelInteligenciaPage() {
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-8">Sem dados para exibir</p>
+            <p className="text-sm text-muted-foreground text-center py-8"><LocalizedText source={"Sem dados para exibir"} /></p>
           )}
         </CardContent>
       </Card>
@@ -1004,7 +1008,7 @@ export default function PainelInteligenciaPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <MapPin className="w-5 h-5 text-primary" />
-              Mapa de Consumo por Estado
+              <LocalizedText source={"Mapa de Consumo por Estado"} />
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1036,26 +1040,26 @@ export default function PainelInteligenciaPage() {
                 );
               })}
               <g transform="translate(10, 580)">
-                <circle cx={10} cy={0} r={6} fill="#ef4444" /><text x={22} y={4} style={{ fontSize: 9 }} className="fill-muted-foreground">Baixo</text>
-                <circle cx={70} cy={0} r={6} fill="#eab308" /><text x={82} y={4} style={{ fontSize: 9 }} className="fill-muted-foreground">Médio</text>
-                <circle cx={130} cy={0} r={6} fill="#22c55e" /><text x={142} y={4} style={{ fontSize: 9 }} className="fill-muted-foreground">Alto</text>
+                <circle cx={10} cy={0} r={6} fill="#ef4444" /><text x={22} y={4} style={{ fontSize: 9 }} className="fill-muted-foreground"><LocalizedText source={"Baixo"} /></text>
+                <circle cx={70} cy={0} r={6} fill="#eab308" /><text x={82} y={4} style={{ fontSize: 9 }} className="fill-muted-foreground"><LocalizedText source={"Médio"} /></text>
+                <circle cx={130} cy={0} r={6} fill="#22c55e" /><text x={142} y={4} style={{ fontSize: 9 }} className="fill-muted-foreground"><LocalizedText source={"Alto"} /></text>
               </g>
             </svg>
 
             {selectedEstado && (
               <div className="mt-4 border-t pt-3">
-                <h4 className="font-semibold text-sm mb-2">Fazendas em {selectedEstado}</h4>
+                <h4 className="font-semibold text-sm mb-2"><LocalizedText source={"Fazendas em"} /> {selectedEstado}</h4>
                 {fazendasDoEstado.length > 0 ? (
                   <div className="space-y-1">
                     {fazendasDoEstado.map(f => (
                       <div key={f.id} className="flex justify-between text-sm py-1 border-b border-border/50">
                         <span>{f.nome}</span>
-                        <span className="font-medium">{f.consumoMedio.toFixed(1)} g/cab/dia</span>
+                        <span className="font-medium">{f.consumoMedio.toFixed(1)} <LocalizedText source={"g/cab/dia"} /></span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground">Nenhum dado para este estado.</p>
+                  <p className="text-xs text-muted-foreground"><LocalizedText source={"Nenhum dado para este estado."} /></p>
                 )}
               </div>
             )}
@@ -1067,7 +1071,7 @@ export default function PainelInteligenciaPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Package className="w-5 h-5 text-secondary" />
-              Análise por Produto
+              <LocalizedText source={"Análise por Produto"} />
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1075,7 +1079,7 @@ export default function PainelInteligenciaPage() {
               <>
                 <div className="mb-4 p-3 rounded-lg bg-muted/50">
                   <p className="text-sm font-medium">{produtoById[filtroProduto]?.nome}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Consumo médio geral: <strong>{consumoMedioReal.toFixed(1)} g/cab/dia</strong></p>
+                  <p className="text-xs text-muted-foreground mt-1"><LocalizedText source={"Consumo médio geral:"} /> <strong>{consumoMedioReal.toFixed(1)} <LocalizedText source={"g/cab/dia"} /></strong></p>
                 </div>
                 {analisesProduto.length > 0 ? (
                   <ResponsiveContainer width="100%" height={250}>
@@ -1092,11 +1096,11 @@ export default function PainelInteligenciaPage() {
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-8">Nenhuma fazenda utiliza este produto.</p>
+                  <p className="text-sm text-muted-foreground text-center py-8"><LocalizedText source={"Nenhuma fazenda utiliza este produto."} /></p>
                 )}
               </>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">Selecione um produto no filtro acima para ver a análise.</p>
+              <p className="text-sm text-muted-foreground text-center py-8"><LocalizedText source={"Selecione um produto no filtro acima para ver a análise."} /></p>
             )}
           </CardContent>
         </Card>
@@ -1108,7 +1112,7 @@ export default function PainelInteligenciaPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <Droplets className="w-5 h-5 text-primary" />
-              Consumo por Categoria — Comparação
+              <LocalizedText source={"Consumo por Categoria — Comparação"} />
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1125,7 +1129,7 @@ export default function PainelInteligenciaPage() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">Sem dados para exibir</p>
+              <p className="text-sm text-muted-foreground text-center py-8"><LocalizedText source={"Sem dados para exibir"} /></p>
             )}
           </CardContent>
         </Card>
@@ -1146,7 +1150,7 @@ export default function PainelInteligenciaPage() {
       {/* RANKING TABLE */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Ranking de Eficiência por Fazenda</CardTitle>
+          <CardTitle className="text-base"><LocalizedText source={"Ranking de Eficiência por Fazenda"} /></CardTitle>
         </CardHeader>
         <CardContent>
           {rankingFazendas.length > 0 ? (
@@ -1155,12 +1159,12 @@ export default function PainelInteligenciaPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs">#</TableHead>
-                    <TableHead className="text-xs">Fazenda</TableHead>
-                    <TableHead className="text-xs">Estado</TableHead>
-                    <TableHead className="text-xs">Consumo Médio</TableHead>
-                    <TableHead className="text-xs">Desvio</TableHead>
-                    <TableHead className="text-xs">Intervalo Médio</TableHead>
-                    <TableHead className="text-xs">Lançamentos</TableHead>
+                    <TableHead className="text-xs"><LocalizedText source={"Fazenda"} /></TableHead>
+                    <TableHead className="text-xs"><LocalizedText source={"Estado"} /></TableHead>
+                    <TableHead className="text-xs"><LocalizedText source={"Consumo Médio"} /></TableHead>
+                    <TableHead className="text-xs"><LocalizedText source={"Desvio"} /></TableHead>
+                    <TableHead className="text-xs"><LocalizedText source={"Intervalo Médio"} /></TableHead>
+                    <TableHead className="text-xs"><LocalizedText source={"Lançamentos"} /></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1174,13 +1178,13 @@ export default function PainelInteligenciaPage() {
                         <TableCell className="font-bold text-sm">{i + 1}º</TableCell>
                         <TableCell className="font-medium text-sm">{f.nome}</TableCell>
                         <TableCell className="text-sm">{f.estado}</TableCell>
-                        <TableCell className="text-sm">{f.consumoMedio.toFixed(1)} g/cab/dia</TableCell>
+                        <TableCell className="text-sm">{f.consumoMedio.toFixed(1)} <LocalizedText source={"g/cab/dia"} /></TableCell>
                         <TableCell className="text-sm">
                           {consumoEsperado > 0 ? (
                             <Badge variant="outline" className={st.color}>{st.emoji} {f.desvio.toFixed(0)}%</Badge>
                           ) : "—"}
                         </TableCell>
-                        <TableCell className="text-sm">{f.intervaloMedio.toFixed(1)} dias</TableCell>
+                        <TableCell className="text-sm">{f.intervaloMedio.toFixed(1)} <LocalizedText source={"dias"} /></TableCell>
                         <TableCell className="text-sm">{f.lancamentos}</TableCell>
                       </TableRow>
                     );
@@ -1189,7 +1193,7 @@ export default function PainelInteligenciaPage() {
               </Table>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-8">Sem dados para exibir</p>
+            <p className="text-sm text-muted-foreground text-center py-8"><LocalizedText source={"Sem dados para exibir"} /></p>
           )}
         </CardContent>
       </Card>

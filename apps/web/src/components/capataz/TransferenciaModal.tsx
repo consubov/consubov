@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ export default function TransferenciaModal({
   open, onClose, pasto, pastos, fazendaId, retiroId,
   mesOperacional, anoOperacional, onTransferConfirmed,
 }: TransferenciaModalProps) {
+  const uiText = useStaticUiText();
   const [quantidade, setQuantidade] = useState("");
   const [destinoId, setDestinoId] = useState("");
   const [confirmando, setConfirmando] = useState(false);
@@ -55,7 +56,7 @@ export default function TransferenciaModal({
 
   async function handleConfirm() {
     if (!pasto || !destino) return;
-    if (!categoriaOk) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
+    if (!categoriaOk) { toast.error(uiText(MSG_CATEGORIA_OBRIGATORIA)); return; }
     if (!isValid) return;
     setConfirmando(true);
     try {
@@ -136,12 +137,12 @@ export default function TransferenciaModal({
         ]);
       }
 
-      toast.success(`${qtd} animais transferidos de ${pasto.nome} para ${destino.nome}.`);
+      toast.success(`${qtd}${uiText(" animais transferidos de ")}${pasto.nome}${uiText(" para ")}${destino.nome}.`);
       onTransferConfirmed(pasto.id, destinoId, qtd);
       handleClose();
     } catch (err: any) {
       console.error("Erro na transferência:", err);
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`${uiText("Erro: ")}${err?.message || uiText("Erro desconhecido")}`);
     } finally {
       setConfirmando(false);
     }
@@ -175,7 +176,7 @@ export default function TransferenciaModal({
             <div className="space-y-2">
               <Label><LocalizedText source={"Pasto destino"} /></Label>
               <Select value={destinoId} onValueChange={escolherDestino}>
-                <SelectTrigger><SelectValue placeholder="Selecione o pasto" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione o pasto")} /></SelectTrigger>
                 <SelectContent>
                   {destinosDisponiveis.map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.nome} ({p.num_animais} <LocalizedText source={"animais)"} /></SelectItem>
@@ -184,7 +185,7 @@ export default function TransferenciaModal({
               </Select>
             </div>
             {destinoSemCategoria && (
-              <CategoriaPastoSelect label="Categoria do pasto destino *" value={categoriaDestino} onChange={setCategoriaDestino} />
+              <CategoriaPastoSelect label={uiText("Categoria do pasto destino *")} value={categoriaDestino} onChange={setCategoriaDestino} />
             )}
             {qtd > 0 && destino && qtd <= pasto.num_animais && (
               <div className="bg-muted rounded-md p-3 text-sm">

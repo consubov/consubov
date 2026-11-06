@@ -1,4 +1,6 @@
 import jsPDF from "jspdf";
+import { translatePdfLabel } from "@/lib/pdfUiLabels";
+import type { SiteLanguage } from "@/lib/siteLanguage";
 
 const GREEN_DARK = "#14432B";
 const GOLD = "#C9A84C";
@@ -13,6 +15,8 @@ export interface ManejoPdfAnimal {
 }
 
 export interface ManejoPdfData {
+  /** Selected App language; defaults to pt-BR. */
+  language?: SiteLanguage;
   tipo: "dg_us" | "iatf" | "retirada";
   data: string; // yyyy-mm-dd
   empresa: string;
@@ -38,6 +42,7 @@ const TIPO_LABEL: Record<string, string> = {
 };
 
 export async function gerarManejoPDF(data: ManejoPdfData): Promise<Blob> {
+  const tr = (source: string) => translatePdfLabel(data.language ?? "pt-BR", source);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -58,18 +63,18 @@ export async function gerarManejoPDF(data: ManejoPdfData): Promise<Blob> {
   doc.setTextColor("#FFFFFF");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text("Relatório de Manejo", marginX, 40);
+  doc.text(tr("Relatório de Manejo"), marginX, 40);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text(TIPO_LABEL[data.tipo] ?? data.tipo, marginX, 58);
-  doc.text(`Data: ${fmtDate(data.data)}`, marginX, 74);
+  doc.text(tr(TIPO_LABEL[data.tipo] ?? data.tipo), marginX, 58);
+  doc.text(`${tr("Data")}: ${fmtDate(data.data)}`, marginX, 74);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.text(data.empresa || "", pageW - marginX, 40, { align: "right" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.text(`Responsável: ${data.responsavel || "-"}`, pageW - marginX, 58, { align: "right" });
+  doc.text(`${tr("Responsável:")} ${data.responsavel || "-"}`, pageW - marginX, 58, { align: "right" });
 
   y = 120;
   doc.setTextColor(INK);
@@ -88,7 +93,7 @@ export async function gerarManejoPDF(data: ManejoPdfData): Promise<Blob> {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(INK_SOFT);
-    doc.text(k.toUpperCase(), marginX, y);
+    doc.text(tr(k).toUpperCase(), marginX, y);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
     doc.setTextColor(INK);
@@ -105,13 +110,13 @@ export async function gerarManejoPDF(data: ManejoPdfData): Promise<Blob> {
     doc.setTextColor("#FFFFFF");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
-    doc.text("TAXA DE PRENHEZ", marginX + 16, y + 20);
+    doc.text(tr("TAXA DE PRENHEZ"), marginX + 16, y + 20);
     doc.setFontSize(28);
     doc.text(`${taxa.toFixed(1)}%`, marginX + 16, y + 48);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.text(
-      `${totalP} prenhas / ${totalD} diagnosticadas`,
+      `${totalP}${tr(" prenhas / ")}${totalD}${tr(" diagnosticadas")}`,
       pageW - marginX - 16,
       y + 34,
       { align: "right" }
@@ -123,7 +128,7 @@ export async function gerarManejoPDF(data: ManejoPdfData): Promise<Blob> {
     doc.setTextColor("#FFFFFF");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
-    doc.text("ANIMAIS ATENDIDOS", marginX + 16, y + 18);
+    doc.text(tr("ANIMAIS ATENDIDOS"), marginX + 16, y + 18);
     doc.setFontSize(22);
     doc.text(String(data.animais.length), marginX + 16, y + 38);
     y += 60;
@@ -133,14 +138,14 @@ export async function gerarManejoPDF(data: ManejoPdfData): Promise<Blob> {
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text("ANIMAIS", marginX, y);
+  doc.text(tr("ANIMAIS"), marginX, y);
   y += 14;
 
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
-  doc.text("Nº", marginX, y);
-  doc.text("Categoria", marginX + 60, y);
-  doc.text("Resultado", pageW - marginX, y, { align: "right" });
+  doc.text(tr("Nº"), marginX, y);
+  doc.text(tr("Categoria"), marginX + 60, y);
+  doc.text(tr("Resultado"), pageW - marginX, y, { align: "right" });
   y += 6;
   doc.setDrawColor(LINE);
   doc.line(marginX, y, pageW - marginX, y);
@@ -163,7 +168,7 @@ export async function gerarManejoPDF(data: ManejoPdfData): Promise<Blob> {
     if (a.diagnostico === "prenha") doc.setTextColor(GREEN_DARK);
     else if (a.diagnostico === "vazia") doc.setTextColor("#B03A2E");
     else doc.setTextColor(INK);
-    doc.text(label, pageW - marginX, y, { align: "right" });
+    doc.text(tr(label), pageW - marginX, y, { align: "right" });
     y += 14;
   }
 
@@ -173,7 +178,7 @@ export async function gerarManejoPDF(data: ManejoPdfData): Promise<Blob> {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(INK);
-    doc.text("OBSERVAÇÕES", marginX, y);
+    doc.text(tr("OBSERVAÇÕES"), marginX, y);
     y += 14;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
@@ -187,8 +192,8 @@ export async function gerarManejoPDF(data: ManejoPdfData): Promise<Blob> {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(INK_SOFT);
-    doc.text("Gerado por Consubov.com.br", marginX, pageH - 20);
-    doc.text(`Página ${i} de ${pages}`, pageW - marginX, pageH - 20, { align: "right" });
+    doc.text(tr("Gerado por Consubov.com.br"), marginX, pageH - 20);
+    doc.text(`${tr("Página")} ${i}${tr(" de ")}${pages}`, pageW - marginX, pageH - 20, { align: "right" });
   }
 
   return doc.output("blob");

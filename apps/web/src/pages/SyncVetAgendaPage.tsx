@@ -1,4 +1,6 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import type { SiteLanguage } from "@/lib/siteLanguage";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,13 +47,15 @@ function fmtDate(iso: string) {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 }
-function fmtDateLong(iso: string) {
+function fmtDateLong(iso: string, language: SiteLanguage = "pt-BR") {
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(y, m - 1, d);
-  return dt.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+  return dt.toLocaleDateString(language, { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
 }
 
 export default function SyncVetAgendaPage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const navigate = useNavigate();
   const { user, roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
@@ -146,11 +150,11 @@ export default function SyncVetAgendaPage() {
       setManejos(combined.filter(m => (seen.has(m.id) ? false : (seen.add(m.id), true))));
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao carregar agenda");
+      toast.error(uiText("Erro ao carregar agenda"));
     } finally {
       setLoading(false);
     }
-  }, [empresaId]);
+  }, [empresaId, uiText]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -241,7 +245,7 @@ export default function SyncVetAgendaPage() {
         .eq("id", selected.id);
       if (error) throw error;
       setManejos(prev => prev.map(x => x.id === selected.id ? { ...x, responsavel_id: novo } : x));
-      toast.success("Responsável atualizado");
+      toast.success(uiText("Responsável atualizado"));
 
       if (novo && novo !== anterior) {
         const member = equipeById.get(novo);
@@ -259,7 +263,7 @@ export default function SyncVetAgendaPage() {
       setSelected(null);
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao salvar responsável");
+      toast.error(uiText("Erro ao salvar responsável"));
     } finally {
       setSaving(false);
     }
@@ -269,7 +273,7 @@ export default function SyncVetAgendaPage() {
     if (!selected) return;
     const ctx = getCtx(selected);
     if (!ctx?.fazenda?.latitude || !ctx?.fazenda?.longitude) {
-      toast.error("Fazenda sem coordenadas cadastradas — preencha latitude/longitude no cadastro");
+      toast.error(uiText("Fazenda sem coordenadas cadastradas — preencha latitude/longitude no cadastro"));
       return;
     }
     setOrigemLat("");
@@ -280,7 +284,7 @@ export default function SyncVetAgendaPage() {
 
   function handleGPS() {
     if (!navigator.geolocation) {
-      toast.error("GPS não disponível neste dispositivo");
+      toast.error(uiText("GPS não disponível neste dispositivo"));
       return;
     }
     setGpsLoading(true);
@@ -289,11 +293,11 @@ export default function SyncVetAgendaPage() {
         setOrigemLat(pos.coords.latitude.toFixed(6));
         setOrigemLng(pos.coords.longitude.toFixed(6));
         setGpsLoading(false);
-        toast.success("Localização capturada");
+        toast.success(uiText("Localização capturada"));
       },
       (err) => {
         setGpsLoading(false);
-        toast.error(`Erro GPS: ${err.message}`);
+        toast.error(`${uiText("Erro GPS: ")}${err.message}`);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
@@ -307,11 +311,11 @@ export default function SyncVetAgendaPage() {
     const oLat = parseFloat(origemLat.replace(",", "."));
     const oLng = parseFloat(origemLng.replace(",", "."));
     if (!Number.isFinite(oLat) || !Number.isFinite(oLng)) {
-      toast.error("Origem inválida");
+      toast.error(uiText("Origem inválida"));
       return;
     }
     if (destLat == null || destLng == null) {
-      toast.error("Fazenda sem coordenadas");
+      toast.error(uiText("Fazenda sem coordenadas"));
       return;
     }
     setCalcLoading(true);
@@ -330,7 +334,7 @@ export default function SyncVetAgendaPage() {
       });
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao calcular trajeto");
+      toast.error(uiText("Erro ao calcular trajeto"));
     } finally {
       setCalcLoading(false);
     }
@@ -386,7 +390,7 @@ export default function SyncVetAgendaPage() {
         .select("id").eq("empresa_id", empresaId).eq("user_id", user.id).maybeSingle();
       const vetId = (vet as { id: string } | null)?.id;
       if (!vetId) {
-        toast.error("Você não está cadastrado como membro da equipe desta empresa");
+        toast.error(uiText("Você não está cadastrado como membro da equipe desta empresa"));
         setFinalizing(false);
         return;
       }
@@ -412,7 +416,7 @@ export default function SyncVetAgendaPage() {
       await abrirResultadoOuConcluir(selected, true);
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao salvar trajeto");
+      toast.error(uiText("Erro ao salvar trajeto"));
     } finally {
       setFinalizing(false);
     }
@@ -425,7 +429,7 @@ export default function SyncVetAgendaPage() {
       await abrirResultadoOuConcluir(selected, false);
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao concluir manejo");
+      toast.error(uiText("Erro ao concluir manejo"));
     } finally {
       setSaving(false);
     }
@@ -452,7 +456,7 @@ export default function SyncVetAgendaPage() {
       );
     }
     await finalizarConclusao(m, { trajetoRegistrado });
-    toast.success(trajetoRegistrado ? "Manejo concluído e trajeto registrado" : "Manejo concluído");
+    toast.success(uiText(trajetoRegistrado ? "Manejo concluído e trajeto registrado" : "Manejo concluído"));
     setSelected(null);
   }
 
@@ -470,12 +474,12 @@ export default function SyncVetAgendaPage() {
         if (error) throw error;
       }
       await finalizarConclusao(resultadoManejo);
-      toast.success("Diagnóstico registrado e manejo concluído");
+      toast.success(uiText("Diagnóstico registrado e manejo concluído"));
       setResultadoOpen(false);
       setResultadoManejo(null);
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao salvar diagnóstico");
+      toast.error(uiText("Erro ao salvar diagnóstico"));
     } finally {
       setSavingResultado(false);
     }
@@ -496,7 +500,7 @@ export default function SyncVetAgendaPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-primary flex items-center gap-2">
-          <CalendarIcon className="w-5 h-5" /> {fullAccess ? "Agenda de Manejos" : "Minha Agenda"}
+          <CalendarIcon className="w-5 h-5" /> {uiText(fullAccess ? "Agenda de Manejos" : "Minha Agenda")}
         </h1>
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" size="sm">
@@ -508,7 +512,7 @@ export default function SyncVetAgendaPage() {
 
       <Card className={`p-3 grid grid-cols-1 gap-2 ${fullAccess ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
         <Select value={fFazenda} onValueChange={setFFazenda}>
-          <SelectTrigger><SelectValue placeholder="Fazenda" /></SelectTrigger>
+          <SelectTrigger><SelectValue placeholder={uiText("Fazenda")} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all"><LocalizedText source={"Todas as fazendas"} /></SelectItem>
             {fazendas.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
@@ -516,7 +520,7 @@ export default function SyncVetAgendaPage() {
         </Select>
         {fullAccess && (
           <Select value={fResp} onValueChange={setFResp}>
-            <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={uiText("Responsável")} /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all"><LocalizedText source={"Todos os responsáveis"} /></SelectItem>
               <SelectItem value="none"><LocalizedText source={"Sem responsável"} /></SelectItem>
@@ -525,7 +529,7 @@ export default function SyncVetAgendaPage() {
           </Select>
         )}
         <Select value={fStatus} onValueChange={setFStatus}>
-          <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger><SelectValue placeholder={uiText("Status")} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all"><LocalizedText source={"Todos os status"} /></SelectItem>
             <SelectItem value="pendente"><LocalizedText source={"Pendente"} /></SelectItem>
@@ -546,7 +550,7 @@ export default function SyncVetAgendaPage() {
           {grupos.map(([data, itens]) => (
             <div key={data} className="space-y-2">
               <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {fmtDateLong(data)}
+                {fmtDateLong(data, language)}
               </div>
               <div className="space-y-2">
                 {itens.map(m => {
@@ -625,7 +629,7 @@ export default function SyncVetAgendaPage() {
                   <div>
                     <div className="text-xs font-medium mb-1"><LocalizedText source={"Responsável"} /></div>
                     <Select value={assignId || "__none__"} onValueChange={(v) => setAssignId(v === "__none__" ? "" : v)}>
-                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={uiText("Selecione")} /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__"><LocalizedText source={"Sem responsável"} /></SelectItem>
                         {equipe.map(e => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
@@ -638,7 +642,7 @@ export default function SyncVetAgendaPage() {
                   <Button variant="outline" onClick={() => setSelected(null)} disabled={saving}><LocalizedText source={"Fechar"} /></Button>
                   {fullAccess && (
                     <Button variant="secondary" onClick={handleSaveResponsavel} disabled={saving}>
-                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar responsável"}
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : uiText("Salvar responsável")}
                     </Button>
                   )}
                   {selected.status !== "concluido" && (
@@ -746,7 +750,7 @@ export default function SyncVetAgendaPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ClipboardCheck className="w-4 h-4" />
-              {resultadoIsDG ? "Diagnóstico por animal" : "Resultado por animal"}
+              {uiText(resultadoIsDG ? "Diagnóstico por animal" : "Resultado por animal")}
             </DialogTitle>
             <DialogDescription>
               <LocalizedText source={"Marque o resultado de cada animal. Ao confirmar, o manejo será concluído."} /></DialogDescription>
@@ -761,7 +765,7 @@ export default function SyncVetAgendaPage() {
               return (
                 <div key={a.id} className="flex items-center justify-between border border-border rounded-md px-2 py-1.5">
                   <div className="text-xs min-w-0">
-                    <div className="font-medium truncate">{a.brinco || a.numero || "(sem brinco)"}</div>
+                    <div className="font-medium truncate">{a.brinco || a.numero || uiText("(sem brinco)")}</div>
                     <div className="text-muted-foreground truncate">{a.categoria ?? ""}</div>
                   </div>
                   <div className="flex gap-1 shrink-0">

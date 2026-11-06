@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,13 +38,13 @@ interface Props {
   onRegistrarConferencia: () => void;
 }
 
-const fmtDate = (iso: string | null) => {
+const fmtDate = (iso: string | null, locale: string) => {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return new Date(iso).toLocaleDateString(locale, { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
-const fmtDateTime = (iso: string) =>
-  new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+const fmtDateTime = (iso: string, locale: string) =>
+  new Date(iso).toLocaleString(locale, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 function StatusBadge({ status }: { status: string | null }) {
   if (status === "Ideal" || status === "IDEAL") return <Badge style={{ backgroundColor: "#43A047" }} className="text-white">🟢 Ideal</Badge>;
@@ -76,6 +77,8 @@ const histLabel: Record<HistoricoEvento["tipo"], string> = {
 };
 
 export default function ConferenciaResultado({ dados, onVoltar, onRegistrarConferencia }: Props) {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3">
@@ -96,33 +99,33 @@ export default function ConferenciaResultado({ dados, onVoltar, onRegistrarConfe
 
         <Card>
           <CardContent className="p-4">
-            <Linha icon={MapPin} label="Fazenda" value={dados.fazenda.nome} />
-            <Linha icon={MapPin} label="Retiro" value={dados.retiro.nome} />
-            <Linha icon={Beef} label="Animais" value={dados.num_animais} />
-            <Linha icon={Activity} label="Peso médio" value={dados.peso_medio_kg ? `${dados.peso_medio_kg} kg` : "—"} />
-            <Linha icon={Activity} label="Categoria" value={dados.categoria} />
-            <Linha icon={Activity} label="Sexo" value={dados.sexo} />
+            <Linha icon={MapPin} label={uiText("Fazenda")} value={dados.fazenda.nome} />
+            <Linha icon={MapPin} label={uiText("Retiro")} value={dados.retiro.nome} />
+            <Linha icon={Beef} label={uiText("Animais")} value={dados.num_animais} />
+            <Linha icon={Activity} label={uiText("Peso médio")} value={dados.peso_medio_kg ? `${dados.peso_medio_kg} kg` : "—"} />
+            <Linha icon={Activity} label={uiText("Categoria")} value={dados.categoria} />
+            <Linha icon={Activity} label={uiText("Sexo")} value={dados.sexo} />
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="p-4">
-            <Linha icon={Package} label="Produto mineral" value={dados.produto_nome} />
-            <Linha icon={Droplets} label="Consumo médio" value={dados.consumo_medio_g ? `${dados.consumo_medio_g} g/cab/dia` : "—"} />
-            <Linha icon={Calendar} label="Última salga" value={dados.ultima_salga_data ? `${fmtDate(dados.ultima_salga_data)}${dados.ultima_salga_sacos != null ? ` — ${dados.ultima_salga_sacos} sacos` : ""}` : "—"} />
-            <Linha icon={User} label="Responsável" value={dados.ultima_salga_responsavel} />
+            <Linha icon={Package} label={uiText("Produto mineral")} value={dados.produto_nome} />
+            <Linha icon={Droplets} label={uiText("Consumo médio")} value={dados.consumo_medio_g ? `${dados.consumo_medio_g} g/cab/dia` : "—"} />
+            <Linha icon={Calendar} label={uiText("Última salga")} value={dados.ultima_salga_data ? `${fmtDate(dados.ultima_salga_data, language)}${dados.ultima_salga_sacos != null ? ` — ${dados.ultima_salga_sacos} sacos` : ""}` : "—"} />
+            <Linha icon={User} label={uiText("Responsável")} value={dados.ultima_salga_responsavel} />
             <Linha
               icon={Calendar}
-              label="Dias desde última salga"
+              label={uiText("Dias desde última salga")}
               value={dados.dias_desde_salga !== null ? `${dados.dias_desde_salga} dias` : "—"}
             />
-            <Linha icon={Calendar} label="Última movimentação" value={fmtDate(dados.ultima_movimentacao_data)} />
+            <Linha icon={Calendar} label={uiText("Última movimentação")} value={fmtDate(dados.ultima_movimentacao_data, language)} />
             <Linha
               icon={Calendar}
-              label="Dias desde última movimentação"
+              label={uiText("Dias desde última movimentação")}
               value={dados.dias_desde_movimentacao !== null ? `${dados.dias_desde_movimentacao} dias` : "—"}
             />
-            <Linha icon={Activity} label="Eventos no mês" value={dados.eventos_mes} />
+            <Linha icon={Activity} label={uiText("Eventos no mês")} value={dados.eventos_mes} />
           </CardContent>
         </Card>
 
@@ -139,7 +142,7 @@ export default function ConferenciaResultado({ dados, onVoltar, onRegistrarConfe
                     <p className="text-xs font-semibold text-primary">{histLabel[h.tipo]}</p>
                     <p className="text-sm text-foreground truncate">{h.descricao}</p>
                   </div>
-                  <span className="text-xs text-muted-foreground shrink-0">{fmtDateTime(h.data)}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">{fmtDateTime(h.data, language)}</span>
                 </div>
               ))}
             </CardContent>

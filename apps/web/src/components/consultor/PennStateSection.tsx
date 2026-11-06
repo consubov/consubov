@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -62,7 +63,7 @@ const numOrNull = (v: string): number | null => {
   const n = parseFloat(s);
   return Number.isFinite(n) ? n : null;
 };
-const fmt = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+const fmtInLocale = (v: number, locale: string) => v.toLocaleString(locale, { maximumFractionDigits: 1 });
 
 interface Props {
   visitaId: string;
@@ -73,6 +74,9 @@ interface Props {
 }
 
 export default function PennStateSection({ visitaId, fazendaConsultorId, readOnly, numeroMap }: Props) {
+  const { language } = useTranslation();
+  const fmt = (v: number) => fmtInLocale(v, language);
+  const uiText = useStaticUiText();
   const [analises, setAnalises] = useState<Analise[]>([]);
   const [fotos, setFotos] = useState<Record<string, PennStateFoto[]>>({});
   const [dietas, setDietas] = useState<Dieta[]>([]);
@@ -170,8 +174,8 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
   }
 
   async function salvar() {
-    if (!nome.trim()) { toast.error("Informe o nome do ponto de coleta."); return; }
-    if (!temEntradas) { toast.error("Informe o peso da amostra."); return; }
+    if (!nome.trim()) { toast.error(uiText("Informe o nome do ponto de coleta.")); return; }
+    if (!temEntradas) { toast.error(uiText("Informe o peso da amostra.")); return; }
     setSalvando(true);
     try {
       await salvarPennStateAnalise({
@@ -187,12 +191,12 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
         fdn_percentual: fdnEfetivo,
         ordem: editing?.ordem ?? analises.length,
       });
-      toast.success(editing ? "Análise atualizada" : "Análise salva");
+      toast.success(uiText(editing ? "Análise atualizada" : "Análise salva"));
       setOpen(false);
       await load();
     } catch (err: any) {
       console.error("[pennstate] salvar", err);
-      toast.error("Erro ao salvar: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro ao salvar: ") + (err?.message || uiText("desconhecido")));
     } finally {
       setSalvando(false);
     }
@@ -204,11 +208,11 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
     try {
       await excluirPennStateAnalise(excluir.id);
       setExcluir(null);
-      toast.success("Análise excluída");
+      toast.success(uiText("Análise excluída"));
       await load();
     } catch (err) {
       console.error("[pennstate] excluir", err);
-      toast.error("Não foi possível excluir a análise.");
+      toast.error(uiText("Não foi possível excluir a análise."));
     } finally {
       setExcluindo(false);
     }
@@ -221,7 +225,7 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
           <LocalizedText source={"Análise Penn State ("} />{analises.length})
           <button
             type="button"
-            aria-label="Orientação de coleta"
+            aria-label={uiText("Orientação de coleta")}
             onClick={() => setAjudaOpen(true)}
             className="text-muted-foreground hover:text-primary"
           >
@@ -260,10 +264,10 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
                 </div>
                 {!readOnly && (
                   <div className="flex items-center gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Editar análise ${a.nome}`} onClick={() => abrirEdicao(a)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`${uiText("Editar análise")} ${a.nome}`} onClick={() => abrirEdicao(a)}>
                       <Pencil className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" aria-label={`Excluir análise ${a.nome}`} onClick={() => setExcluir(a)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" aria-label={`${uiText("Excluir análise")} ${a.nome}`} onClick={() => setExcluir(a)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -340,7 +344,7 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
           <div className="space-y-3">
             <div>
               <Label><LocalizedText source={"Nome"} /></Label>
-              <Input value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex.: Linha 1" />
+              <Input value={nome} onChange={e => setNome(e.target.value)} placeholder={uiText("Ex.: Linha 1")} />
               <div className="flex gap-1.5 flex-wrap mt-1.5">
                 {SUGESTOES.map(s => (
                   <button
@@ -368,7 +372,7 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
             <div>
               <Label><LocalizedText source={"Dieta (opcional)"} /></Label>
               <Select value={dietaId} onValueChange={setDietaId}>
-                <SelectTrigger><SelectValue placeholder="Sem dieta vinculada" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Sem dieta vinculada")} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="nenhuma"><LocalizedText source={"Sem dieta vinculada"} /></SelectItem>
                   {dietas.map(d => (
@@ -383,7 +387,7 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
             {dietaId === "nenhuma" && (
               <div>
                 <Label><LocalizedText source={"FDN (%) — opcional"} /></Label>
-                <Input inputMode="decimal" value={fdnManual} onChange={e => setFdnManual(e.target.value)} placeholder="Sem FDN, a análise segue sem peNDF" />
+                <Input inputMode="decimal" value={fdnManual} onChange={e => setFdnManual(e.target.value)} placeholder={uiText("Sem FDN, a análise segue sem peNDF")} />
               </div>
             )}
 
@@ -407,10 +411,10 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
               <Card className="p-3 space-y-1.5 bg-muted/40">
                 <div className="text-xs font-semibold text-muted-foreground"><LocalizedText source={"Resultado"} /></div>
                 <div className="grid grid-cols-4 gap-2">
-                  <ResCol label="Peneira 19mm" v={preview.percentual_19mm} />
-                  <ResCol label="Peneira 8mm" v={preview.percentual_8mm} />
-                  <ResCol label="Peneira 4mm" v={preview.percentual_4mm} />
-                  <ResCol label="Fundo (Bandeja)" v={preview.percentual_fundo} />
+                  <ResCol label={uiText("Peneira 19mm")} v={preview.percentual_19mm} />
+                  <ResCol label={uiText("Peneira 8mm")} v={preview.percentual_8mm} />
+                  <ResCol label={uiText("Peneira 4mm")} v={preview.percentual_4mm} />
+                  <ResCol label={uiText("Fundo (Bandeja)")} v={preview.percentual_fundo} />
                 </div>
                 <div className="text-[10px] text-muted-foreground">
                   <LocalizedText source={"Total calculado:"} />{" "}{fmt(
@@ -423,9 +427,9 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
                     fef
                     <button
                       type="button"
-                      aria-label="O que é fef"
-                      title="fef — material fisicamente efetivo: soma das frações retidas nas peneiras (4mm ou maior)."
-                      onClick={() => toast.info("fef — material fisicamente efetivo: soma das frações retidas nas peneiras (4mm ou maior).")}
+                      aria-label={uiText("O que é fef")}
+                      title={uiText("fef — material fisicamente efetivo: soma das frações retidas nas peneiras (4mm ou maior).")}
+                      onClick={() => toast.info(uiText("fef — material fisicamente efetivo: soma das frações retidas nas peneiras (4mm ou maior)."))}
                       className="text-muted-foreground hover:text-primary"
                     >
                       <HelpCircle className="w-3 h-3" />
@@ -477,10 +481,11 @@ export default function PennStateSection({ visitaId, fazendaConsultorId, readOnl
 }
 
 function ResCol({ label, v }: { label: string; v: number }) {
+  const { language } = useTranslation();
   return (
     <div className="text-center">
       <div className="text-[10px] text-muted-foreground leading-tight">{label}</div>
-      <div className="text-sm font-semibold text-foreground">{fmt(v)}%</div>
+      <div className="text-sm font-semibold text-foreground">{fmtInLocale(v, language)}%</div>
     </div>
   );
 }

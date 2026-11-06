@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -116,6 +117,7 @@ function destinoLabel(t: { fazenda_destino_id: string | null; retiro_destino_id:
 
 /* ============================ NOVA ============================ */
 function NovaSection({ fabricaId }: { fabricaId: string }) {
+  const uiText = useStaticUiText();
   const { user } = useAuth();
   const { destinos, fazendas, retiros } = useDestinos(fabricaId);
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -163,11 +165,11 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
   }
 
   async function confirmar() {
-    if (!produtoId) return toast.error("Selecione um produto");
-    if (!destinoKey) return toast.error("Selecione um destino");
+    if (!produtoId) return toast.error(uiText("Selecione um produto"));
+    if (!destinoKey) return toast.error(uiText("Selecione um destino"));
     const q = parseFloat(qtd);
-    if (!q || q <= 0) return toast.error("Quantidade inválida");
-    if (q > sacosDisp) return toast.error(`Estoque insuficiente (disponível: ${sacosDisp} sc)`);
+    if (!q || q <= 0) return toast.error(uiText("Quantidade inválida"));
+    if (q > sacosDisp) return toast.error(`${uiText("Estoque insuficiente (disponível: ")}${sacosDisp} sc)`);
 
     setSaving(true);
     try {
@@ -206,12 +208,12 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
       // Notificação in-app + push são disparados pelo trigger
       // trg_notificar_transferencia_fabrica no banco (mesmo padrão de observações de pasto).
 
-      toast.success("Transferência registrada e notificações enviadas");
+      toast.success(uiText("Transferência registrada e notificações enviadas"));
       reset();
       setOpen(false);
       load();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setSaving(false); }
   }
 
@@ -257,7 +259,7 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
             <div>
               <Label><LocalizedText source={"Produto *"} /></Label>
               <Select value={produtoId} onValueChange={setFormulaId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione")} /></SelectTrigger>
                 <SelectContent>
                   {produtos.filter(f => Number(estoqueMap[f.id]?.quantidade_sacos || 0) > 0).length === 0 ? (
                     <div className="p-2 text-sm text-muted-foreground"><LocalizedText source={"Nenhum produto disponível para transferência"} /></div>
@@ -282,7 +284,7 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
             <div>
               <Label><LocalizedText source={"Destino *"} /></Label>
               <Select value={destinoKey} onValueChange={setDestinoKey}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione")} /></SelectTrigger>
                 <SelectContent>
                   {destinos.length === 0 && <div className="p-2 text-xs text-muted-foreground"><LocalizedText source={"Nenhum destino vinculado"} /></div>}
                   {destinos.map(d => {
@@ -328,7 +330,7 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
               <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFile} className="hidden" />
               {foto ? (
                 <div className="relative">
-                  <img src={foto} alt="foto" className="w-full rounded border" />
+                  <img src={foto} alt={uiText("Foto")} className="w-full rounded border" />
                   <Button type="button" size="icon" variant="destructive" className="absolute top-2 right-2 h-7 w-7" onClick={() => setFoto(null)}>
                     <X className="w-3 h-3" />
                   </Button>
@@ -352,6 +354,8 @@ function NovaSection({ fabricaId }: { fabricaId: string }) {
 
 /* ============================ TRÂNSITO / RECEBIMENTO ============================ */
 function TransitoSection({ fabricaId }: { fabricaId: string }) {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const { user, roleData } = useAuth();
   const podeReceber = roleData.role !== "operador_fabrica";
   const { fazendas, retiros } = useDestinos(fabricaId);
@@ -414,7 +418,7 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
         .update({ status: "em_recebimento" })
         .eq("id", t.id).eq("status", "em_transito")
         .select().maybeSingle();
-      if (error) { toast.error("Erro: " + error.message); return; }
+      if (error) { toast.error(uiText("Erro: ") + error.message); return; }
       if (!upd) {
         // outro assumiu
         setBloqueado(true);
@@ -459,7 +463,7 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
   async function confirmarRecebimento() {
     if (!detalhe || !recebimento) return;
     const q = parseFloat(qtdReceb);
-    if (!q || q <= 0) return toast.error("Quantidade recebida inválida");
+    if (!q || q <= 0) return toast.error(uiText("Quantidade recebida inválida"));
 
     setSaving(true);
     try {
@@ -510,13 +514,13 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
       if (ids.length) await supabase.from("notificacoes").delete().in("id", ids);
 
       const alerta = Math.abs(divergPct) > 5
-        ? ` (divergência ${divergPct >= 0 ? "-" : "+"}${Math.abs(divergPct).toFixed(1)}%)`
+        ? `${uiText(" (divergência ")}${divergPct >= 0 ? "-" : "+"}${Math.abs(divergPct).toFixed(1)}%)`
         : "";
-      toast.success("Recebimento concluído" + alerta);
+      toast.success(uiText("Recebimento concluído") + alerta);
       fecharDetalhe();
       load();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setSaving(false); }
   }
 
@@ -539,12 +543,12 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
                   <MapPin className="w-3 h-3" /> {destinoLabel(t, fazendas, retiros)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {t.quantidade_sacos} sc • {Number(t.quantidade_kg).toFixed(1)} kg • {t.criado_em ? new Date(t.criado_em).toLocaleString("pt-BR") : ""}
+                  {t.quantidade_sacos} sc • {Number(t.quantidade_kg).toFixed(1)} kg • {t.criado_em ? new Date(t.criado_em).toLocaleString(language) : ""}
                 </p>
               </div>
             </div>
             <Badge variant={t.status === "em_recebimento" ? "default" : "secondary"}>
-              {t.status === "em_recebimento" ? "Em recebimento" : "Em trânsito"}
+              {uiText(t.status === "em_recebimento" ? "Em recebimento" : "Em trânsito")}
             </Badge>
           </CardContent>
         </Card>
@@ -563,15 +567,15 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
               <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
               <div>
                 {!podeReceber
-                  ? "Apenas usuários da fazenda de destino (gerente, capataz ou administrador) podem confirmar o recebimento."
-                  : "Recebimento em andamento por outro responsável."}
+                  ? uiText("Apenas usuários da fazenda de destino (gerente, capataz ou administrador) podem confirmar o recebimento.")
+                  : uiText("Recebimento em andamento por outro responsável.")}
               </div>
             </div>
           ) : detalhe && (
             <div className="space-y-3">
               <div className="rounded border p-3 text-sm bg-muted/30 space-y-1">
                 <div><span className="text-muted-foreground"><LocalizedText source={"Enviado:"} /></span> <strong>{detalhe.quantidade_sacos} <LocalizedText source={"sacos"} /></strong> ({Number(detalhe.quantidade_kg).toFixed(1)} kg)</div>
-                <div><span className="text-muted-foreground"><LocalizedText source={"Data envio:"} /></span> {detalhe.criado_em ? new Date(detalhe.criado_em).toLocaleString("pt-BR") : "—"}</div>
+                <div><span className="text-muted-foreground"><LocalizedText source={"Data envio:"} /></span> {detalhe.criado_em ? new Date(detalhe.criado_em).toLocaleString(language) : "—"}</div>
                 {detalhe.observacao && <div><span className="text-muted-foreground"><LocalizedText source={"Obs. envio:"} /></span> {detalhe.observacao}</div>}
               </div>
               <div>
@@ -599,7 +603,7 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
                 <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFile} className="hidden" />
                 {fotoReceb ? (
                   <div className="relative">
-                    <img src={fotoReceb} alt="foto" className="w-full rounded border" />
+                    <img src={fotoReceb} alt={uiText("Foto")} className="w-full rounded border" />
                     <Button type="button" size="icon" variant="destructive" className="absolute top-2 right-2 h-7 w-7" onClick={() => setFotoReceb(null)}>
                       <X className="w-3 h-3" />
                     </Button>
@@ -627,6 +631,8 @@ function TransitoSection({ fabricaId }: { fabricaId: string }) {
 
 /* ============================ HISTÓRICO ============================ */
 function HistoricoSection({ fabricaId }: { fabricaId: string }) {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const { fazendas, retiros } = useDestinos(fabricaId);
   const [transferencias, setTransferencias] = useState<Transferencia[]>([]);
   const [produtos, setProdutos] = useState<Record<string, Produto>>({});
@@ -678,12 +684,12 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
               <TableHeader><TableRow>
                 <TableHead><LocalizedText source={"Data"} /></TableHead><TableHead><LocalizedText source={"Produto"} /></TableHead>
                 <TableHead><LocalizedText source={"Destino"} /></TableHead><TableHead className="text-right"><LocalizedText source={"Sacos"} /></TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead><LocalizedText source={"Status"} /></TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {transferencias.map(t => (
                   <TableRow key={t.id} className="cursor-pointer" onClick={() => abrir(t)}>
-                    <TableCell className="text-xs">{t.criado_em ? new Date(t.criado_em).toLocaleDateString("pt-BR") : "—"}</TableCell>
+                    <TableCell className="text-xs">{t.criado_em ? new Date(t.criado_em).toLocaleDateString(language) : "—"}</TableCell>
                     <TableCell className="text-sm">{produtos[t.produto_id]?.nome || "—"}</TableCell>
                     <TableCell className="text-xs">{destinoLabel(t, fazendas, retiros)}</TableCell>
                     <TableCell className="text-right">{t.quantidade_sacos}</TableCell>
@@ -703,10 +709,10 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-2">
                 <div><span className="text-muted-foreground"><LocalizedText source={"Produto:"} /></span> {produtos[detalhe.produto_id]?.nome || "—"}</div>
-                <div><span className="text-muted-foreground">Status:</span> {statusBadge(detalhe.status)}</div>
+                <div><span className="text-muted-foreground"><LocalizedText source={"Status:"} /></span> {statusBadge(detalhe.status)}</div>
                 <div><span className="text-muted-foreground"><LocalizedText source={"Destino:"} /></span> {destinoLabel(detalhe, fazendas, retiros)}</div>
                 <div><span className="text-muted-foreground"><LocalizedText source={"Enviado:"} /></span> {detalhe.quantidade_sacos} sc / {Number(detalhe.quantidade_kg).toFixed(1)} kg</div>
-                <div><span className="text-muted-foreground"><LocalizedText source={"Enviado em:"} /></span> {detalhe.criado_em ? new Date(detalhe.criado_em).toLocaleString("pt-BR") : "—"}</div>
+                <div><span className="text-muted-foreground"><LocalizedText source={"Enviado em:"} /></span> {detalhe.criado_em ? new Date(detalhe.criado_em).toLocaleString(language) : "—"}</div>
                 {recebimento?.data_recebimento && <div><span className="text-muted-foreground"><LocalizedText source={"Recebido em:"} /></span> {recebimento.data_recebimento} {recebimento.hora_recebimento || ""}</div>}
               </div>
               {detalhe.observacao && <div className="p-2 rounded border bg-muted/30"><span className="text-muted-foreground"><LocalizedText source={"Obs. envio:"} /></span> {detalhe.observacao}</div>}
@@ -721,13 +727,13 @@ function HistoricoSection({ fabricaId }: { fabricaId: string }) {
                 {detalhe.foto_url && (
                   <div>
                     <p className="text-xs text-muted-foreground mb-1"><LocalizedText source={"Foto envio"} /></p>
-                    <img src={detalhe.foto_url} alt="envio" className="w-full rounded border" />
+                    <img src={detalhe.foto_url} alt={uiText("Foto envio")} className="w-full rounded border" />
                   </div>
                 )}
                 {recebimento?.foto_url && (
                   <div>
                     <p className="text-xs text-muted-foreground mb-1"><LocalizedText source={"Foto recebimento"} /></p>
-                    <img src={recebimento.foto_url} alt="recebimento" className="w-full rounded border" />
+                    <img src={recebimento.foto_url} alt={uiText("Foto recebimento")} className="w-full rounded border" />
                   </div>
                 )}
               </div>

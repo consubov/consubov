@@ -1,5 +1,6 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
-import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import { toast } from "sonner";
 import { sendPush } from "@/lib/pushService";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { resolverMotivoManual, motivoManualValido, MOTIVO_MANUAL_MIN } from "./manualMotivos";
 import { ptBR } from "date-fns/locale";
 
 interface PastoLite {
@@ -45,14 +47,19 @@ interface Props {
 
 type PastoEntry = { sacos: string; data: Date; cocho: boolean; motivo: string };
 
-const MOTIVO_MIN = 5;
+const MOTIVO_MIN = MOTIVO_MANUAL_MIN;
 
 export default function LancamentoManualModal({ open, onOpenChange, pastos, retiroId, fazendaId }: Props) {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const { user } = useAuth();
   const nomeCapataz = useNomeUsuario(["capatazes"], "Capataz");
   const [tab, setTab] = useState<"novo" | "historico">("novo");
   const [dataGeral, setDataGeral] = useState<Date>(() => new Date());
   const [entries, setEntries] = useState<Record<string, PastoEntry>>({});
+  const [motivoGeral, setMotivoGeral] = useState("");
+  const [tentouEnviar, setTentouEnviar] = useState(false);
+  const motivoGeralRef = useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [historico, setHistorico] = useState<SolicitacaoRow[]>([]);
   const [loadingHist, setLoadingHist] = useState(false);
@@ -71,6 +78,8 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
     const today = new Date();
     setDataGeral(today);
     setEntries({});
+    setMotivoGeral("");
+    setTentouEnviar(false);
     setTab("novo");
     void loadHistorico();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -152,17 +161,24 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
 
   const handleSubmit = async () => {
     if (!user?.id) return;
+    setTentouEnviar(true);
     const filled = Object.entries(entries)
-      .map(([pid, e]) => ({ pid, cocho: e.cocho, sacos: e.cocho ? 0 : parseInt(e.sacos, 10), data: e.data, motivo: e.motivo.trim() }))
+      .map(([pid, e]) => ({ pid, cocho: e.cocho, sacos: e.cocho ? 0 : parseInt(e.sacos, 10), data: e.data, motivo: resolverMotivoManual(e.motivo, motivoGeral) }))
       .filter((e) => e.cocho || (Number.isFinite(e.sacos) && e.sacos > 0));
 
     if (filled.length === 0) {
-      toast.error("Preencha os sacos ou marque \"Cocho cheio\" em pelo menos um pasto");
+      toast.error(uiText("Preencha os sacos ou marque \"Cocho cheio\" em pelo menos um pasto"));
       return;
     }
     const semMotivo = filled.find((e) => e.motivo.length < MOTIVO_MIN);
     if (semMotivo) {
-      toast.error(`Informe o motivo do lançamento manual (mín. ${MOTIVO_MIN} caracteres) em ${pastoMap.get(semMotivo.pid)?.nome ?? "pasto"}`);
+      const motivoEspecifico = entries[semMotivo.pid]?.motivo.trim();
+      if (motivoEspecifico) {
+        document.getElementById(`motivo-pasto-${semMotivo.pid}`)?.focus();
+      } else {
+        motivoGeralRef.current?.focus();
+      }
+      toast.error(`${uiText("Informe o motivo do lançamento manual (mín. ")}${MOTIVO_MIN}${uiText(" caracteres) em ")}${pastoMap.get(semMotivo.pid)?.nome ?? uiText("pasto")}`);
       return;
     }
 
@@ -204,7 +220,7 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
         throw itErr;
       }
 
-      toast.success(`Solicitação enviada (${filled.length} pasto${filled.length > 1 ? "s" : ""})`);
+      toast.success(`${uiText("Solicitação enviada (")}${filled.length} ${uiText(filled.length === 1 ? "pasto" : "pastos")})`);
       void sendPush(
         "📝 Lançamento Manual pendente",
         capatazNome,
@@ -212,13 +228,15 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
         { fazendaId },
       );
       setEntries({});
+      setMotivoGeral("");
+      setTentouEnviar(false);
       setTab("historico");
       void loadHistorico();
     } catch (e: any) {
       console.error("[LancManual] submit", e);
       const msg: string = e?.message || "";
       const isNetwork = e?.name === "TypeError" || /failed to fetch|network|networkerror|fetch failed|load failed/i.test(msg);
-      toast.error(isNetwork ? "Sem internet — verifique a conexão e tente de novo" : (msg || "Falha ao enviar solicitação"));
+      toast.error(isNetwork ? uiText("Sem internet — verifique a conexão e tente de novo") : (msg || uiText("Falha ao enviar solicitação")));
     } finally {
       setSubmitting(false);
     }
@@ -236,6 +254,9 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
 
   const totalPreenchido = Object.values(entries).reduce((s, e) => s + (e.cocho ? 0 : parseInt(e.sacos, 10) || 0), 0);
   const countPreenchido = Object.values(entries).filter((e) => e.cocho || parseInt(e.sacos, 10) > 0).length;
+  const temPastoSemMotivo = Object.values(entries).some(
+    (e) => (e.cocho || parseInt(e.sacos, 10) > 0) && !motivoManualValido(e.motivo, motivoGeral),
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -268,7 +289,31 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
             <LocalizedText source={"Histórico"} /></button>
         </div>
 
-        <div className="flex-1 overflow-auto px-4 py-3">
+        {tab === "novo" && (
+          <div data-testid="motivo-geral-fixo" className="shrink-0 border-b bg-background px-4 py-2 space-y-1">
+            <Label htmlFor="motivo-geral-manual" className="text-xs font-semibold">
+              <LocalizedText source="Motivo geral do lançamento manual" />
+            </Label>
+            <Input
+              id="motivo-geral-manual"
+              ref={motivoGeralRef}
+              value={motivoGeral}
+              onChange={(e) => setMotivoGeral(e.target.value)}
+              placeholder="Ex.: Celular sem bateria, QR danificado"
+              className="h-9 text-sm"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              <LocalizedText source="Aplicado a todos os pastos preenchidos, exceto os que tiverem motivo específico." />
+            </p>
+            {tentouEnviar && temPastoSemMotivo && (
+              <p role="alert" className="text-[11px] text-destructive">
+                <LocalizedText source="Informe um motivo válido para os pastos selecionados (mín. 5 caracteres)." />
+              </p>
+            )}
+          </div>
+        )}
+
+        <div data-testid="pastos-scroll" className="flex-1 min-h-0 overflow-auto px-4 py-3">
           {tab === "novo" && (
             <div className="space-y-3">
               {/* Data geral */}
@@ -317,10 +362,11 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
                           </div>
                           <div className="flex items-center gap-2">
                             <Input
+                              aria-label={`Quantidade de sacos de ${p.nome}`}
                               type="number"
                               min="0"
                               inputMode="numeric"
-                              placeholder="Sacos"
+                              placeholder={uiText("Sacos")}
                               value={entry?.cocho ? "0" : entry?.sacos ?? ""}
                               onChange={(e) => updateSacos(p.id, e.target.value)}
                               disabled={!!entry?.cocho}
@@ -372,15 +418,21 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
                           </div>
                           {entry && (
                             <div className="space-y-1">
-                              <Label className="text-[11px]"><LocalizedText source={"Motivo do lançamento manual *"} /></Label>
+                              <Label className="text-[11px]"><LocalizedText source={"Motivo específico (opcional com motivo geral)"} /></Label>
                               <Input
+                                id={`motivo-pasto-${p.id}`}
+                                aria-label={`Motivo específico de ${p.nome}`}
                                 value={entry.motivo}
                                 onChange={(e) => patchEntry(p.id, { motivo: e.target.value })}
-                                placeholder="Ex.: Celular sem bateria, QR danificado"
+                                placeholder={uiText("Ex.: Celular sem bateria, QR danificado")}
                                 className="h-9 text-sm"
                               />
-                              {entry.motivo.trim().length < MOTIVO_MIN && (
-                                <p className="text-[10px] text-destructive"><LocalizedText source={"Obrigatório (mín."} />{" "}{MOTIVO_MIN} <LocalizedText source={"caracteres)"} /></p>
+                              {tentouEnviar && entry.motivo.trim().length > 0
+                                && entry.motivo.trim().length < MOTIVO_MIN
+                                && (entry.cocho || parseInt(entry.sacos, 10) > 0) && (
+                                <p role="alert" className="text-[10px] text-destructive">
+                                  <LocalizedText source="Motivo específico precisa de pelo menos 5 caracteres." />
+                                </p>
                               )}
                             </div>
                           )}
@@ -406,7 +458,7 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
                 <p className="text-sm text-muted-foreground text-center py-8"><LocalizedText source={"Nenhuma solicitação ainda."} /></p>
               ) : (
                 historico.map((s) => {
-                  const dataGer = new Date(s.data_salga_geral).toLocaleDateString("pt-BR");
+                  const dataGer = new Date(s.data_salga_geral).toLocaleDateString(language);
                   return (
                     <Card key={s.id}>
                       <CardContent className="p-3 space-y-2">
@@ -421,7 +473,7 @@ export default function LancamentoManualModal({ open, onOpenChange, pastos, reti
                         <div className="space-y-0.5 pl-2 border-l-2 border-muted">
                           {s.itens.map((it) => {
                             const pasto = pastoMap.get(it.pasto_id);
-                            const dItem = new Date(it.data_salga).toLocaleDateString("pt-BR");
+                            const dItem = new Date(it.data_salga).toLocaleDateString(language);
                             return (
                               <p key={it.id} className="text-[11px] text-muted-foreground">
                                 <span className="text-foreground font-medium">{pasto?.nome ?? "Pasto"}</span>

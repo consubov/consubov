@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Save, Camera } from "lucide-react";
 import { salvarAuditoriaFazenda, resolverAuditoria, descreverAuditoria, retiroTemConfigPropria } from "@/lib/auditoriaConfig";
 
 export default function AuditoriaConfigPage() {
+  const uiText = useStaticUiText();
   const [fazendas, setFazendas] = useState<{ id: string; nome: string; auditoria_fotos_por_bloco: number }[]>([]);
   const [selectedFazendaId, setSelectedFazendaId] = useState("");
   const [fotosPorBloco, setFotosPorBloco] = useState(3);
@@ -77,9 +78,9 @@ export default function AuditoriaConfigPage() {
     const { error } = await salvarAuditoriaFazenda(selectedFazendaId, { auditoria_fotos_por_bloco: fotosPorBloco });
 
     if (error) {
-      toast.error("Erro ao salvar configuração");
+      toast.error(uiText("Erro ao salvar configuração"));
     } else {
-      toast.success("Configuração salva com sucesso");
+      toast.success(uiText("Configuração salva com sucesso"));
       setFazendas(prev => prev.map(f => f.id === selectedFazendaId ? { ...f, auditoria_fotos_por_bloco: fotosPorBloco } : f));
     }
     setSaving(false);
@@ -108,7 +109,7 @@ export default function AuditoriaConfigPage() {
             <label className="text-sm font-medium text-foreground mb-1 block"><LocalizedText source={"Fazenda"} /></label>
             <Select value={selectedFazendaId} onValueChange={setSelectedFazendaId}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione a fazenda" />
+                <SelectValue placeholder={uiText("Selecione a fazenda")} />
               </SelectTrigger>
               <SelectContent>
                 {fazendas.map(f => (

@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { dataEscolhidaParaIso, diasEntrePesagens, escolherPesoAnterior } from "@/lib/pecuaristaData";
@@ -86,6 +87,8 @@ type PrevInfo = {
 };
 
 export default function PecuaristaApartacaoPage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const { fazendaId, loteId } = useParams<{ fazendaId: string; loteId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -183,12 +186,12 @@ export default function PecuaristaApartacaoPage() {
     const ranges: Array<{ min: number | null; max: number | null }> = [];
     for (let i = 0; i < qtd; i++) {
       const c = confs[i];
-      if (c.modo === "novo" && !c.nome.trim()) return toast.error(`Destino ${i + 1}: informe o nome do novo lote.`);
-      if (c.modo === "novo" && c.criandoNova && !c.novaCategoria.trim()) return toast.error(`Destino ${i + 1}: informe o nome da nova categoria.`);
-      if (c.modo === "novo" && !c.criandoNova && c.categoriaSlug === "customizada" && !c.categoriaCustomId) return toast.error(`Destino ${i + 1}: selecione a categoria personalizada.`);
-      if (c.modo === "existente" && !c.loteExistenteId) return toast.error(`Destino ${i + 1}: selecione um lote existente.`);
+      if (c.modo === "novo" && !c.nome.trim()) return toast.error(`${uiText("Destino")} ${i + 1}: ${uiText("informe o nome do novo lote.")}`);
+      if (c.modo === "novo" && c.criandoNova && !c.novaCategoria.trim()) return toast.error(`${uiText("Destino")} ${i + 1}: ${uiText("informe o nome da nova categoria.")}`);
+      if (c.modo === "novo" && !c.criandoNova && c.categoriaSlug === "customizada" && !c.categoriaCustomId) return toast.error(`${uiText("Destino")} ${i + 1}: ${uiText("selecione a categoria personalizada.")}`);
+      if (c.modo === "existente" && !c.loteExistenteId) return toast.error(`${uiText("Destino")} ${i + 1}: ${uiText("selecione um lote existente.")}`);
       const r = parseRange(c.pesoMin, c.pesoMax);
-      if ("error" in r) return toast.error(`Destino ${i + 1}: ${r.error}.`);
+      if ("error" in r) return toast.error(`${uiText("Destino")} ${i + 1}: ${uiText(r.error)}.`);
       ranges.push(r);
     }
     // Validate no overlap between ranges (only among destinos that defined at least one bound)
@@ -197,7 +200,7 @@ export default function PecuaristaApartacaoPage() {
         const a = ranges[i], b = ranges[j];
         if (a.min == null && a.max == null) continue;
         if (b.min == null && b.max == null) continue;
-        if (rangesOverlap(a, b)) return toast.error(`As faixas de peso dos destinos ${i + 1} e ${j + 1} se sobrepõem.`);
+        if (rangesOverlap(a, b)) return toast.error(`${uiText("As faixas de peso dos destinos")} ${i + 1} ${uiText("e")} ${j + 1} ${uiText("se sobrepõem.")}`);
       }
     }
     setPreparando(true);
@@ -280,7 +283,7 @@ export default function PecuaristaApartacaoPage() {
       setPhase("weighing");
       setStep(lote.identificado ? "numero" : "peso");
     } catch (e: any) {
-      toast.error("Erro: " + (e?.message ?? "desconhecido"));
+      toast.error(uiText("Erro: ") + (e?.message ?? uiText("desconhecido")));
     } finally {
       setPreparando(false);
     }
@@ -392,7 +395,7 @@ export default function PecuaristaApartacaoPage() {
 
   async function finalizar() {
     if (!lote || !apartacaoId) return;
-    if (total === 0) return toast.error("Nenhum animal pesado.");
+    if (total === 0) return toast.error(uiText("Nenhum animal pesado."));
     setFinalizando(true);
     try {
       const dataFim = new Date().toISOString();
@@ -497,6 +500,7 @@ export default function PecuaristaApartacaoPage() {
       }
 
       const blob = await gerarPecuaristaApartacaoPdf({
+        language,
         header: {
           produtor: (pc as any)?.nome ?? "",
           nomeEmpresa: null, logoUrl: (fz as any)?.logo_url ?? null,
@@ -529,7 +533,7 @@ export default function PecuaristaApartacaoPage() {
             .eq("id", apartacaoId);
         }
       } catch { /* segue mesmo sem PDF */ }
-      toast.success("Apartação finalizada!");
+      toast.success(uiText("Apartação finalizada!"));
       navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}/apartacao/${apartacaoId}/resumo`, {
         state: {
           pdfUrl: pdfUrl ?? undefined,
@@ -541,7 +545,7 @@ export default function PecuaristaApartacaoPage() {
         },
       });
     } catch (e: any) {
-      toast.error("Erro: " + (e?.message ?? ""));
+      toast.error(uiText("Erro: ") + (e?.message ?? ""));
     } finally {
       setFinalizando(false);
     }
@@ -562,9 +566,9 @@ export default function PecuaristaApartacaoPage() {
           <div className="text-xs uppercase text-muted-foreground"><LocalizedText source={"Lote de origem"} /></div>
           <div className="font-semibold flex items-center gap-2 flex-wrap">
             {lote.nome_lote} <Badge variant="outline" className="font-mono">#{lote.codigo}</Badge>
-            <Badge variant="outline">{lote.identificado ? "Identificado" : "Sem identificação"}</Badge>
+            <Badge variant="outline">{uiText(lote.identificado ? "Identificado" : "Sem identificação")}</Badge>
           </div>
-          <div className="text-sm text-muted-foreground"><LocalizedText source={"Data da pesagem:"} />{" "}<strong>{new Date(dataPesagem).toLocaleDateString("pt-BR")}</strong></div>
+          <div className="text-sm text-muted-foreground"><LocalizedText source={"Data da pesagem:"} />{" "}<strong>{new Date(dataPesagem).toLocaleDateString(language)}</strong></div>
         </Card>
 
         <Card className="p-4 space-y-2">
@@ -606,7 +610,7 @@ export default function PecuaristaApartacaoPage() {
                       <button key={cp.slug} type="button"
                         onClick={() => setConfs(prev => { const n = [...prev]; const cur = n[i] as any; cur.categoriaSlug = cp.slug; cur.categoriaCustomId = ""; cur.criandoNova = false; return n; })}
                         className={`px-3 py-1.5 rounded-full text-xs border ${!(c as any).criandoNova && (c as any).categoriaSlug === cp.slug ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"}`}>
-                        {cp.label}
+                        {uiText(cp.label)}
                       </button>
                     ))}
                     {customCats.map(cc => (
@@ -622,12 +626,12 @@ export default function PecuaristaApartacaoPage() {
                       <LocalizedText source={"+ Nova categoria"} /></button>
                   </div>
                   {(c as any).criandoNova && (
-                    <Input className="mt-2" placeholder="Nome da nova categoria"
+                    <Input className="mt-2" placeholder={uiText("Nome da nova categoria")}
                       value={(c as any).novaCategoria}
                       onChange={e => setConfs(prev => { const n = [...prev]; (n[i] as any).novaCategoria = e.target.value; return n; })} />
                   )}
                 </div>
-                <div className="text-xs text-muted-foreground"><LocalizedText source={"Novo lote será criado como"} />{" "}<strong>{lote.identificado ? "Identificado" : "Sem identificação"}</strong> <LocalizedText source={"(mesmo do origem)."} /></div>
+                <div className="text-xs text-muted-foreground"><LocalizedText source={"Novo lote será criado como"} />{" "}<strong>{uiText(lote.identificado ? "Identificado" : "Sem identificação")}</strong> <LocalizedText source={"(mesmo do origem)."} /></div>
               </>
             ) : (
               <div>
@@ -641,7 +645,7 @@ export default function PecuaristaApartacaoPage() {
                   ))}
                 </select>
                 {lotesFazenda.length === 0 && (
-                  <div className="text-xs text-muted-foreground mt-1"><LocalizedText source={"Nenhum outro lote"} />{" "}{lote.identificado ? "identificado" : "sem identificação"} <LocalizedText source={"ativo nesta fazenda."} /></div>
+                  <div className="text-xs text-muted-foreground mt-1"><LocalizedText source={"Nenhum outro lote"} />{" "}{uiText(lote.identificado ? "identificado" : "sem identificação")} <LocalizedText source={"ativo nesta fazenda."} /></div>
                 )}
               </div>
             )}
@@ -651,13 +655,13 @@ export default function PecuaristaApartacaoPage() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label className="text-xs text-muted-foreground"><LocalizedText source={"Peso mínimo"} /></Label>
-                  <Input type="number" inputMode="decimal" placeholder="ex: 401"
+                  <Input type="number" inputMode="decimal" placeholder={uiText("ex: 401")}
                     value={(c as any).pesoMin}
                     onChange={e => setConfs(prev => { const n = [...prev]; (n[i] as any).pesoMin = e.target.value; return n; })} />
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground"><LocalizedText source={"Peso máximo"} /></Label>
-                  <Input type="number" inputMode="decimal" placeholder="ex: 500"
+                  <Input type="number" inputMode="decimal" placeholder={uiText("ex: 500")}
                     value={(c as any).pesoMax}
                     onChange={e => setConfs(prev => { const n = [...prev]; (n[i] as any).pesoMax = e.target.value; return n; })} />
                 </div>
@@ -712,7 +716,7 @@ export default function PecuaristaApartacaoPage() {
         <div className="text-xs uppercase text-muted-foreground"><LocalizedText source={"Apartação — origem"} /></div>
         <div className="font-semibold flex items-center gap-2 flex-wrap">
           {lote.nome_lote}
-          <Badge variant="outline">{lote.identificado ? "Identificado" : "Sem identificação"}</Badge>
+          <Badge variant="outline">{uiText(lote.identificado ? "Identificado" : "Sem identificação")}</Badge>
         </div>
       </Card>
 
@@ -731,15 +735,15 @@ export default function PecuaristaApartacaoPage() {
             <>
               <div className="text-sm font-medium">
                 {step === "numero"
-                  ? `Animal ${animalNum} — Número`
-                  : `Animal ${animalNum} — Peso — Nº ${prev?.numero}`}
+                  ? `${uiText("Animal ")}${animalNum} — ${uiText("Número")}`
+                  : `${uiText("Animal ")}${animalNum} — ${uiText("Peso")} — ${uiText("Nº")} ${prev?.numero}`}
               </div>
               {step === "peso" && prev?.peso_anterior_kg != null && (
                 <Card className="p-3 bg-muted/50 text-sm">
                   <div><strong><LocalizedText source={"Pesagem anterior:"} /></strong></div>
                   <div><LocalizedText source={"Peso:"} />{" "}{prev.peso_anterior_kg.toFixed(1)} kg</div>
                   {prev.lote_anterior && <div><LocalizedText source={"Lote:"} />{" "}{prev.lote_anterior}</div>}
-                  {prev.data_anterior && <div><LocalizedText source={"Data:"} />{" "}{new Date(prev.data_anterior).toLocaleString("pt-BR")}</div>}
+                  {prev.data_anterior && <div><LocalizedText source={"Data:"} />{" "}{new Date(prev.data_anterior).toLocaleString(language)}</div>}
                 </Card>
               )}
               <Input
@@ -747,7 +751,7 @@ export default function PecuaristaApartacaoPage() {
                 ref={inputRef}
                 type={step === "numero" ? "text" : "number"}
                 inputMode={step === "numero" ? "numeric" : "decimal"}
-                placeholder={step === "numero" ? "Número do animal" : "Peso (kg)"}
+                placeholder={uiText(step === "numero" ? "Número do animal" : "Peso (kg)")}
                 value={step === "numero" ? numeroAtual : pesoAtual}
                 onChange={(e) => (step === "numero" ? setNumeroAtual(e.target.value) : setPesoAtual(e.target.value))}
                 onKeyDown={(e) => {
@@ -780,7 +784,7 @@ export default function PecuaristaApartacaoPage() {
                 ) : (
                   <Scale className="w-4 h-4 mr-2" />
                 )}
-                {step === "numero" ? "Continuar" : "Escolher destino ➜"}
+                {uiText(step === "numero" ? "Continuar" : "Escolher destino ➜")}
               </Button>
             </>
           )}
@@ -790,7 +794,7 @@ export default function PecuaristaApartacaoPage() {
             const sugerido = destinoParaPeso(destinos, peso);
             return (
               <>
-                <div className="text-sm font-medium">Animal {animalNum} <LocalizedText source={"— Destino"} /></div>
+                <div className="text-sm font-medium">{uiText("Animal ")}{animalNum} <LocalizedText source={"— Destino"} /></div>
                 <div className="text-xs text-muted-foreground"><LocalizedText source={"Nº"} />{" "}{prev?.numero} · {peso.toFixed(1)} kg</div>
                 {sugerido ? (
                   <Button className="w-full h-16 text-base bg-primary hover:bg-primary/90"
@@ -803,7 +807,7 @@ export default function PecuaristaApartacaoPage() {
                   <div className="text-xs text-amber-600"><LocalizedText source={"Peso não se encaixa em nenhuma faixa — escolha manualmente:"} /></div>
                 )}
                 <div className="text-xs text-muted-foreground text-center">
-                  {sugerido ? "ou trocar manualmente:" : "Destinos disponíveis:"}
+                  {uiText(sugerido ? "ou trocar manualmente:" : "Destinos disponíveis:")}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {destinos.map(d => {
@@ -832,8 +836,8 @@ export default function PecuaristaApartacaoPage() {
         <div className="space-y-3">
           {step === "peso" && (
             <>
-              <div className="text-sm font-medium">Animal {animalNum} <LocalizedText source={"— Peso (kg)"} /></div>
-              <Input ref={inputRef} type="number" inputMode="decimal" placeholder="Peso (kg)"
+              <div className="text-sm font-medium">{uiText("Animal ")}{animalNum} <LocalizedText source={"— Peso (kg)"} /></div>
+              <Input ref={inputRef} type="number" inputMode="decimal" placeholder={uiText("Peso (kg)")}
                 value={pesoAtual} onChange={e => setPesoAtual(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleConfirmarPesoSem(); } }}
                 className="text-xl h-14 text-center" autoFocus />
@@ -849,7 +853,7 @@ export default function PecuaristaApartacaoPage() {
             const sugerido = destinoParaPeso(destinos, peso);
             return (
               <>
-                <div className="text-sm font-medium">Animal {animalNum} <LocalizedText source={"— Destino"} /></div>
+                <div className="text-sm font-medium">{uiText("Animal ")}{animalNum} <LocalizedText source={"— Destino"} /></div>
                 <div className="text-xs text-muted-foreground">{peso.toFixed(1)} kg</div>
                 {sugerido ? (
                   <Button className="w-full h-16 text-base bg-primary hover:bg-primary/90"
@@ -862,7 +866,7 @@ export default function PecuaristaApartacaoPage() {
                   <div className="text-xs text-amber-600"><LocalizedText source={"Peso não se encaixa em nenhuma faixa — escolha manualmente:"} /></div>
                 )}
                 <div className="text-xs text-muted-foreground text-center">
-                  {sugerido ? "ou trocar manualmente:" : "Destinos disponíveis:"}
+                  {uiText(sugerido ? "ou trocar manualmente:" : "Destinos disponíveis:")}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {destinos.map(d => {

@@ -1,6 +1,7 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ProfileProvisioningError, PARTIAL_PROFILE_MESSAGE, provisionProfileUser } from "@/lib/profileProvisioning";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,13 +40,15 @@ interface Form {
   telefone: string;
   email: string;
   senha: string;
+  confirmarSenha: string;
   ativo: boolean;
 }
 const emptyForm = (tipo: Tipo): Form => ({
-  tipo, nome: "", nome_empresa: "", telefone: "", email: "", senha: "", ativo: true,
+  tipo, nome: "", nome_empresa: "", telefone: "", email: "", senha: "", confirmarSenha: "", ativo: true,
 });
 
 export default function PesadoresPage() {
+  const uiText = useStaticUiText();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -85,19 +88,22 @@ export default function PesadoresPage() {
       telefone: u.telefone ?? "",
       email: u.email ?? "",
       senha: "",
+      confirmarSenha: "",
       ativo: u.ativo ?? true,
     });
     setDialogOpen(true);
   }
 
   async function handleSave() {
-    if (!form.nome.trim()) return toast.error("Nome é obrigatório");
-    if (form.tipo === "pesador" && !form.nome_empresa.trim()) return toast.error("Nome da empresa é obrigatório");
+    if (!form.nome.trim()) return toast.error(uiText("Nome é obrigatório"));
+    if (form.tipo === "pesador" && !form.nome_empresa.trim()) return toast.error(uiText("Nome da empresa é obrigatório"));
     if (!editing) {
-      if (!form.email.trim()) return toast.error("Email é obrigatório");
-      if (form.senha.length < 6) return toast.error("Senha mínima de 6 caracteres");
+      if (!form.email.trim()) return toast.error(uiText("Email é obrigatório"));
+      if (form.senha.length < 12) return toast.error(uiText("Senha mínima de 12 caracteres"));
+      if (form.senha !== form.confirmarSenha) return toast.error(uiText("As senhas não coincidem"));
     }
     setSaving(true);
+    let accountCreated = false;
     try {
       const table = form.tipo === "pesador" ? "pesadores" : "pecuaristas";
       if (editing) {
@@ -109,16 +115,14 @@ export default function PesadoresPage() {
         if (form.tipo === "pesador") patch.ativo = form.ativo;
         const { error } = await supabase.from(table).update(patch).eq("id", editing.id);
         if (error) throw error;
-        toast.success("Atualizado!");
+        toast.success(uiText("Atualizado!"));
       } else {
-        const res = await supabase.functions.invoke("create-user", {
-          body: { email: form.email.trim(), password: form.senha, role: "usuario" },
+        const userId = await provisionProfileUser({
+          email: form.email,
+          senha: form.senha,
+          role: "usuario",
         });
-        if (res.error) throw new Error(res.error.message || "Falha ao criar usuário");
-        const respData: any = res.data;
-        if (respData?.error) throw new Error(respData.error);
-        const userId = respData?.user?.id;
-        if (!userId) throw new Error("ID do usuário não retornado");
+        accountCreated = true;
 
         const insertRow: any = {
           nome: form.nome.trim(),
@@ -131,28 +135,29 @@ export default function PesadoresPage() {
 
         const { error } = await supabase.from(table).insert(insertRow);
         if (error) throw error;
-        toast.success(form.tipo === "pesador" ? "Pesador criado!" : "Pecuarista criado!");
+        toast.success(uiText(form.tipo === "pesador" ? "Pesador criado!" : "Pecuarista criado!"));
       }
       setDialogOpen(false);
       load();
-    } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+    } catch (err: unknown) {
+      toast.error(accountCreated ? PARTIAL_PROFILE_MESSAGE
+        : err instanceof ProfileProvisioningError ? err.message : "Não foi possível salvar o perfil.");
     } finally { setSaving(false); }
   }
 
   async function handleDelete(u: Usuario) {
-    if (!confirm(`Excluir este ${u.tipo}?`)) return;
+    if (!confirm(uiText(u.tipo === "pesador" ? "Excluir este pesador?" : "Excluir este pecuarista?"))) return;
     const table = u.tipo === "pesador" ? "pesadores" : "pecuaristas";
     const { error } = await supabase.from(table).delete().eq("id", u.id);
-    if (error) toast.error("Erro: " + error.message);
-    else { toast.success("Excluído"); load(); }
+    if (error) toast.error(uiText("Erro: ") + error.message);
+    else { toast.success(uiText("Excluído")); load(); }
   }
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
 
-  const titulo = editing
-    ? `Editar ${editing.tipo === "pesador" ? "Pesador" : "Pecuarista"}`
-    : `Novo ${form.tipo === "pesador" ? "Pesador" : "Pecuarista"}`;
+  const titulo = uiText(editing
+    ? editing.tipo === "pesador" ? "Editar Pesador" : "Editar Pecuarista"
+    : form.tipo === "pesador" ? "Novo Pesador" : "Novo Pecuarista");
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
@@ -192,7 +197,7 @@ export default function PesadoresPage() {
                 <TableRow key={`${u.tipo}-${u.id}`}>
                   <TableCell>
                     <Badge variant={u.tipo === "pesador" ? "default" : "secondary"}>
-                      {u.tipo === "pesador" ? "Pesador" : "Pecuarista"}
+                      {uiText(u.tipo === "pesador" ? "Pesador" : "Pecuarista")}
                     </Badge>
                   </TableCell>
                   <TableCell className="font-medium">{u.nome}</TableCell>
@@ -201,8 +206,8 @@ export default function PesadoresPage() {
                   <TableCell>{u.email ?? "—"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Pencil className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(u)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(u)} aria-label={uiText("Editar usuário")}><Pencil className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(u)} aria-label={uiText("Excluir usuário")}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -217,14 +222,14 @@ export default function PesadoresPage() {
           <DialogHeader>
             <DialogTitle>{titulo}</DialogTitle>
             <DialogDescription>
-              {form.tipo === "pesador"
+              {uiText(form.tipo === "pesador"
                 ? "O pesador terá acesso ao módulo de pesagem de compra."
-                : "O pecuarista terá acesso ao módulo de gestão de fazendas e lotes."}
+                : "O pecuarista terá acesso ao módulo de gestão de fazendas e lotes.")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>{form.tipo === "pesador" ? "Nome da empresa *" : "Nome da empresa"}</Label>
+              <Label>{uiText(form.tipo === "pesador" ? "Nome da empresa *" : "Nome da empresa")}</Label>
               <Input value={form.nome_empresa} onChange={e => setForm(f => ({ ...f, nome_empresa: e.target.value }))} />
             </div>
             <div><Label><LocalizedText source={"Nome *"} /></Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
@@ -232,7 +237,8 @@ export default function PesadoresPage() {
             {!editing ? (
               <>
                 <div><Label>Email *</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
-                <div><Label><LocalizedText source={"Senha *"} /></Label><Input type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} placeholder="Mínimo 6 caracteres" /></div>
+                <div><Label><LocalizedText source={"Senha *"} /></Label><Input type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} placeholder="Mínimo 12 caracteres" /></div>
+                <div><Label>Confirmar senha *</Label><Input type="password" autoComplete="new-password" value={form.confirmarSenha} onChange={e => setForm(f => ({ ...f, confirmarSenha: e.target.value }))} placeholder="Repita a senha" /></div>
               </>
             ) : (
               <div><Label>Email</Label><Input type="email" value={form.email} disabled /></div>

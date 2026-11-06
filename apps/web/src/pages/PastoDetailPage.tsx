@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +29,7 @@ type Fazenda = Tables<"fazendas">;
 type Produto = Tables<"produtos">;
 
 export default function PastoDetailPage() {
+  const uiText = useStaticUiText();
   const { fazendaId, retiroId, pastoId } = useParams<{ fazendaId: string; retiroId: string; pastoId: string }>();
   const navigate = useNavigate();
   const [pasto, setPasto] = useState<Pasto | null>(null);
@@ -63,14 +64,14 @@ export default function PastoDetailPage() {
       supabase.from("pastos").select("*").eq("retiro_id", retiroId).eq("ativo", true).order("nome"),
     ]);
     if (pastoRes.error || !pastoRes.data) {
-      toast.error("Pasto não encontrado.");
+      toast.error(uiText("Pasto não encontrado."));
       setLoading(false);
       navigate(`/admin/fazendas/${fazendaId}/retiros/${retiroId}`, { replace: true });
       return;
     }
 
     if (retiroRes.error || fazendaRes.error || !retiroRes.data || !fazendaRes.data) {
-      toast.error("Estrutura pecuária não encontrada.");
+      toast.error(uiText("Estrutura pecuária não encontrada."));
       setLoading(false);
       navigate("/admin/fazendas", { replace: true });
       return;
@@ -81,7 +82,7 @@ export default function PastoDetailPage() {
       pastoRes.data.retiro_id !== retiroId;
 
     if (rotaInconsistente) {
-      toast.error("A hierarquia fazenda, retiro e pasto não corresponde à rota informada.");
+      toast.error(uiText("A hierarquia fazenda, retiro e pasto não corresponde à rota informada."));
       setLoading(false);
       navigate(`/admin/fazendas/${fazendaId}`, { replace: true });
       return;
@@ -115,10 +116,10 @@ export default function PastoDetailPage() {
     const newProdutoId = selectedProdutoId || null;
     const { error } = await supabase.from("pastos").update({ produto_id: newProdutoId }).eq("id", pasto.id);
     if (error) {
-      toast.error("Erro ao salvar produto.");
+      toast.error(uiText("Erro ao salvar produto."));
     } else {
       setPasto({ ...pasto, produto_id: newProdutoId });
-      toast.success("Produto atualizado!");
+      toast.success(uiText("Produto atualizado!"));
       setProdutoDialogOpen(false);
     }
     setSavingProduto(false);
@@ -128,10 +129,10 @@ export default function PastoDetailPage() {
     if (!pasto) return;
     const { error } = await supabase.from("pastos").update({ produto_id: null }).eq("id", pasto.id);
     if (error) {
-      toast.error("Erro ao resetar produto.");
+      toast.error(uiText("Erro ao resetar produto."));
     } else {
       setPasto({ ...pasto, produto_id: null });
-      toast.success("Produto resetado para o padrão do retiro.");
+      toast.success(uiText("Produto resetado para o padrão do retiro."));
     }
   }
 
@@ -146,15 +147,15 @@ export default function PastoDetailPage() {
   async function handleTransfer() {
     if (!pasto || !retiro || !fazenda) return;
     const qtd = parseInt(transferQtd);
-    if (!qtd || qtd <= 0) { toast.error("Quantidade inválida."); return; }
-    if (qtd > pasto.num_animais) { toast.error("Quantidade maior que o total disponível."); return; }
-    if (!transferDestino) { toast.error("Selecione o pasto destino."); return; }
-    if (transferDestino === pasto.id) { toast.error("Não é possível transferir para o mesmo pasto."); return; }
+    if (!qtd || qtd <= 0) { toast.error(uiText("Quantidade inválida.")); return; }
+    if (qtd > pasto.num_animais) { toast.error(uiText("Quantidade maior que o total disponível.")); return; }
+    if (!transferDestino) { toast.error(uiText("Selecione o pasto destino.")); return; }
+    if (transferDestino === pasto.id) { toast.error(uiText("Não é possível transferir para o mesmo pasto.")); return; }
 
     const destino = pastosDoRetiro.find(p => p.id === transferDestino);
-    if (!destino) { toast.error("Pasto destino não encontrado."); return; }
+    if (!destino) { toast.error(uiText("Pasto destino não encontrado.")); return; }
     const destinoSemCat = !isCategoriaValida(destino.categoria);
-    if (destinoSemCat && !isCategoriaValida(categoriaDestino)) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
+    if (destinoSemCat && !isCategoriaValida(categoriaDestino)) { toast.error(uiText(MSG_CATEGORIA_OBRIGATORIA)); return; }
 
     setSavingTransfer(true);
     try {
@@ -196,11 +197,11 @@ export default function PastoDetailPage() {
         return p;
       }));
 
-      toast.success(`${qtd} animais transferidos para ${destino.nome}.`);
+      toast.success(`${qtd}${uiText(" animais transferidos para ")}${destino.nome}.`);
       setTransferOpen(false);
     } catch (err: any) {
       console.error("Erro na transferência:", err);
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`${uiText("Erro: ")}${err?.message || uiText("Erro desconhecido")}`);
     } finally {
       setSavingTransfer(false);
     }
@@ -313,7 +314,7 @@ export default function PastoDetailPage() {
             <div className="space-y-2">
               <Label><LocalizedText source={"Produto"} /></Label>
               <Select value={selectedProdutoId} onValueChange={setSelectedProdutoId}>
-                <SelectTrigger><SelectValue placeholder="Selecione o produto" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione o produto")} /></SelectTrigger>
                 <SelectContent>
                   {produtos.map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.nome}{p.marca ? ` (${p.marca})` : ""}</SelectItem>
@@ -358,7 +359,7 @@ export default function PastoDetailPage() {
             <div className="space-y-2">
               <Label><LocalizedText source={"Pasto destino"} /></Label>
               <Select value={transferDestino} onValueChange={setTransferDestino}>
-                <SelectTrigger><SelectValue placeholder="Selecione o pasto" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione o pasto")} /></SelectTrigger>
                 <SelectContent>
                   {destinosDisponiveis.map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.nome} ({p.num_animais} <LocalizedText source={"animais)"} /></SelectItem>
@@ -367,7 +368,7 @@ export default function PastoDetailPage() {
               </Select>
             </div>
             {destinoPrecisaCat && (
-              <CategoriaPastoSelect label="Categoria do pasto destino *" value={categoriaDestino} onChange={setCategoriaDestino} />
+              <CategoriaPastoSelect label={uiText("Categoria do pasto destino *")} value={categoriaDestino} onChange={setCategoriaDestino} />
             )}
             {qtdNum > 0 && destinoSelecionado && (
               <div className="bg-muted rounded-md p-3 text-sm">

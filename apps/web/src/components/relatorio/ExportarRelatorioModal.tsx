@@ -1,4 +1,4 @@
-import { dataReferenciaGmd, fetchGmdPastos, gmdPonderado } from "@/lib/gmdConfigurado";
+import { dataReferenciaGmd, fetchGmdPastosAgrupados, gmdPonderado } from "@/lib/gmdConfigurado";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -225,7 +225,13 @@ export default function ExportarRelatorioModal({
       const gmdDia = periodoSelecionado === "mensal" ? dataReferenciaGmd(mes, ano)
         : periodoSelecionado === "anual" ? dataReferenciaGmd(null, ano)
         : (() => { const hoje = dataReferenciaGmd(null, 9999); const fim = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`; return fim < hoje ? fim : hoje; })();
-      const gmdPastos = await bounded(fetchGmdPastos(pastos.map((p) => p.id), gmdDia), "GMD dos pastos", 45_000);
+      // A mesma regra GMD do banco retorna um único valor por retiro/categoria
+      // em todos os modos (geral, categoria e retiro). Agrupamento conservador
+      // evita uma RPC por pasto sem introduzir um cálculo alternativo no PDF.
+      const gmdPastos = await bounded(fetchGmdPastosAgrupados(
+        pastos.map((p) => ({ id: p.id, retiro_id: p.retiro_id, categoria: p.categoria })),
+        gmdDia,
+      ), "GMD dos pastos", 45_000);
       const pastoIdsEscopoRelatorio = new Set(pastos.map(pasto => pasto.id));
 
       // SEÇÃO 4: única fonte de peso, GMD, dias e data prevista é a função do banco.
@@ -258,7 +264,7 @@ export default function ExportarRelatorioModal({
           }))
           .sort((a, b) => a.diasParaAlvo - b.diasParaAlvo);
         previsaoAbate = {
-          calculadaEm: new Date().toLocaleDateString("pt-BR", {
+          calculadaEm: new Date().toLocaleDateString(language, {
             day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Sao_Paulo",
           }),
           rows,
@@ -583,7 +589,7 @@ export default function ExportarRelatorioModal({
 
         const sortedRLanc = [...rLanc].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
         const lastLanc = sortedRLanc.length > 0 ? sortedRLanc[0] : null;
-        const dataStr = lastLanc?.created_at ? new Date(lastLanc.created_at).toLocaleDateString("pt-BR") : "—";
+        const dataStr = lastLanc?.created_at ? new Date(lastLanc.created_at).toLocaleDateString(language) : "—";
 
         // Compute ideal/max reference lines from product
         let consumoIdeal = 80; // default

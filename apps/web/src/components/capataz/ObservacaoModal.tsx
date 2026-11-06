@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +35,7 @@ interface Props {
 }
 
 export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazendaId, capatazNome, editingObs, onSave }: Props) {
+  const uiText = useStaticUiText();
   const [step, setStep] = useState<'camera' | 'form'>('camera');
   const [fotoBase64, setFotoBase64] = useState<string | null>(null);
   const [categoria, setCategoria] = useState("");
@@ -95,11 +96,11 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
 
   const handleSave = async () => {
     if (!fotoBase64) {
-      toast.error("Foto obrigatória");
+      toast.error(uiText("Foto obrigatória"));
       return;
     }
     if (!categoria) {
-      toast.error("Selecione uma categoria");
+      toast.error(uiText("Selecione uma categoria"));
       return;
     }
 
@@ -115,12 +116,12 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
         descricao: texto || null,
         foto_url: fotoBase64,
       });
-      toast.success("Observação salva offline");
+      toast.success(uiText("Observação salva offline"));
       onClose();
     } catch (error) {
       // Keep the photo, fields and dialog open until the IDB transaction succeeds.
       console.warn('[ObservacaoModal] offline save rejected:', error);
-      toast.error('Não foi possível salvar no aparelho. Libere espaço e tente novamente.');
+      toast.error(uiText("Não foi possível salvar no aparelho. Libere espaço e tente novamente."));
     } finally {
       setSaving(false);
     }
@@ -166,7 +167,7 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
           <div className="space-y-4">
             {/* Photo preview */}
             <div className="relative">
-              <img src={fotoBase64} alt="Foto" className="w-full h-40 object-cover rounded-md" />
+              <img src={fotoBase64} alt={uiText("Foto")} className="w-full h-40 object-cover rounded-md" />
               <Button
                 variant="ghost"
                 size="icon"
@@ -188,14 +189,14 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
                     size="sm"
                     onClick={() => setCategoria(c.value)}
                   >
-                    {c.label}
+                    {uiText(c.label)}
                   </Button>
                 ))}
               </div>
             </div>
 
             <div>
-              <p className="text-sm font-medium mb-2">Animal</p>
+              <p className="text-sm font-medium mb-2"><LocalizedText source={"Animal"} /></p>
               <div className="flex flex-wrap gap-2">
                 {CATEGORIAS_ANIMAL.map((c) => (
                   <Button
@@ -204,7 +205,7 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
                     size="sm"
                     onClick={() => setCategoria(c.value)}
                   >
-                    {c.label}
+                    {uiText(c.label)}
                   </Button>
                 ))}
               </div>
@@ -213,7 +214,7 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
             {/* Optional text */}
             <div>
               <label className="text-sm font-medium mb-1 block"><LocalizedText source={"Descrição (opcional)"} /></label>
-              <Textarea value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Descreva a situação..." rows={2} />
+              <Textarea value={texto} onChange={(e) => setTexto(e.target.value)} placeholder={uiText("Descreva a situação...")} rows={2} />
             </div>
 
             {/* Pasto select */}
@@ -221,7 +222,7 @@ export default function ObservacaoModal({ open, onClose, pastos, retiroId, fazen
               <label className="text-sm font-medium mb-1 block"><LocalizedText source={"Pasto"} /></label>
               <Select value={pastoId} onValueChange={setPastoId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione o pasto" />
+                  <SelectValue placeholder={uiText("Selecione o pasto")} />
                 </SelectTrigger>
                 <SelectContent>
                   {pastos.map((p) => (

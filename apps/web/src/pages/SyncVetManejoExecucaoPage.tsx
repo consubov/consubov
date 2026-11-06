@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { downloadGeneratedPdf, withReportExportDeadline } from "@/lib/reportPdfExport";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -45,6 +46,8 @@ type Manejo = {
 };
 
 export default function SyncVetManejoExecucaoPage() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const { manejoId } = useParams<{ manejoId: string }>();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -75,7 +78,7 @@ export default function SyncVetManejoExecucaoPage() {
         .select("*")
         .eq("id", manejoId)
         .maybeSingle();
-      if (error || !m) { toast.error(error?.message ?? "Manejo não encontrado"); setLoading(false); return; }
+      if (error || !m) { toast.error(error?.message ?? uiText("Manejo não encontrado")); setLoading(false); return; }
       const manejoRow: Manejo = { ...m, protocolo_id: readLegacyProtocoloId(m) };
       setManejo(manejoRow);
       setObsFinais(manejoRow.observacoes ?? "");
@@ -186,7 +189,7 @@ export default function SyncVetManejoExecucaoPage() {
       setNumero("");
       setTimeout(() => inputRef.current?.focus(), 30);
     } catch (e: unknown) {
-      toast.error(errorMessage(e, "Erro ao registrar"));
+      toast.error(errorMessage(e, uiText("Erro ao registrar")));
     } finally {
       setConfirmando(false);
     }
@@ -203,7 +206,7 @@ export default function SyncVetManejoExecucaoPage() {
 
   async function finalizar(gerarPdf: boolean) {
     if (!manejo) return;
-    if (registros.length === 0) { toast.error("Registre pelo menos um animal"); return; }
+    if (registros.length === 0) { toast.error(uiText("Registre pelo menos um animal")); return; }
     setSaving(true);
     try {
       const { error } = await supabase
@@ -223,6 +226,7 @@ export default function SyncVetManejoExecucaoPage() {
           diagnostico: r.resultado,
         }));
         const blob = await withReportExportDeadline(gerarManejoPDF({
+        language,
           tipo,
           data: manejo.data_prevista,
           empresa: empresaNome,
@@ -237,10 +241,10 @@ export default function SyncVetManejoExecucaoPage() {
         downloadGeneratedPdf(blob, `manejo-${tipo}-${manejo.data_prevista}.pdf`);
       }
 
-      toast.success("Manejo finalizado");
+      toast.success(uiText("Manejo finalizado"));
       navigate(`/syncvet/agenda`);
     } catch (e: unknown) {
-      toast.error(errorMessage(e, "Erro ao finalizar"));
+      toast.error(errorMessage(e, uiText("Erro ao finalizar")));
     } finally {
       setSaving(false);
     }
@@ -268,7 +272,7 @@ export default function SyncVetManejoExecucaoPage() {
             ref={inputRef}
             value={numero}
             onChange={(e) => setNumero(e.target.value)}
-            placeholder="Digite o número/brinco"
+            placeholder={uiText("Digite o número/brinco")}
             inputMode="text"
             autoFocus
             onKeyDown={(e) => {

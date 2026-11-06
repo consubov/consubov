@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,7 @@ interface Props {
 }
 
 export default function EntradaAnimaisModal({ categoriaAtual, open, onClose, pastoId, pastoNome, retiroId, onPastoUpdated }: Props) {
+  const uiText = useStaticUiText();
   const [quantidade, setQuantidade] = useState("");
   const [pesoMedio, setPesoMedio] = useState("");
   const [produtoId, setProdutoId] = useState("");
@@ -59,7 +60,7 @@ export default function EntradaAnimaisModal({ categoriaAtual, open, onClose, pas
   const isValid = parseInt(quantidade) > 0 && parseFloat(pesoMedio) > 0 && produtoId && !faltaCategoria(parseInt(quantidade) || 0, categoria);
 
   const handleSave = async () => {
-    if (faltaCategoria(parseInt(quantidade) || 0, categoria)) { toast.error(MSG_CATEGORIA_OBRIGATORIA); return; }
+    if (faltaCategoria(parseInt(quantidade) || 0, categoria)) { toast.error(uiText(MSG_CATEGORIA_OBRIGATORIA)); return; }
     if (!isValid) return;
     setSaving(true);
     try {
@@ -74,11 +75,11 @@ export default function EntradaAnimaisModal({ categoriaAtual, open, onClose, pas
         .eq("id", pastoId);
       if (error) throw error;
 
-      toast.success("✅ Animais adicionados ao pasto");
+      toast.success(uiText("✅ Animais adicionados ao pasto"));
       onPastoUpdated();
       onClose();
     } catch (err: any) {
-      toast.error(err?.message || "Erro ao salvar");
+      toast.error(err?.message || uiText("Erro ao salvar"));
     } finally {
       setSaving(false);
     }
@@ -102,7 +103,7 @@ export default function EntradaAnimaisModal({ categoriaAtual, open, onClose, pas
                 min={1}
                 value={quantidade}
                 onChange={(e) => setQuantidade(e.target.value)}
-                placeholder="Ex: 200"
+                placeholder={uiText("Ex: 200")}
               />
             </div>
 
@@ -114,7 +115,7 @@ export default function EntradaAnimaisModal({ categoriaAtual, open, onClose, pas
                 step="0.1"
                 value={pesoMedio}
                 onChange={(e) => setPesoMedio(e.target.value)}
-                placeholder="Ex: 350"
+                placeholder={uiText("Ex: 350")}
               />
             </div>
 
@@ -130,7 +131,7 @@ export default function EntradaAnimaisModal({ categoriaAtual, open, onClose, pas
               ) : (
                 <Select value={produtoId} onValueChange={setProdutoId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o produto" />
+                    <SelectValue placeholder={uiText("Selecione o produto")} />
                   </SelectTrigger>
                   <SelectContent>
                     {produtos.map((p) => (

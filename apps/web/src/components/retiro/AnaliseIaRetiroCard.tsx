@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ interface Props {
 }
 
 export default function AnaliseIaRetiroCard({ retiroNome, contexto }: Props) {
+  const uiText = useStaticUiText();
   const { toast } = useToast();
   const [observacoes, setObservacoes] = useState("");
   const [analise, setAnalise] = useState<string | null>(null);
@@ -55,7 +56,7 @@ export default function AnaliseIaRetiroCard({ retiroNome, contexto }: Props) {
           onChange={(e) => setObservacoes(e.target.value)}
           rows={5}
           maxLength={4000}
-          placeholder="Ex.: pastos do fundo com cocho vazio há 3 dias, lote da sede com aguada baixa, chuva forte na semana..."
+          placeholder={uiText("Ex.: pastos do fundo com cocho vazio há 3 dias, lote da sede com aguada baixa, chuva forte na semana...")}
         />
         <div className="flex items-center justify-between gap-2">
           <p className="text-[10px] text-muted-foreground">{observacoes.length}/4000</p>

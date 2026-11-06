@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,7 @@ const EMPTY_SAMPLES: SamplesState = { fezes: [], corporal: [], bebedouro: [] };
 export default function CurralVisitaModal({
   open, onOpenChange, visitaId, curral, proximaOrdem, onSaved, readOnly,
 }: Props) {
+  const uiText = useStaticUiText();
   const { roleData } = useAuth();
   const consultorId = roleData?.consultorId ?? null;
   const { categorias, criar } = useDietaCategorias(consultorId);
@@ -131,11 +132,11 @@ export default function CurralVisitaModal({
           currais: [...(curr.currais || []), { id, ...p, fotos: [], signed: {}, samples: { fezes: [], corporal: [], bebedouro: [] } }],
         }),
       });
-      if (res.queued) toast.info("Curral salvo off-line.");
+      if (res.queued) toast.info(uiText("Curral salvo off-line."));
       setCurralIdLocal(id);
       return id;
     } catch (err: any) {
-      toast.error("Erro ao criar curral: " + (err?.message || ""));
+      toast.error(uiText("Erro ao criar curral: ") + (err?.message || ""));
       return null;
     } finally {
       setCreating(false);
@@ -174,14 +175,14 @@ export default function CurralVisitaModal({
     try {
       const criada = await criar(nome);
       if (!criada) {
-        toast.error("Não foi possível salvar a categoria. Verifique a conexão.");
+        toast.error(uiText("Não foi possível salvar a categoria. Verifique a conexão."));
         return;
       }
       setDietaCategoria(criada.nome);
       setMostrarNovaCategoria(false);
       setNovaCategoria("");
       await persistDieta(criada.nome);
-      toast.success("Categoria criada");
+      toast.success(uiText("Categoria criada"));
     } finally {
       setSalvandoCategoria(false);
     }
@@ -208,7 +209,7 @@ export default function CurralVisitaModal({
 
   async function addSample(tipo: keyof SamplesState, nota: number) {
     const id = await ensureCurral();
-    if (!id) { toast.error("Informe o número do curral primeiro"); return; }
+    if (!id) { toast.error(uiText("Informe o número do curral primeiro")); return; }
     const scoreId = crypto.randomUUID();
     setSamples(prev => ({ ...prev, [tipo]: [...prev[tipo], { id: scoreId, nota }] }));
     const res = await offlineUpsert({
@@ -224,7 +225,7 @@ export default function CurralVisitaModal({
           : c),
       }),
     });
-    if (res.queued) toast.info("Amostra salva off-line.");
+    if (res.queued) toast.info(uiText("Amostra salva off-line."));
   }
 
   async function removeSample(tipo: keyof SamplesState, index: number) {
@@ -246,7 +247,7 @@ export default function CurralVisitaModal({
   }
 
   async function persist(continueSequential: boolean) {
-    if (!numCurral.trim()) return toast.error("Número do curral é obrigatório");
+    if (!numCurral.trim()) return toast.error(uiText("Número do curral é obrigatório"));
     setSaving(true);
     try {
       const id = await ensureCurral();
@@ -263,11 +264,11 @@ export default function CurralVisitaModal({
           currais: (curr.currais || []).map((c: any) => c.id === id ? { ...c, ...patch } : c),
         }),
       });
-      if (res.queued) toast.info("Curral salvo off-line.");
-      toast.success(curral || curralIdLocal ? "Curral salvo" : "Curral adicionado");
+      if (res.queued) toast.info(uiText("Curral salvo off-line."));
+      toast.success(uiText(curral || curralIdLocal ? "Curral salvo" : "Curral adicionado"));
       onSaved({ continueSequential });
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally { setSaving(false); }
   }
 
@@ -283,7 +284,7 @@ export default function CurralVisitaModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{curral ? `Curral ${curral.num_curral}` : "Adicionar Curral"}</DialogTitle>
+          <DialogTitle>{curral ? `${uiText("Curral ")}${curral.num_curral}` : uiText("Adicionar Curral")}</DialogTitle>
           <DialogDescription><LocalizedText source={"Informe o número do curral e registre as amostras."} /></DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -295,7 +296,7 @@ export default function CurralVisitaModal({
                 onChange={e => setNumCurral(e.target.value)}
                 onBlur={handleNumBlur}
                 disabled={readOnly}
-                placeholder="ex: 12"
+                placeholder={uiText("ex: 12")}
                 autoFocus={isNew}
               />
               {creating && (
@@ -312,7 +313,7 @@ export default function CurralVisitaModal({
               disabled={readOnly}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Selecione a categoria" />
+                <SelectValue placeholder={uiText("Selecione a categoria")} />
               </SelectTrigger>
               <SelectContent className="bg-popover z-50">
                 {opcoesCategorias.map(nome => (
@@ -326,7 +327,7 @@ export default function CurralVisitaModal({
                 <Input
                   value={novaCategoria}
                   onChange={e => setNovaCategoria(e.target.value)}
-                  placeholder="Nome da nova categoria"
+                  placeholder={uiText("Nome da nova categoria")}
                   autoFocus
                 />
                 <Button
@@ -344,21 +345,21 @@ export default function CurralVisitaModal({
           <div className="pt-2 border-t space-y-4">
             <div className="text-sm font-semibold text-foreground"><LocalizedText source={"Avaliações (1–5) — múltiplas amostras"} /></div>
             <ScoreSamplesInput
-              label="Fezes"
+              label={uiText("Fezes")}
               samples={samples.fezes}
               onAdd={n => addSample("fezes", n)}
               onRemove={i => removeSample("fezes", i)}
               disabled={readOnly}
             />
             <ScoreSamplesInput
-              label="Escore Corporal"
+              label={uiText("Escore Corporal")}
               samples={samples.corporal}
               onAdd={n => addSample("corporal", n)}
               onRemove={i => removeSample("corporal", i)}
               disabled={readOnly}
             />
             <ScoreSamplesInput
-              label="Bebedouro"
+              label={uiText("Bebedouro")}
               samples={samples.bebedouro}
               onAdd={n => addSample("bebedouro", n)}
               onRemove={i => removeSample("bebedouro", i)}

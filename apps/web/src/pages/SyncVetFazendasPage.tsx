@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,6 +33,7 @@ type Fazenda = {
 };
 
 export default function SyncVetFazendasPage() {
+  const uiText = useStaticUiText();
   const { roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
   const navigate = useNavigate();
@@ -76,20 +77,20 @@ export default function SyncVetFazendasPage() {
   }
 
   function useCurrentLocation() {
-    if (!navigator.geolocation) { toast.error("GPS não disponível"); return; }
+    if (!navigator.geolocation) { toast.error(uiText("GPS não disponível")); return; }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLatitude(pos.coords.latitude.toFixed(6));
         setLongitude(pos.coords.longitude.toFixed(6));
-        toast.success("Localização capturada");
+        toast.success(uiText("Localização capturada"));
       },
-      () => toast.error("Não foi possível obter a localização"),
+      () => toast.error(uiText("Não foi possível obter a localização")),
     );
   }
 
   async function handleSave() {
     if (!empresaId) return;
-    if (!nome.trim()) { toast.error("Nome é obrigatório"); return; }
+    if (!nome.trim()) { toast.error(uiText("Nome é obrigatório")); return; }
     setSaving(true);
     const payload = {
       empresa_id: empresaId,
@@ -106,7 +107,7 @@ export default function SyncVetFazendasPage() {
     };
     const { error } = await supabase.from("syncvet_fazendas").insert(payload as any);
     if (error) toast.error(error.message);
-    else { toast.success("Fazenda cadastrada"); setOpen(false); load(); }
+    else { toast.success(uiText("Fazenda cadastrada")); setOpen(false); load(); }
     setSaving(false);
   }
 
@@ -130,7 +131,7 @@ export default function SyncVetFazendasPage() {
                 <div>
                   <Label className="text-xs"><LocalizedText source={"Fazenda matriz"} /></Label>
                   <Select value={fazendaMatrizId} onValueChange={setFazendaMatrizId}>
-                    <SelectTrigger><SelectValue placeholder="Nenhuma (matriz)" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={uiText("Nenhuma (matriz)")} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__"><LocalizedText source={"Nenhuma (matriz)"} /></SelectItem>
                       {matrizes.map((f) => (
@@ -183,7 +184,7 @@ export default function SyncVetFazendasPage() {
               <div>
                 <div className="font-semibold">{f.nome}</div>
                 <div className="text-xs text-muted-foreground">
-                  {[f.proprietario, [f.municipio, f.estado].filter(Boolean).join("/"), MODELO_LABEL[f.modelo_cobranca]]
+                  {[f.proprietario, [f.municipio, f.estado].filter(Boolean).join("/"), uiText(MODELO_LABEL[f.modelo_cobranca])]
                     .filter(Boolean).join(" • ")}
                 </div>
               </div>

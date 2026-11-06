@@ -1,6 +1,7 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ProfileProvisioningError, PARTIAL_PROFILE_MESSAGE, provisionProfileUser } from "@/lib/profileProvisioning";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,10 +29,11 @@ interface Consultor {
 
 const PROFISSOES = ["Zootecnista", "Médico(a) Veterinário(a)", "Agrônomo(a)"];
 
-interface Form { nome: string; email: string; senha: string; ativo: boolean; profissao: string; profissaoOutro: string; despesasAtivo: boolean; }
-const emptyForm: Form = { nome: "", email: "", senha: "", ativo: true, profissao: "", profissaoOutro: "", despesasAtivo: false };
+interface Form { nome: string; email: string; senha: string; confirmarSenha: string; ativo: boolean; profissao: string; profissaoOutro: string; despesasAtivo: boolean; }
+const emptyForm: Form = { nome: "", email: "", senha: "", confirmarSenha: "", ativo: true, profissao: "", profissaoOutro: "", despesasAtivo: false };
 
 export default function ConsultoresPage() {
+  const uiText = useStaticUiText();
   const [consultores, setConsultores] = useState<Consultor[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -54,7 +56,7 @@ export default function ConsultoresPage() {
     const prof = c.profissao ?? "";
     const isPreset = PROFISSOES.includes(prof);
     setForm({
-      nome: c.nome, email: "", senha: "", ativo: c.ativo ?? true,
+      nome: c.nome, email: "", senha: "", confirmarSenha: "", ativo: c.ativo ?? true,
       profissao: prof ? (isPreset ? prof : "Outro") : "",
       profissaoOutro: prof && !isPreset ? prof : "",
       despesasAtivo: c.modulo_despesas_ativo ?? false,
@@ -63,12 +65,14 @@ export default function ConsultoresPage() {
   }
 
   async function handleSave() {
-    if (!form.nome.trim()) return toast.error("Nome é obrigatório");
+    if (!form.nome.trim()) return toast.error(uiText("Nome é obrigatório"));
     if (!editingId) {
-      if (!form.email.trim()) return toast.error("Email é obrigatório");
-      if (form.senha.length < 6) return toast.error("Senha mínima de 6 caracteres");
+      if (!form.email.trim()) return toast.error(uiText("Email é obrigatório"));
+      if (form.senha.length < 12) return toast.error(uiText("Senha mínima de 12 caracteres"));
+      if (form.senha !== form.confirmarSenha) return toast.error(uiText("As senhas não coincidem"));
     }
     setSaving(true);
+    let accountCreated = false;
     const profissaoFinal = form.profissao === "Outro"
       ? (form.profissaoOutro.trim() || null)
       : (form.profissao.trim() || null);
@@ -79,36 +83,35 @@ export default function ConsultoresPage() {
           profissao: profissaoFinal, modulo_despesas_ativo: form.despesasAtivo,
         }).eq("id", editingId);
         if (error) throw error;
-        toast.success("Consultor atualizado!");
+        toast.success(uiText("Consultor atualizado!"));
       } else {
-        const res = await supabase.functions.invoke("create-user", {
-          body: { email: form.email.trim(), password: form.senha, role: "usuario" },
+        const userId = await provisionProfileUser({
+          email: form.email,
+          senha: form.senha,
+          role: "usuario",
         });
-        if (res.error) throw new Error(res.error.message || "Falha ao criar usuário");
-        const respData: any = res.data;
-        if (respData?.error) throw new Error(respData.error);
-        const userId = respData?.user?.id;
-        if (!userId) throw new Error("ID do usuário não retornado");
+        accountCreated = true;
 
         const { error } = await supabase.from("consultores").insert({
           nome: form.nome.trim(), user_id: userId, ativo: form.ativo,
           profissao: profissaoFinal, modulo_despesas_ativo: form.despesasAtivo,
         });
         if (error) throw error;
-        toast.success("Consultor criado!");
+        toast.success(uiText("Consultor criado!"));
       }
       setDialogOpen(false);
       load();
-    } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+    } catch (err: unknown) {
+      toast.error(accountCreated ? PARTIAL_PROFILE_MESSAGE
+        : err instanceof ProfileProvisioningError ? err.message : "Não foi possível salvar o perfil.");
     } finally { setSaving(false); }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Excluir este consultor?")) return;
+    if (!confirm(uiText("Excluir este consultor?"))) return;
     const { error } = await supabase.from("consultores").delete().eq("id", id);
-    if (error) toast.error("Erro: " + error.message);
-    else { toast.success("Consultor excluído"); load(); }
+    if (error) toast.error(uiText("Erro: ") + error.message);
+    else { toast.success(uiText("Consultor excluído")); load(); }
   }
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
@@ -138,11 +141,11 @@ export default function ConsultoresPage() {
               ) : consultores.map(c => (
                 <TableRow key={c.id}>
                   <TableCell className="font-medium">{c.nome}</TableCell>
-                  <TableCell><Badge variant={c.ativo ? "default" : "secondary"}>{c.ativo ? "Ativo" : "Inativo"}</Badge></TableCell>
+                  <TableCell><Badge variant={c.ativo ? "default" : "secondary"}>{uiText(c.ativo ? "Ativo" : "Inativo")}</Badge></TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(c)}><Pencil className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(c)} aria-label={uiText("Editar consultor")}><Pencil className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} aria-label={uiText("Excluir consultor")}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -155,15 +158,16 @@ export default function ConsultoresPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Consultor" : "Novo Consultor"}</DialogTitle>
-            <DialogDescription>{editingId ? "Atualize os dados do consultor." : "O consultor terá acesso ao painel de visitas técnicas."}</DialogDescription>
+            <DialogTitle>{uiText(editingId ? "Editar Consultor" : "Novo Consultor")}</DialogTitle>
+            <DialogDescription>{uiText(editingId ? "Atualize os dados do consultor." : "O consultor terá acesso ao painel de visitas técnicas.")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div><Label><LocalizedText source={"Nome *"} /></Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
             {!editingId && (
               <>
                 <div><Label>Email *</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
-                <div><Label><LocalizedText source={"Senha *"} /></Label><Input type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} placeholder="Mínimo 6 caracteres" /></div>
+                <div><Label><LocalizedText source={"Senha *"} /></Label><Input type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} placeholder="Mínimo 12 caracteres" /></div>
+                <div><Label>Confirmar senha *</Label><Input type="password" autoComplete="new-password" value={form.confirmarSenha} onChange={e => setForm(f => ({ ...f, confirmarSenha: e.target.value }))} placeholder="Repita a senha" /></div>
               </>
             )}
             <div className="space-y-2">
@@ -177,13 +181,13 @@ export default function ConsultoresPage() {
                     variant={form.profissao === op ? "default" : "outline"}
                     onClick={() => setForm(f => ({ ...f, profissao: f.profissao === op ? "" : op }))}
                   >
-                    {op}
+                    {uiText(op)}
                   </Button>
                 ))}
               </div>
               {form.profissao === "Outro" && (
                 <Input
-                  placeholder="Digite a profissão"
+                  placeholder={uiText("Digite a profissão")}
                   value={form.profissaoOutro}
                   onChange={e => setForm(f => ({ ...f, profissaoOutro: e.target.value }))}
                 />

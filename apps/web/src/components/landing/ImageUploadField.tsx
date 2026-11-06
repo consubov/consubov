@@ -1,3 +1,4 @@
+import { useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ interface ImageUploadFieldProps {
 }
 
 export default function ImageUploadField({ label, folder, multiple = false, urls, onChange }: ImageUploadFieldProps) {
+  const uiText = useStaticUiText();
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -25,7 +27,7 @@ export default function ImageUploadField({ label, folder, multiple = false, urls
       const path = `${folder}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage.from("landing").upload(path, file, { upsert: true });
       if (error) {
-        toast.error(`Erro ao enviar ${file.name}`);
+        toast.error(`${uiText("Erro ao enviar ")}${file.name}`);
         continue;
       }
       const { data: urlData } = supabase.storage.from("landing").getPublicUrl(path);
@@ -71,12 +73,12 @@ export default function ImageUploadField({ label, folder, multiple = false, urls
               <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 {multiple && (
                   <>
-                    <button onClick={() => moveUp(i)} className="bg-background/80 rounded p-1 hover:bg-background" title="Mover para cima">
+                    <button onClick={() => moveUp(i)} className="bg-background/80 rounded p-1 hover:bg-background" title={uiText("Mover para cima")}>
                       <GripVertical className="w-3.5 h-3.5 text-foreground" />
                     </button>
                   </>
                 )}
-                <button onClick={() => remove(i)} className="bg-destructive/80 rounded p-1 hover:bg-destructive" title="Remover">
+                <button onClick={() => remove(i)} className="bg-destructive/80 rounded p-1 hover:bg-destructive" title={uiText("Remover")}>
                   <X className="w-3.5 h-3.5 text-destructive-foreground" />
                 </button>
               </div>

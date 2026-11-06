@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -49,6 +50,8 @@ interface Props {
 }
 
 export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const { user } = useAuth();
   const [pendentes, setPendentes] = useState<SolicitacaoView[]>([]);
   const [loading, setLoading] = useState(true);
@@ -207,7 +210,7 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
       const insuficiente = checks.find((c) => c.disponivel < c.sacos);
       if (insuficiente) {
         toast.error(
-          `Estoque insuficiente em ${String(insuficiente.mes).padStart(2, "0")}/${insuficiente.ano}: ${insuficiente.disponivel} disponível, ${insuficiente.sacos} necessário`
+          `${uiText("Estoque insuficiente em ")}${String(insuficiente.mes).padStart(2, "0")}/${insuficiente.ano}: ${insuficiente.disponivel}${uiText(" disponível, ")}${insuficiente.sacos}${uiText(" necessário")}`
         );
         setActionId(null);
         return;
@@ -303,11 +306,11 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
         .eq("id", s.id);
       if (updErr) throw updErr;
 
-      toast.success(`Solicitação aprovada: ${s.itens.length} pasto(s), ${s.total_sacos} sacos`);
+      toast.success(`${uiText("Solicitação aprovada: ")}${s.itens.length} ${uiText(s.itens.length === 1 ? "pasto" : "pastos")}, ${s.total_sacos} ${uiText(s.total_sacos === 1 ? "saco" : "sacos")}`);
       void load();
     } catch (e: any) {
       console.error("[Aprovar]", e);
-      toast.error(e?.message || "Falha ao aprovar");
+      toast.error(e?.message || uiText("Falha ao aprovar"));
     } finally {
       setActionId(null);
     }
@@ -333,14 +336,14 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
         })
         .eq("id", recusarTarget.id);
       if (error) throw error;
-      toast.success("Solicitação recusada");
+      toast.success(uiText("Solicitação recusada"));
       setRecusarOpen(false);
       setRecusarTarget(null);
       setMotivoRecusa("");
       void load();
     } catch (e: any) {
       console.error("[Recusar]", e);
-      toast.error(e?.message || "Falha ao recusar");
+      toast.error(e?.message || uiText("Falha ao recusar"));
     } finally {
       setActionId(null);
     }
@@ -365,7 +368,7 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
         </h2>
         <div className="space-y-3">
           {pendentes.map((s) => {
-            const dataGer = new Date(s.data_salga_geral).toLocaleDateString("pt-BR");
+            const dataGer = new Date(s.data_salga_geral).toLocaleDateString(language);
             const isLoading = actionId === s.id;
             return (
               <Card key={s.id} className="border-primary/30">
@@ -387,7 +390,7 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
                     <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
                       {s.itens.length} <LocalizedText source={"pasto"} />{s.itens.length !== 1 ? "s" : ""} · {s.total_sacos} <LocalizedText source={"sacos"} /></p>
                     {s.itens.map((it) => {
-                      const dItem = new Date(it.data_salga).toLocaleDateString("pt-BR");
+                      const dItem = new Date(it.data_salga).toLocaleDateString(language);
                       const isCustom = dItem !== dataGer;
                       return (
                         <div key={it.id} className="text-xs">
@@ -470,7 +473,7 @@ export default function LancamentosManuaisPendentes({ fazendaId }: Props) {
             <Textarea
               value={motivoRecusa}
               onChange={(e) => setMotivoRecusa(e.target.value)}
-              placeholder="Ex: data incorreta, quantidade divergente..."
+              placeholder={uiText("Ex: data incorreta, quantidade divergente...")}
               className="min-h-[80px]"
             />
           </div>

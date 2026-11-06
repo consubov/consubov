@@ -1,3 +1,5 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,13 +25,13 @@ function lastOfMonthISO() {
   const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
   return last.toISOString().slice(0, 10);
 }
-function fmtDate(iso: string | null) {
+function fmtDate(iso: string | null, locale: string) {
   if (!iso) return "-";
   const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
+  return locale === "en-US" ? `${m}/${d}/${y}` : `${d}/${m}/${y}`;
 }
-function fmtBRL(n: number) {
-  return (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+function fmtBRL(n: number, locale: string) {
+  return (n || 0).toLocaleString(locale, { style: "currency", currency: "BRL" });
 }
 
 type Servico = {
@@ -46,6 +48,8 @@ type TaxaRow = {
 };
 
 export default function SyncVetMeuPainelPage() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const { user, roleData } = useAuth();
   const equipeId = roleData.roleId;
   const empresaId = roleData.syncvetEmpresaId ?? null;
@@ -192,6 +196,7 @@ export default function SyncVetMeuPainelPage() {
         estNome = (est as any)?.nome ?? null;
       }
       const blob = await gerarServicoPDF({
+        language,
         numero: s.id.slice(0, 8).toUpperCase(),
         data_referencia: s.data_referencia,
         data_vencimento: s.data_vencimento,
@@ -223,62 +228,62 @@ export default function SyncVetMeuPainelPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-bold">Meu Painel</h1>
-        <p className="text-sm text-muted-foreground">Olá{nome ? `, ${nome}` : ""} — resumo das suas atividades.</p>
+        <h1 className="text-xl font-bold"><LocalizedText source={"Meu Painel"} /></h1>
+        <p className="text-sm text-muted-foreground"><LocalizedText source={"Olá"} />{nome ? `, ${nome}` : ""} <LocalizedText source={"— resumo das suas atividades."} /></p>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         <Card className="p-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Landmark className="w-3.5 h-3.5" />Fazendas hoje</div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Landmark className="w-3.5 h-3.5" /><LocalizedText source={"Fazendas hoje"} /></div>
           <div className="text-2xl font-bold mt-1">{fazHoje}</div>
         </Card>
         <Card className="p-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Users className="w-3.5 h-3.5" />Animais hoje</div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Users className="w-3.5 h-3.5" /><LocalizedText source={"Animais hoje"} /></div>
           <div className="text-2xl font-bold mt-1">{animHoje}</div>
         </Card>
         <Card className="p-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Landmark className="w-3.5 h-3.5" />Fazendas no mês</div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Landmark className="w-3.5 h-3.5" /><LocalizedText source={"Fazendas no mês"} /></div>
           <div className="text-2xl font-bold mt-1">{fazMes}</div>
         </Card>
         <Card className="p-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Users className="w-3.5 h-3.5" />Animais no mês</div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Users className="w-3.5 h-3.5" /><LocalizedText source={"Animais no mês"} /></div>
           <div className="text-2xl font-bold mt-1">{animMes}</div>
         </Card>
       </div>
 
       <div>
         <h2 className="text-base font-bold text-primary flex items-center gap-2 mb-2">
-          <Percent className="w-4 h-4" /> Minha Taxa de Prenhez
+          <Percent className="w-4 h-4" /> <LocalizedText source={"Minha Taxa de Prenhez"} />
         </h2>
         <Card className="p-3 space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <Select value={fFaz} onValueChange={setFFaz}>
-              <SelectTrigger><SelectValue placeholder="Fazenda" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={uiText("Fazenda")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas as fazendas</SelectItem>
+                <SelectItem value="all"><LocalizedText source={"Todas as fazendas"} /></SelectItem>
                 {fazendas.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={fProt} onValueChange={setFProt}>
-              <SelectTrigger><SelectValue placeholder="Protocolo" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={uiText("Protocolo")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os protocolos</SelectItem>
+                <SelectItem value="all"><LocalizedText source={"Todos os protocolos"} /></SelectItem>
                 {protocolos.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
 
           <div className="rounded-md bg-primary/5 border border-primary/20 p-4 text-center">
-            <div className="text-xs text-muted-foreground">Taxa média</div>
+            <div className="text-xs text-muted-foreground"><LocalizedText source={"Taxa média"} /></div>
             <div className="text-4xl font-bold text-primary">{taxaAgregada.pct.toFixed(2)}%</div>
             <div className="text-xs text-muted-foreground mt-1">
-              {taxaAgregada.prenhas} prenhas / {taxaAgregada.total} diagnosticadas
+              {taxaAgregada.prenhas} <LocalizedText source={"prenhas /"} /> {taxaAgregada.total} <LocalizedText source={"diagnosticadas"} />
             </div>
           </div>
 
           {taxaFiltered.length === 0 ? (
             <div className="text-xs text-muted-foreground text-center italic py-2">
-              Sem diagnósticos registrados neste filtro.
+              <LocalizedText source={"Sem diagnósticos registrados neste filtro."} />
             </div>
           ) : (
             <div className="space-y-1">
@@ -304,25 +309,25 @@ export default function SyncVetMeuPainelPage() {
 
       <div>
         <h2 className="text-base font-bold text-primary flex items-center gap-2 mb-2">
-          <Wallet className="w-4 h-4" /> Meus Serviços
+          <Wallet className="w-4 h-4" /> <LocalizedText source={"Meus Serviços"} />
         </h2>
         <Card className="p-3 space-y-3">
           <div className="text-xs text-muted-foreground">
-            {servicosMes.length} serviço(s) no mês · {fmtBRL(servicosMes.reduce((s, x) => s + Number(x.valor_total || 0), 0))}
+            {servicosMes.length} {uiText(servicosMes.length === 1 ? "serviço no mês · " : "serviços no mês · ")}{fmtBRL(servicosMes.reduce((s, x) => s + Number(x.valor_total || 0), 0), language)}
           </div>
 
           {abertos.length > 0 && (
             <div>
-              <div className="text-xs font-semibold mb-1">Em aberto</div>
+              <div className="text-xs font-semibold mb-1"><LocalizedText source={"Em aberto"} /></div>
               <div className="space-y-1">
                 {abertos.map(s => (
                   <div key={s.id} className="flex items-center justify-between text-xs border-b border-border/50 py-1.5 gap-2">
                     <div className="min-w-0">
                       <div className="font-medium truncate">{fazById.get(s.fazenda_id)?.nome ?? "?"}</div>
-                      <div className="text-muted-foreground">{fmtDate(s.data_referencia)} · {s.status}</div>
+                      <div className="text-muted-foreground">{fmtDate(s.data_referencia, language)} · <LocalizedText source={s.status} /></div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="font-bold text-primary">{fmtBRL(s.valor_total)}</div>
+                      <div className="font-bold text-primary">{fmtBRL(s.valor_total, language)}</div>
                       <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={() => baixarPDF(s)}>
                         <FileDown className="w-3 h-3 mr-1" /> PDF
                       </Button>
@@ -335,16 +340,16 @@ export default function SyncVetMeuPainelPage() {
 
           {historico.length > 0 && (
             <div>
-              <div className="text-xs font-semibold mb-1">Histórico (pagos)</div>
+              <div className="text-xs font-semibold mb-1"><LocalizedText source={"Histórico (pagos)"} /></div>
               <div className="space-y-1">
                 {historico.map(s => (
                   <div key={s.id} className="flex items-center justify-between text-xs border-b border-border/50 py-1.5 gap-2">
                     <div className="min-w-0">
                       <div className="font-medium truncate">{fazById.get(s.fazenda_id)?.nome ?? "?"}</div>
-                      <div className="text-muted-foreground">{fmtDate(s.data_referencia)}</div>
+                      <div className="text-muted-foreground">{fmtDate(s.data_referencia, language)}</div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="font-bold">{fmtBRL(s.valor_total)}</div>
+                      <div className="font-bold">{fmtBRL(s.valor_total, language)}</div>
                       <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={() => baixarPDF(s)}>
                         <FileDown className="w-3 h-3 mr-1" /> PDF
                       </Button>
@@ -357,17 +362,17 @@ export default function SyncVetMeuPainelPage() {
 
           {servicos.length === 0 && (
             <div className="text-xs text-muted-foreground text-center italic py-2">
-              Nenhum serviço registrado para você ainda.
+              <LocalizedText source={"Nenhum serviço registrado para você ainda."} />
             </div>
           )}
         </Card>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        <Link to="/syncvet/agenda"><Button variant="outline" className="w-full"><Calendar className="w-4 h-4 mr-1" />Agenda</Button></Link>
-        <Link to="/syncvet/trajetos"><Button variant="outline" className="w-full"><RouteIcon className="w-4 h-4 mr-1" />Trajetos</Button></Link>
+        <Link to="/syncvet/agenda"><Button variant="outline" className="w-full"><Calendar className="w-4 h-4 mr-1" /><LocalizedText source={"Agenda"} /></Button></Link>
+        <Link to="/syncvet/trajetos"><Button variant="outline" className="w-full"><RouteIcon className="w-4 h-4 mr-1" /><LocalizedText source={"Trajetos"} /></Button></Link>
         <Button variant="outline" className="w-full" onClick={() => navigate("/syncvet/preferencias")}>
-          <Bell className="w-4 h-4 mr-1" />Notificações
+          <Bell className="w-4 h-4 mr-1" /><LocalizedText source={"Notificações"} />
         </Button>
       </div>
     </div>

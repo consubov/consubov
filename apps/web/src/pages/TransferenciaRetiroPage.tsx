@@ -1,3 +1,5 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,6 +47,8 @@ interface TransferenciaRetiroPageProps {
 }
 
 export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroPageProps) {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const { roleData, user } = useAuth();
   const navigate = useNavigate();
 
@@ -116,7 +120,7 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
       await loadTransferencias(meuRetiro.fazenda_id);
     } catch (err) {
       console.error("Erro ao carregar dados:", err);
-      toast.error("Erro ao carregar dados");
+      toast.error(uiText("Erro ao carregar dados"));
     } finally {
       setLoading(false);
     }
@@ -168,15 +172,15 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
     const peso = parseFloat(pesoMedio) || null;
 
     if (qtd <= 0) {
-      toast.error("Quantidade deve ser maior que zero");
+      toast.error(uiText("Quantidade deve ser maior que zero"));
       return;
     }
     if (!origemId || !destinoId) {
-      toast.error("Selecione origem e destino");
+      toast.error(uiText("Selecione origem e destino"));
       return;
     }
     if (origemId === destinoId) {
-      toast.error("Origem e destino devem ser diferentes");
+      toast.error(uiText("Origem e destino devem ser diferentes"));
       return;
     }
 
@@ -194,14 +198,14 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
 
       if (error) throw error;
 
-      toast.success("Transferência solicitada com sucesso!");
+      toast.success(uiText("Transferência solicitada com sucesso!"));
       setQuantidade("");
       setObservacao("");
       setDestinoId("");
       await loadTransferencias(fazendaId);
     } catch (err: any) {
       console.error("Erro ao solicitar:", err);
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`${uiText("Erro: ")}${err?.message || uiText("Erro desconhecido")}`);
     } finally {
       setSubmitting(false);
     }
@@ -215,7 +219,7 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
         .from("pastos").select("categoria")
         .eq("retiro_id", t.retiro_destino_id).eq("ativo", true).order("nome").limit(1);
       if (destPrimeiro && destPrimeiro.length > 0 && faltaCategoria(t.quantidade, destPrimeiro[0].categoria)) {
-        toast.error(MSG_CATEGORIA_OBRIGATORIA);
+        toast.error(uiText(MSG_CATEGORIA_OBRIGATORIA));
         setConfirmAction(null);
         setActionLoading(false);
         return;
@@ -231,7 +235,7 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
       const totalOrigem = (pastosOrigem || []).reduce((s, p) => s + (p.num_animais || 0), 0);
 
       if (totalOrigem < t.quantidade) {
-        toast.error(`Saldo insuficiente no retiro de origem. Disponível: ${totalOrigem} animais.`);
+        toast.error(`${uiText("Saldo insuficiente no retiro de origem. Disponível: ")}${totalOrigem}${uiText(" animais.")}`);
         setConfirmAction(null);
         setActionLoading(false);
         return;
@@ -280,7 +284,7 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
         const { error } = await supabase.from("pastos").update(updates).eq("id", destPasto.id);
         if (error) throw error;
       } else {
-        toast.error("Retiro de destino não possui pastos ativos");
+        toast.error(uiText("Retiro de destino não possui pastos ativos"));
         setConfirmAction(null);
         setActionLoading(false);
         return;
@@ -294,12 +298,12 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
 
       if (updateErr) throw updateErr;
 
-      toast.success("Transferência aceita! Animais movimentados.");
+      toast.success(uiText("Transferência aceita! Animais movimentados."));
       setConfirmAction(null);
       await loadTransferencias(fazendaId);
     } catch (err: any) {
       console.error("Erro ao aceitar:", err);
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`${uiText("Erro: ")}${err?.message || uiText("Erro desconhecido")}`);
     } finally {
       setActionLoading(false);
     }
@@ -315,12 +319,12 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
 
       if (error) throw error;
 
-      toast.success("Transferência cancelada.");
+      toast.success(uiText("Transferência cancelada."));
       setConfirmAction(null);
       await loadTransferencias(fazendaId);
     } catch (err: any) {
       console.error("Erro ao cancelar:", err);
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`${uiText("Erro: ")}${err?.message || uiText("Erro desconhecido")}`);
     } finally {
       setActionLoading(false);
     }
@@ -331,11 +335,11 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
   const statusBadge = (status: string) => {
     switch (status) {
       case "PENDENTE":
-        return <Badge variant="outline" className="gap-1 text-amber-600 border-amber-300 bg-amber-50"><Clock className="w-3 h-3" /> Pendente</Badge>;
+        return <Badge variant="outline" className="gap-1 text-amber-600 border-amber-300 bg-amber-50"><Clock className="w-3 h-3" /> <LocalizedText source={"Pendente"} /></Badge>;
       case "ACEITA":
-        return <Badge variant="outline" className="gap-1 text-emerald-600 border-emerald-300 bg-emerald-50"><CheckCircle2 className="w-3 h-3" /> Aceita</Badge>;
+        return <Badge variant="outline" className="gap-1 text-emerald-600 border-emerald-300 bg-emerald-50"><CheckCircle2 className="w-3 h-3" /> <LocalizedText source={"Aceita"} /></Badge>;
       case "CANCELADA":
-        return <Badge variant="outline" className="gap-1 text-red-600 border-red-300 bg-red-50"><XCircle className="w-3 h-3" /> Cancelada</Badge>;
+        return <Badge variant="outline" className="gap-1 text-red-600 border-red-300 bg-red-50"><XCircle className="w-3 h-3" /> <LocalizedText source={"Cancelada"} /></Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -357,32 +361,32 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
         </Button>
         <div className="flex items-center gap-2">
           <ArrowRightLeft className="w-5 h-5" />
-          <h1 className="text-lg font-bold">Transferência entre Retiros</h1>
+          <h1 className="text-lg font-bold"><LocalizedText source={"Transferência entre Retiros"} /></h1>
         </div>
       </header>
 
       <main className="flex-1 px-4 py-4 pb-8 overflow-auto">
         <Tabs defaultValue="nova" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="nova">Nova</TabsTrigger>
+            <TabsTrigger value="nova"><LocalizedText source={"Nova"} /></TabsTrigger>
             <TabsTrigger value="pendentes" className="relative">
-              Pendentes
+              <LocalizedText source={"Pendentes"} />
               {pendentes.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center font-bold">
                   {pendentes.length}
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="historico">Histórico</TabsTrigger>
+            <TabsTrigger value="historico"><LocalizedText source={"Histórico"} /></TabsTrigger>
           </TabsList>
 
           {/* NOVA SOLICITAÇÃO */}
           <TabsContent value="nova" className="space-y-4 mt-4">
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label>Retiro de origem</Label>
+                <Label><LocalizedText source={"Retiro de origem"} /></Label>
                 <Select value={origemId} onValueChange={setOrigemId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione o retiro" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={uiText("Selecione o retiro")} /></SelectTrigger>
                   <SelectContent>
                     {retiros.map(r => (
                       <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
@@ -392,9 +396,9 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
               </div>
 
               <div className="space-y-2">
-                <Label>Retiro de destino</Label>
+                <Label><LocalizedText source={"Retiro de destino"} /></Label>
                 <Select value={destinoId} onValueChange={setDestinoId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione o retiro" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={uiText("Selecione o retiro")} /></SelectTrigger>
                   <SelectContent>
                     {retiros.filter(r => r.id !== origemId).map(r => (
                       <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
@@ -405,7 +409,7 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Quantidade de animais</Label>
+                  <Label><LocalizedText source={"Quantidade de animais"} /></Label>
                   <Input
                     type="number"
                     inputMode="numeric"
@@ -416,7 +420,7 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Peso médio (kg)</Label>
+                  <Label><LocalizedText source={"Peso médio (kg)"} /></Label>
                   <Input
                     type="number"
                     inputMode="decimal"
@@ -428,11 +432,11 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
               </div>
 
               <div className="space-y-2">
-                <Label>Observação (opcional)</Label>
+                <Label><LocalizedText source={"Observação (opcional)"} /></Label>
                 <Textarea
                   value={observacao}
                   onChange={e => setObservacao(e.target.value)}
-                  placeholder="Motivo da transferência..."
+                  placeholder={uiText("Motivo da transferência...")}
                   rows={2}
                 />
               </div>
@@ -440,9 +444,9 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
               {origemId && destinoId && parseInt(quantidade) > 0 && (
                 <Card className="bg-muted border-muted">
                   <CardContent className="p-3 text-sm">
-                    <strong>{parseInt(quantidade)}</strong> animais de{" "}
+                    <strong>{parseInt(quantidade)}</strong> {uiText("animais de")}{" "}
                     <strong>{getRetiroNome(origemId)}</strong> → <strong>{getRetiroNome(destinoId)}</strong>
-                    {pesoMedio && <span> • Peso médio: {pesoMedio} kg</span>}
+                    {pesoMedio && <span>{uiText(" • Peso médio: ")}{pesoMedio} kg</span>}
                   </CardContent>
                 </Card>
               )}
@@ -453,7 +457,7 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
                 className="w-full h-12 gap-2 text-base"
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-5 h-5" />}
-                Solicitar Transferência
+                <LocalizedText source={"Solicitar Transferência"} />
               </Button>
             </div>
           </TabsContent>
@@ -463,7 +467,7 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
             {pendentes.length === 0 ? (
               <Card>
                 <CardContent className="p-6 text-center">
-                  <p className="text-muted-foreground text-sm">Nenhuma transferência pendente</p>
+                  <p className="text-muted-foreground text-sm"><LocalizedText source={"Nenhuma transferência pendente"} /></p>
                 </CardContent>
               </Card>
             ) : (
@@ -476,12 +480,12 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
                           {getRetiroNome(t.retiro_origem_id)} → {getRetiroNome(t.retiro_destino_id)}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {t.quantidade} animais
+                          {t.quantidade} {uiText("animais")}
                           {t.peso_medio ? ` • ${t.peso_medio} kg` : ""}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(t.data_solicitacao).toLocaleDateString("pt-BR")} às{" "}
-                          {new Date(t.data_solicitacao).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                          {new Date(t.data_solicitacao).toLocaleDateString(language)} {uiText("às")}{" "}
+                          {new Date(t.data_solicitacao).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" })}
                         </p>
                         {t.observacao && (
                           <p className="text-xs text-muted-foreground italic">"{t.observacao}"</p>
@@ -496,7 +500,7 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
                         onClick={() => setConfirmAction({ type: 'aceitar', transferencia: t })}
                       >
                         <CheckCircle2 className="w-4 h-4" />
-                        Aceitar
+                        <LocalizedText source={"Aceitar"} />
                       </Button>
                       <Button
                         size="sm"
@@ -505,7 +509,7 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
                         onClick={() => setConfirmAction({ type: 'cancelar', transferencia: t })}
                       >
                         <XCircle className="w-4 h-4" />
-                        Cancelar
+                        <LocalizedText source={"Cancelar"} />
                       </Button>
                     </div>
                   </CardContent>
@@ -519,7 +523,7 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
             {historico.length === 0 ? (
               <Card>
                 <CardContent className="p-6 text-center">
-                  <p className="text-muted-foreground text-sm">Nenhuma transferência no histórico</p>
+                  <p className="text-muted-foreground text-sm"><LocalizedText source={"Nenhuma transferência no histórico"} /></p>
                 </CardContent>
               </Card>
             ) : (
@@ -532,12 +536,12 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
                           {getRetiroNome(t.retiro_origem_id)} → {getRetiroNome(t.retiro_destino_id)}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {t.quantidade} animais
+                          {t.quantidade} {uiText("animais")}
                           {t.peso_medio ? ` • ${t.peso_medio} kg` : ""}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Solicitado: {new Date(t.data_solicitacao).toLocaleDateString("pt-BR")}
-                          {t.data_aceite && ` • Aceito: ${new Date(t.data_aceite).toLocaleDateString("pt-BR")}`}
+                          {uiText("Solicitado: ")}{new Date(t.data_solicitacao).toLocaleDateString(language)}
+                          {t.data_aceite && `${uiText(" • Aceito: ")}${new Date(t.data_aceite).toLocaleDateString(language)}`}
                         </p>
                         {t.observacao && (
                           <p className="text-xs text-muted-foreground italic">"{t.observacao}"</p>
@@ -558,17 +562,17 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmAction?.type === 'aceitar' ? 'Aceitar transferência?' : 'Cancelar transferência?'}
+              {uiText(confirmAction?.type === 'aceitar' ? 'Aceitar transferência?' : 'Cancelar transferência?')}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction?.type === 'aceitar'
-                ? `Serão transferidos ${confirmAction.transferencia.quantidade} animais de ${getRetiroNome(confirmAction.transferencia.retiro_origem_id)} para ${getRetiroNome(confirmAction.transferencia.retiro_destino_id)}. Esta ação não pode ser desfeita.`
-                : "A solicitação será cancelada. Nenhum animal será movimentado."
+                ? `${uiText("Serão transferidos ")}${confirmAction.transferencia.quantidade}${uiText(" animais de ")}${getRetiroNome(confirmAction.transferencia.retiro_origem_id)}${uiText(" para ")}${getRetiroNome(confirmAction.transferencia.retiro_destino_id)}${uiText(". Esta ação não pode ser desfeita.")}`
+                : uiText("A solicitação será cancelada. Nenhum animal será movimentado.")
               }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={actionLoading}>Voltar</AlertDialogCancel>
+            <AlertDialogCancel disabled={actionLoading}><LocalizedText source={"Voltar"} /></AlertDialogCancel>
             <AlertDialogAction
               disabled={actionLoading}
               className={confirmAction?.type === 'cancelar' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
@@ -581,7 +585,7 @@ export default function TransferenciaRetiroPage({ onBack }: TransferenciaRetiroP
                 }
               }}
             >
-              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : confirmAction?.type === 'aceitar' ? 'Confirmar Aceite' : 'Confirmar Cancelamento'}
+              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : uiText(confirmAction?.type === 'aceitar' ? 'Confirmar Aceite' : 'Confirmar Cancelamento')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

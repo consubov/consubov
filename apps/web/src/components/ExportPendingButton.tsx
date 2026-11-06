@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, Loader2 } from "lucide-react";
@@ -18,6 +18,7 @@ interface Props {
  * WhatsApp if all other sync paths fail.
  */
 export function ExportPendingButton({ userInfo, variant = "outline", size = "sm", className }: Props) {
+  const uiText = useStaticUiText();
   const [busy, setBusy] = useState(false);
 
   const handleClick = async () => {
@@ -25,12 +26,12 @@ export function ExportPendingButton({ userInfo, variant = "outline", size = "sm"
     try {
       const { count } = await downloadPendingBackup(userInfo);
       if (count === 0) {
-        toast.info("Nenhum registro pendente para exportar");
+        toast.info(uiText("Nenhum registro pendente para exportar"));
       } else {
-        toast.success(`Backup gerado com ${count} registro${count === 1 ? "" : "s"}`);
+        toast.success(`${uiText("Backup gerado com ")}${count} ${uiText(count === 1 ? "registro exportado" : "registros exportados")}`);
       }
     } catch (err: any) {
-      toast.error("Falha ao gerar backup: " + (err?.message ?? "erro desconhecido"));
+      toast.error(uiText("Falha ao gerar backup: ") + (err?.message ?? uiText("erro desconhecido")));
     } finally {
       setBusy(false);
     }

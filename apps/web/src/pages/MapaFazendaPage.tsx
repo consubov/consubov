@@ -9,7 +9,7 @@ import { useNomeUsuario } from "@/hooks/useNomeUsuario";
 import type { PastoMapaData } from "@/hooks/useMapaData";
 
 import MonthScroller from "@/components/MonthScroller";
-import MapaViewer from "@/components/mapa/MapaViewer";
+import MapaViewer, { clearMapImageMemoryCache } from "@/components/mapa/MapaViewer";
 import MapaEditor from "@/components/mapa/MapaEditor";
 import PastoInfoModal from "@/components/mapa/PastoInfoModal";
 import MapaActionSheet from "@/components/mapa/MapaActionSheet";
@@ -38,52 +38,40 @@ export default function MapaFazendaPage() {
   const userName = (user?.user_metadata as any)?.nome || nomePapel || "";
   const { mes, ano, setPeriodo } = usePainelPeriodo();
 
-  const [resolvedFazendaId, setResolvedFazendaId] = useState<string | null>(fazendaId ?? null);
   const [retiroNome, setRetiroNome] = useState("Retiro");
   const [fazendaNome, setFazendaNome] = useState("Fazenda");
-  const [resolving, setResolving] = useState(!fazendaId);
 
-  useEffect(() => {
-    if (!retiroId) return;
-    async function resolve() {
-      setResolving(true);
-      const { data: retiro } = await supabase
-        .from("retiros")
-        .select("fazenda_id, nome")
-        .eq("id", retiroId!)
-        .maybeSingle();
-      if (retiro) {
-        setResolvedFazendaId(retiro.fazenda_id);
-        setRetiroNome(retiro.nome);
-        const { data: faz } = await supabase
-          .from("fazendas")
-          .select("nome")
-          .eq("id", retiro.fazenda_id)
-          .maybeSingle();
-        if (faz) setFazendaNome(faz.nome);
-      }
-      setResolving(false);
-    }
-    resolve();
-  }, [retiroId]);
-
-  useEffect(() => {
-    if (!fazendaId || !retiroId) return;
-    setResolvedFazendaId(fazendaId);
-    async function loadNames() {
-      const [retRes, fazRes] = await Promise.all([
-        supabase.from("retiros").select("nome").eq("id", retiroId!).maybeSingle(),
-        supabase.from("fazendas").select("nome").eq("id", fazendaId!).maybeSingle(),
-      ]);
-      if (retRes.data) setRetiroNome(retRes.data.nome);
-      if (fazRes.data) setFazendaNome(fazRes.data.nome);
-    }
-    loadNames();
-  }, [fazendaId, retiroId]);
-
-  const activeFazendaId = fazendaId ?? resolvedFazendaId;
+  // The map itself is RLS-scoped by retiro. Names are nonessential and should
+  // never block the image when retiros/fazendas occasionally return HTTP 500.
+  const {
+    loading, mapa, error: mapError, warning: mapWarning, refresh,
+    detailsLoading, indicatorsLoading,
+  } = useMapaData(fazendaId, mes, ano, retiroId, user?.id);
+  const activeFazendaId = fazendaId ?? mapa?.fazenda_id ?? null;
   const activeRetiroId = retiroId ?? "";
-  const { loading, mapa, refresh } = useMapaData(activeFazendaId ?? undefined, mes, ano, retiroId ?? undefined);
+
+  useEffect(() => {
+    let current = true;
+    setRetiroNome("Retiro");
+    if (!retiroId || !mapa) return () => { current = false; };
+    void Promise.resolve(supabase.from("retiros").select("nome")
+      .eq("id", retiroId).maybeSingle()).then(({ data }) => {
+        if (current && data?.nome) setRetiroNome(data.nome);
+      }).catch(() => undefined);
+    return () => { current = false; };
+  }, [retiroId, mapa?.id]);
+
+  useEffect(() => {
+    let current = true;
+    setFazendaNome("Fazenda");
+    if (!activeFazendaId) return () => { current = false; };
+    void Promise.resolve(supabase.from("fazendas").select("nome")
+      .eq("id", activeFazendaId).maybeSingle()).then(({ data }) => {
+        if (current && data?.nome) setFazendaNome(data.nome);
+      }).catch(() => undefined);
+    return () => { current = false; };
+  }, [activeFazendaId]);
+
   const totalAnimaisRetiro = (mapa?.pastos ?? []).reduce((sum, p) => sum + (p.num_animais || 0), 0);
   const [editing, setEditing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -101,13 +89,21 @@ export default function MapaFazendaPage() {
   const [combinedMode, setCombinedMode] = useState(false);
   const [pendingSanitarioData, setPendingSanitarioData] = useState<SanitarioFormData | null>(null);
 
+  // An action opened for one period must not use a pasture snapshot from
+  // another month, user or retiro after navigation.
+  useEffect(() => {
+    setCurrentAction(null);
+    setSelectedPasto(null);
+    setDestinoPasto(null);
+  }, [mes, ano, retiroId, user?.id]);
+
   const isAdmin = role === "administrador";
   const canEditMapa = isAdmin && Boolean(fazendaId);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await refresh();
-    setRefreshing(false);
+    try { await refresh(); }
+    finally { setRefreshing(false); }
   };
 
   const handlePastoClick = (pasto: PastoMapaData) => {
@@ -135,11 +131,25 @@ export default function MapaFazendaPage() {
     await refresh();
   };
 
-  if (resolving || loading) {
+  if (loading && !mapa) {
     return (
       <div className="flex justify-center p-12">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
+    );
+  }
+
+  if (mapError) {
+    return (
+      <Card className="mx-auto max-w-xl space-y-3 p-5 text-center" role="alert">
+        <p className="text-sm text-destructive">{mapError}</p>
+        <Button type="button" variant="outline" onClick={() => {
+void handleRefresh();
+        }}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          <LocalizedText source={"Tentar novamente"} />
+        </Button>
+      </Card>
     );
   }
 
@@ -190,6 +200,19 @@ export default function MapaFazendaPage() {
         <MonthScroller selectedMonth={mes} selectedYear={ano} onChange={(m, y) => setPeriodo(m, y)} />
       </Card>
 
+      {(detailsLoading || indicatorsLoading) && (
+        <p className="text-xs text-muted-foreground" role="status">
+          <Loader2 className="inline-block mr-1 h-3 w-3 animate-spin" />
+          <LocalizedText source={detailsLoading ? "Carregando os desenhos do mapa..." : "Atualizando indicadores em segundo plano..."} />
+        </p>
+      )}
+
+      {mapWarning && (
+        <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+          {mapWarning}
+        </p>
+      )}
+
       {editing && canEditMapa ? (
         <MapaEditor
           fazendaId={activeFazendaId!}
@@ -227,6 +250,7 @@ export default function MapaFazendaPage() {
             rotulo: e.rotulo || "",
           }))}
           onSaved={() => {
+            clearMapImageMemoryCache();
             setEditing(false);
             refresh();
           }}
@@ -234,6 +258,8 @@ export default function MapaFazendaPage() {
       ) : mapa ? (
         <MapaViewer
           mapa={mapa}
+          cacheScope={user?.id}
+          detailsLoading={detailsLoading}
           onPastoClick={handlePastoClick}
           selectedPastoId={selectedPasto?.pasto_id}
           selectingDestino={currentAction === "selectDestino"}

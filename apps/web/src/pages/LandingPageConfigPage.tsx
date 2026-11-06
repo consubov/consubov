@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -325,12 +325,12 @@ const RELATTO_SECTIONS: SectionDef[] = [
 
 const BUCKET = "landing";
 
-async function uploadImage(file: File, folder: string): Promise<string | null> {
+async function uploadImage(file: File, folder: string, uiText: (text: string) => string): Promise<string | null> {
   const ext = file.name.split(".").pop() || "png";
   const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true });
   if (error) {
-    toast.error(`Erro ao enviar imagem: ${error.message}`);
+    toast.error(`${uiText("Erro ao enviar imagem: ")}${error.message}`);
     return null;
   }
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
@@ -350,11 +350,12 @@ function ImageInput({
 }) {
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
+  const uiText = useStaticUiText();
 
   const handle = async (file: File | undefined) => {
     if (!file) return;
     setBusy(true);
-    const url = await uploadImage(file, folder);
+    const url = await uploadImage(file, folder, uiText);
     setBusy(false);
     if (url) onChange(url);
     if (ref.current) ref.current.value = "";
@@ -369,7 +370,7 @@ function ImageInput({
             type="button"
             onClick={() => onChange("")}
             className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-            title="Remover"
+            title={uiText("Remover")}
           >
             <X className="w-3 h-3" />
           </button>
@@ -388,7 +389,7 @@ function ImageInput({
       />
       <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => ref.current?.click()}>
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-        {busy ? "Enviando..." : value ? "Substituir" : "Enviar"}
+        {uiText(busy ? "Enviando..." : value ? "Substituir" : "Enviar")}
       </Button>
     </div>
   );
@@ -407,6 +408,7 @@ function JsonListEditor({
   onChange: (v: any[]) => void;
   folder: string;
 }) {
+  const uiText = useStaticUiText();
   const items = Array.isArray(value) ? value : [];
 
   const update = (idx: number, key: string, v: string) => {
@@ -434,7 +436,7 @@ function JsonListEditor({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <GripVertical className="w-3.5 h-3.5" />
-              <span className="font-medium">Item #{idx + 1}</span>
+              <span className="font-medium">{uiText("Item #")}{idx + 1}</span>
             </div>
             <div className="flex items-center gap-1">
               <Button type="button" variant="ghost" size="icon" className="h-7 w-7" disabled={idx === 0} onClick={() => move(idx, -1)}>
@@ -451,7 +453,7 @@ function JsonListEditor({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {field.itemFields?.map((f) => (
               <div key={f.key} className={f.type === "textarea" || f.type === "image" ? "sm:col-span-2" : ""}>
-                <Label className="text-xs">{f.label}</Label>
+                <Label className="text-xs">{uiText(f.label)}</Label>
                 {f.type === "textarea" ? (
                   <Textarea
                     value={item[f.key] || ""}
@@ -492,6 +494,7 @@ function SectionCard({
 }) {
   const [open, setOpen] = useState(section.id === "hero" || section.id === "relatto_hero");
   const [saving, setSaving] = useState(false);
+  const uiText = useStaticUiText();
   const folder = section.id;
 
 
@@ -516,21 +519,21 @@ function SectionCard({
 
       if (error) {
         ok = false;
-        toast.error(`Erro ao salvar ${row.chave}: ${error.message}`);
+        toast.error(`${uiText("Erro ao salvar ")}${row.chave}: ${error.message}`);
       }
     }
     setSaving(false);
-    if (ok) toast.success(`Seção "${section.title}" salva!`);
+    if (ok) toast.success(`${uiText('Seção "')}${uiText(section.title)}${uiText('" salva!')}`);
   };
 
   return (
     <Card>
       <CardHeader className="cursor-pointer select-none" onClick={() => setOpen((o) => !o)}>
         <CardTitle className="text-base flex items-center justify-between">
-          <span>{section.title}</span>
+          <span>{uiText(section.title)}</span>
           {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </CardTitle>
-        {section.description && <p className="text-xs text-muted-foreground">{section.description}</p>}
+        {section.description && <p className="text-xs text-muted-foreground">{uiText(section.description)}</p>}
       </CardHeader>
       {open && (
         <CardContent className="space-y-5">
@@ -545,8 +548,8 @@ function SectionCard({
               }
               return (
                 <div key={field.key} className="space-y-2">
-                  <Label className="text-sm">{field.label}</Label>
-                  {field.help && <p className="text-xs text-muted-foreground">{field.help}</p>}
+                  <Label className="text-sm">{uiText(field.label)}</Label>
+                  {field.help && <p className="text-xs text-muted-foreground">{uiText(field.help)}</p>}
                   <JsonListEditor
                     field={field}
                     value={parsed}
@@ -559,7 +562,7 @@ function SectionCard({
             if (field.type === "image") {
               return (
                 <div key={field.key} className="space-y-2">
-                  <Label className="text-sm">{field.label}</Label>
+                  <Label className="text-sm">{uiText(field.label)}</Label>
                   <ImageInput
                     value={values[field.key] || ""}
                     onChange={(url) => setField(field.key, url)}
@@ -570,13 +573,13 @@ function SectionCard({
             }
             return (
               <div key={field.key} className="space-y-2">
-                <Label className="text-sm">{field.label}</Label>
-                {field.help && <p className="text-xs text-muted-foreground">{field.help}</p>}
+                <Label className="text-sm">{uiText(field.label)}</Label>
+                {field.help && <p className="text-xs text-muted-foreground">{uiText(field.help)}</p>}
                 {field.type === "textarea" ? (
                   <Textarea
                     value={values[field.key] || ""}
                     onChange={(e) => setField(field.key, e.target.value)}
-                    placeholder={field.placeholder}
+                    placeholder={field.placeholder ? uiText(field.placeholder) : undefined}
                     rows={3}
                     maxLength={2000}
                   />
@@ -584,7 +587,7 @@ function SectionCard({
                   <Input
                     value={values[field.key] || ""}
                     onChange={(e) => setField(field.key, e.target.value)}
-                    placeholder={field.placeholder}
+                    placeholder={field.placeholder ? uiText(field.placeholder) : undefined}
                     maxLength={300}
                   />
                 )}
@@ -594,7 +597,7 @@ function SectionCard({
           <div className="flex justify-end pt-2 border-t border-border">
             <Button onClick={handleSave} disabled={saving} size="sm" className="gap-2">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {saving ? "Salvando..." : "Salvar seção"}
+              {uiText(saving ? "Salvando..." : "Salvar seção")}
             </Button>
           </div>
         </CardContent>
@@ -610,6 +613,7 @@ export default function LandingPageConfigPage() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [savingAll, setSavingAll] = useState(false);
+  const uiText = useStaticUiText();
 
   const sections = landingSlug === "relatto" ? RELATTO_SECTIONS : SECTIONS;
 
@@ -653,9 +657,9 @@ export default function LandingPageConfigPage() {
     }
     setSavingAll(false);
     if (errCount === 0) {
-      toast.success(`Todas as alterações foram salvas (${okCount} campos).`);
+      toast.success(`${uiText("Todas as alterações foram salvas (")}${okCount}${uiText(" campos).")}`);
     } else {
-      toast.error(`Salvos ${okCount}, falharam ${errCount}.`);
+      toast.error(`${uiText("Salvos ")}${okCount}${uiText(", falharam ")}${errCount}.`);
     }
   };
 
@@ -709,7 +713,7 @@ export default function LandingPageConfigPage() {
           ) : (
             <Save className="w-5 h-5" />
           )}
-          {savingAll ? "Salvando..." : "💾 Salvar Alterações"}
+          {uiText(savingAll ? "Salvando..." : "💾 Salvar Alterações")}
         </Button>
       </div>
     </div>

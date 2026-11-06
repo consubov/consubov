@@ -1,6 +1,8 @@
 import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { translatePdfLabel } from "@/lib/pdfUiLabels";
+import type { SiteLanguage } from "@/lib/siteLanguage";
 import logoAsset from "@/assets/consubov-logo-preta.jpeg.asset.json";
 
 export interface DespesaItem {
@@ -10,6 +12,8 @@ export interface DespesaItem {
 }
 
 export interface DespesasPdfData {
+  /** Selected App language; defaults to pt-BR for existing integrations. */
+  language?: SiteLanguage;
   consultor_nome: string;
   data_inicio: string; // YYYY-MM-DD
   data_fim: string;
@@ -24,13 +28,13 @@ const INK = "#1C1C1A";
 const INK_SOFT = "#767066";
 const LINE = "#E7E3D6";
 
-function fmtDate(iso: string) {
+function fmtDate(iso: string, language: SiteLanguage = "pt-BR") {
   const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
+  return language === "en-US" ? `${m}/${d}/${y}` : `${d}/${m}/${y}`;
 }
 
-function fmtBRL(v: number) {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+function fmtBRL(v: number, language: SiteLanguage = "pt-BR") {
+  return v.toLocaleString(language, { style: "currency", currency: "BRL" });
 }
 
 async function fetchAssetDataUrl(url: string): Promise<string | null> {
@@ -69,7 +73,7 @@ async function urlToJpeg(url: string, maxDim = 1400, quality = 0.78): Promise<st
   }
 }
 
-function drawCoverHeader(doc: jsPDF, logoDataUrl: string | null, subtitle: string) {
+function drawCoverHeader(doc: jsPDF, logoDataUrl: string | null, subtitle: string, language: SiteLanguage) {
   const w = doc.internal.pageSize.getWidth();
   const logoH = 16;
   const logoW = 44;
@@ -86,7 +90,7 @@ function drawCoverHeader(doc: jsPDF, logoDataUrl: string | null, subtitle: strin
   doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.text("RELATÓRIO CONSUBOV", dividerX + 4, logoY + 6);
+  doc.text(translatePdfLabel(language, "RELATÓRIO CONSUBOV"), dividerX + 4, logoY + 6);
   doc.setTextColor(INK);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(13);
@@ -112,6 +116,8 @@ function drawPageHeader(doc: jsPDF, title: string) {
 }
 
 export async function gerarDespesasPdf(data: DespesasPdfData): Promise<Blob> {
+  const language = data.language ?? "pt-BR";
+  const tr = (source: string) => translatePdfLabel(language, source);
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -119,12 +125,12 @@ export async function gerarDespesasPdf(data: DespesasPdfData): Promise<Blob> {
   const logoDataUrl = await fetchAssetDataUrl(logoAsset.url);
 
   // ===== COVER =====
-  drawCoverHeader(doc, logoDataUrl, "Relatório de Despesas — Consubov");
+  drawCoverHeader(doc, logoDataUrl, tr("Relatório de Despesas — Consubov"), language);
 
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
-  doc.text("Despesas de Combustível", 15, 52);
+  doc.text(tr("Despesas de Combustível"), 15, 52);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
@@ -139,18 +145,18 @@ export async function gerarDespesasPdf(data: DespesasPdfData): Promise<Blob> {
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text("Período", 15, 82);
+  doc.text(tr("Período"), 15, 82);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text(`${fmtDate(data.data_inicio)} até ${fmtDate(data.data_fim)}`, 15, 89);
-  doc.text(`Tipo: ${data.tipo_periodo}`, 15, 95);
+  doc.text(`${fmtDate(data.data_inicio, language)}${tr(" até ")}${fmtDate(data.data_fim, language)}`, 15, 89);
+  doc.text(`${tr("Tipo:")} ${tr(data.tipo_periodo)}`, 15, 95);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text("Resumo", 15, 110);
+  doc.text(tr("Resumo"), 15, 110);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text(`Total de cupons: ${data.despesas.length}`, 15, 117);
+  doc.text(`${tr("Total de cupons:")} ${data.despesas.length}`, 15, 117);
 
   // Total destaque
   doc.setFillColor(20, 67, 43);
@@ -158,17 +164,17 @@ export async function gerarDespesasPdf(data: DespesasPdfData): Promise<Blob> {
   doc.setTextColor(255);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.text("Valor total do período", 22, 133);
+  doc.text(tr("Valor total do período"), 22, 133);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text(fmtBRL(data.valor_total), 22, 142);
+  doc.text(fmtBRL(data.valor_total, language), 22, 142);
 
   // Detail table
   doc.setTextColor(INK);
   autoTable(doc, {
     startY: 158,
-    head: [["#", "Data", "Valor"]],
-    body: data.despesas.map((d, i) => [String(i + 1), fmtDate(d.data_despesa), fmtBRL(d.valor)]),
+    head: [["#", tr("Data"), tr("Valor")]],
+    body: data.despesas.map((d, i) => [String(i + 1), fmtDate(d.data_despesa, language), fmtBRL(d.valor, language)]),
     headStyles: { fillColor: [20, 67, 43] as [number, number, number], textColor: 255 },
     styles: { fontSize: 9 },
     margin: { left: 15, right: 15 },
@@ -177,13 +183,13 @@ export async function gerarDespesasPdf(data: DespesasPdfData): Promise<Blob> {
   // ===== One cupom per page =====
   for (let i = 0; i < data.despesas.length; i++) {
     doc.addPage();
-    drawPageHeader(doc, "Cupom Fiscal");
+    drawPageHeader(doc, tr("Cupom Fiscal"));
 
     const d = data.despesas[i];
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.setTextColor(INK);
-    doc.text(`#${i + 1} — ${fmtDate(d.data_despesa)} — ${fmtBRL(d.valor)}`, 15, 34);
+    doc.text(`#${i + 1} — ${fmtDate(d.data_despesa, language)} — ${fmtBRL(d.valor, language)}`, 15, 34);
 
     const jpeg = await urlToJpeg(d.foto_cupom_url);
     if (jpeg) {
@@ -213,12 +219,12 @@ export async function gerarDespesasPdf(data: DespesasPdfData): Promise<Blob> {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(INK_SOFT);
-    doc.text(`Página ${p} de ${total}`, W - 15, H - 8, { align: "right" });
+    doc.text(`${tr("Página")} ${p}${tr(" de ")}${total}`, W - 15, H - 8, { align: "right" });
     doc.setTextColor(GOLD);
     doc.setFont("helvetica", "bold");
     doc.text("Relatto\u00AE", 15, H - 12);
     doc.setFont("helvetica", "normal");
-    doc.text("Gerado por Consubov.com.br", 15, H - 8);
+    doc.text(tr("Gerado por Consubov.com.br"), 15, H - 8);
   }
 
   return doc.output("blob");

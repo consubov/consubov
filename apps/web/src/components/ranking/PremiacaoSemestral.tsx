@@ -1,3 +1,4 @@
+import { useTranslation } from "@/hooks/useTranslation";
 import { LocalizedText } from "@/components/i18n/LocalizedText";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Trophy, Medal } from "lucide-react";
@@ -7,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { fetchPremiacaoSemestral, semestreAtual, type PremiacaoRetiro, type Semestre } from "@/lib/premiacaoSemestral";
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-const fmt = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const MESES_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const fmt = (n: number, locale: string) => n.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const key = (s: Semestre) => `${s.ano}-${s.sem}`;
 
 function opcoesSemestre(): Semestre[] {
@@ -30,6 +32,7 @@ interface Props {
 }
 
 export default function PremiacaoSemestral({ fazendas, mostrarFazenda, seletorExtra }: Props) {
+  const { language } = useTranslation();
   const opcoes = useMemo(opcoesSemestre, []);
   const [sel, setSel] = useState(key(opcoes[0]));
   const [list, setList] = useState<PremiacaoRetiro[]>([]);
@@ -87,7 +90,7 @@ export default function PremiacaoSemestral({ fazendas, mostrarFazenda, seletorEx
                     </span>
                   </span>
                   <span className="text-right shrink-0">
-                    <span className="block text-sm font-bold">{fmt(r.media)}/10</span>
+                    <span className="block text-sm font-bold">{fmt(r.media, language)}/10</span>
                     <span className="block text-[11px] text-muted-foreground">{r.meses.length} {r.meses.length === 1 ? "mês" : "meses"}</span>
                   </span>
                 </button>
@@ -95,8 +98,8 @@ export default function PremiacaoSemestral({ fazendas, mostrarFazenda, seletorEx
                   <div className="bg-muted/40 px-3 py-2 grid grid-cols-3 gap-2 text-xs">
                     {r.meses.map((m) => (
                       <div key={m.mes} className={`rounded p-1.5 text-center ${m.semSalgaRetiro ? "bg-destructive/10 text-destructive" : "bg-background"}`}>
-                        <div className="font-semibold">{MESES[m.mes - 1]}</div>
-                        <div>{fmt(m.score)}{m.semSalgaRetiro && " · sem salga"}</div>
+                        <div className="font-semibold">{(language === "en-US" ? MESES_EN : MESES)[m.mes - 1]}</div>
+                        <div>{fmt(m.score, language)}{m.semSalgaRetiro && " · sem salga"}</div>
                       </div>
                     ))}
                   </div>

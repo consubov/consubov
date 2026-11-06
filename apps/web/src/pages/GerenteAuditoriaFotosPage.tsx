@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +25,7 @@ function fotosLabel(n: number) {
 }
 
 export default function GerenteAuditoriaFotosPage() {
+  const uiText = useStaticUiText();
   const navigate = useNavigate();
   const { fazendas, fazendaId, setFazendaId, carregado } = useGerenteFazendaAtiva();
   const [faz, setFaz] = useState<FazCfg>({ auditoria_fotos_por_bloco: null, exigir_foto_cocho: null });
@@ -76,10 +77,10 @@ export default function GerenteAuditoriaFotosPage() {
         const { error: e2 } = await salvarAuditoriaRetiro(r.id, { auditoria_fotos_por_bloco: r.auditoria_fotos_por_bloco, exigir_foto_cocho: r.exigir_foto_cocho });
         if (e2) throw e2;
       }
-      toast.success("Configuração salva");
+      toast.success(uiText("Configuração salva"));
       await load(fazendaId);
     } catch (e: any) {
-      toast.error("Erro ao salvar: " + (e?.message ?? ""));
+      toast.error(uiText("Erro ao salvar: ") + (e?.message ?? ""));
     } finally {
       setSaving(false);
     }

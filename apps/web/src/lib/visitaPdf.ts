@@ -11,6 +11,8 @@ import { drawAllSampleChartPages, drawDualLineChartPage, type SampleChartTypes }
 import { fetchWithConsultorTimeout, withConsultorTimeout } from "@/lib/consultorOffline/network";
 import { prefetchFotosDataUrls } from "@/lib/pdfImagePrep";
 import { normalizarConsumoPasto, fmtKgDia, fmtPorCabeca } from "@/lib/consumoPasto";
+import { translatePdfLabel } from "@/lib/pdfUiLabels";
+import type { SiteLanguage } from "@/lib/siteLanguage";
 
 const BUCKET_FOTOS = "visitas-consultor-fotos";
 const BUCKET_RELATORIOS = "relatorios";
@@ -59,6 +61,8 @@ export interface VisitaPdfPasto {
 }
 
 export interface VisitaPdfData {
+  /** UI-only translation: preserve user, livestock and server values. */
+  language?: SiteLanguage;
   visitaId: string;
   fazenda: { nome_fazenda: string; proprietario?: string | null; responsavel?: string | null; gerente?: string | null; municipio?: string | null; uf?: string | null; localizacao?: string | null };
   consultor: { nome: string };
@@ -156,7 +160,8 @@ function drawLogoFitted(
   try { doc.addImage(asset.dataUrl, fmt, x, y, w, h); } catch { /* ignore */ }
 }
 
-function drawFooter(doc: jsPDF, page: number, totalPages: number, modo?: "consultor" | "conferencia") {
+function drawFooter(doc: jsPDF, page: number, totalPages: number, modo?: "consultor" | "conferencia", language: SiteLanguage = "pt-BR") {
+  const tr = (source: string) => translatePdfLabel(language, source);
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
   doc.setDrawColor(LINE);
@@ -171,9 +176,9 @@ function drawFooter(doc: jsPDF, page: number, totalPages: number, modo?: "consul
     doc.setFont("helvetica", "bold");
     doc.text("Relatto\u00AE", 15, h - 9);
     doc.setFont("helvetica", "normal");
-    doc.text("Gerado por Consubov.com.br", 15, h - 5);
+    doc.text(tr("Gerado por Consubov.com.br"), 15, h - 5);
   }
-  doc.text(`Página ${page} de ${totalPages}`, w - 15, h - 5, { align: "right" });
+  doc.text(`${tr("Página")} ${page}${tr(" de ")}${totalPages}`, w - 15, h - 5, { align: "right" });
 }
 
 
@@ -183,7 +188,9 @@ function drawCoverHeader(
   subtitle: string,
   logos?: { esquerda: LogoAsset; direita: LogoAsset } | null,
   logoScale = 1,
+  language: SiteLanguage = "pt-BR",
 ) {
+  const tr = (source: string) => translatePdfLabel(language, source);
   const w = doc.internal.pageSize.getWidth();
   const logoH = 16 * logoScale;
   const logoW = 60 * logoScale; // caixa mais generosa para permitir que ambas as logos usem a mesma altura
@@ -207,7 +214,7 @@ function drawCoverHeader(
   doc.setTextColor(INK_SOFT);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.text("RELATÓRIO TÉCNICO", dividerX + 4, logoY + logoH / 2 - 2);
+  doc.text(tr("RELATÓRIO TÉCNICO"), dividerX + 4, logoY + logoH / 2 - 2);
   doc.setTextColor(INK);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(13);
@@ -220,6 +227,8 @@ function drawCoverHeader(
 }
 
 function drawFarmBlock(doc: jsPDF, data: VisitaPdfData, y: number): number {
+  const language = data.language ?? "pt-BR";
+  const tr = (source: string) => translatePdfLabel(data.language ?? "pt-BR", source);
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
@@ -232,10 +241,10 @@ function drawFarmBlock(doc: jsPDF, data: VisitaPdfData, y: number): number {
 
   // Conferência do Admin: cabeçalho enxuto — Fazenda, Proprietário, Gerente, Data.
   if (data.modo === "conferencia") {
-    if (data.fazenda.proprietario) { doc.text(`Proprietário: ${data.fazenda.proprietario}`, 15, metaY); metaY += 5; }
-    if (data.fazenda.gerente) { doc.text(`Gerente: ${data.fazenda.gerente}`, 15, metaY); metaY += 5; }
-    doc.text(`Responsável: ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
-    doc.text(`Data: ${format(new Date(data.hora_inicio), "dd/MM/yyyy", { locale: ptBR })}`, 15, metaY);
+    if (data.fazenda.proprietario) { doc.text(`${tr("Proprietário:")} ${data.fazenda.proprietario}`, 15, metaY); metaY += 5; }
+    if (data.fazenda.gerente) { doc.text(`${tr("Gerente:")} ${data.fazenda.gerente}`, 15, metaY); metaY += 5; }
+    doc.text(`${tr("Responsável:")} ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
+    doc.text(`${tr("Data:")} ${format(new Date(data.hora_inicio), language === "en-US" ? "MM/dd/yyyy" : "dd/MM/yyyy", { locale: ptBR })}`, 15, metaY);
     metaY += 6;
     return metaY;
   }
@@ -243,12 +252,12 @@ function drawFarmBlock(doc: jsPDF, data: VisitaPdfData, y: number): number {
   const locStr = (data.fazenda.localizacao || "").trim()
     || [data.fazenda.municipio, data.fazenda.uf].filter(Boolean).join("/");
   if (locStr) { doc.text(locStr, 15, metaY); metaY += 5; }
-  if (data.fazenda.proprietario) { doc.text(`Proprietário: ${data.fazenda.proprietario}`, 15, metaY); metaY += 5; }
-  if (data.fazenda.responsavel) { doc.text(`Responsável: ${data.fazenda.responsavel}`, 15, metaY); metaY += 5; }
-  doc.text(`Consultor: ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
-  const inicioTxt = format(new Date(data.hora_inicio), "dd/MM/yyyy HH:mm", { locale: ptBR });
-  const terminoTxt = data.hora_fim ? format(new Date(data.hora_fim), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—";
-  doc.text(`Início: ${inicioTxt}  ·  Término: ${terminoTxt}`, 15, metaY);
+  if (data.fazenda.proprietario) { doc.text(`${tr("Proprietário:")} ${data.fazenda.proprietario}`, 15, metaY); metaY += 5; }
+  if (data.fazenda.responsavel) { doc.text(`${tr("Responsável:")} ${data.fazenda.responsavel}`, 15, metaY); metaY += 5; }
+  doc.text(`${tr("Consultor:")} ${data.consultor.nome || "—"}`, 15, metaY); metaY += 5;
+  const inicioTxt = format(new Date(data.hora_inicio), language === "en-US" ? "MM/dd/yyyy HH:mm" : "dd/MM/yyyy HH:mm", { locale: ptBR });
+  const terminoTxt = data.hora_fim ? format(new Date(data.hora_fim), language === "en-US" ? "MM/dd/yyyy HH:mm" : "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—";
+  doc.text(`${tr("Início:")} ${inicioTxt}  ·  ${tr("Término:")} ${terminoTxt}`, 15, metaY);
   metaY += 6;
   return metaY;
 }
@@ -374,7 +383,9 @@ async function drawPastoBlock(
   doc: jsPDF, pasto: VisitaPdfPasto, fotosCache: Record<string, string | null>,
   x: number, y: number, width: number, height: number,
   numeroMap?: Record<string, number>,
+  language: SiteLanguage = "pt-BR",
 ) {
+  const tr = (source: string) => translatePdfLabel(language, source);
   const fotosReais = pasto.fotos
     .filter(foto => Boolean(foto?.id && typeof foto.url === "string" && foto.url.trim()))
     .slice(0, 5);
@@ -392,7 +403,7 @@ async function drawPastoBlock(
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text(`Pasto ${pasto.num_pasto || "—"}`, x + 20, y + 8);
+  doc.text(`${tr("Pasto ")}${pasto.num_pasto || "—"}`, x + 20, y + 8);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
@@ -402,8 +413,8 @@ async function drawPastoBlock(
   const uaHa = uaPasto > 0 && areaAlq > 0 ? uaPasto / areaAlq / 4.84 : null;
   const sub = [
     pasto.categoria || null,
-    `${pasto.qtd_animais ?? "—"} animais`,
-    pasto.peso_medio_kg ? `${pasto.peso_medio_kg} kg/cab` : null,
+    `${pasto.qtd_animais ?? "—"}${tr(" animais")}`,
+    pasto.peso_medio_kg ? `${pasto.peso_medio_kg}${tr(" kg/cab")}` : null,
     uaHa != null ? `${uaHa.toFixed(2).replace(".", ",")} UA/ha` : null,
   ].filter(Boolean).join(" · ");
   doc.text(sub, x + 20, y + 13);
@@ -420,16 +431,16 @@ async function drawPastoBlock(
   const lineY = y + 24;
   const cellW = (width - 6) / 3;
   const cells = [
-    { label: "PRODUTO", value: pasto.tipo_produto ? (PRODUTO_LABEL[pasto.tipo_produto] || pasto.tipo_produto) : "—" },
+    { label: "PRODUTO", value: pasto.tipo_produto ? tr(PRODUTO_LABEL[pasto.tipo_produto] || pasto.tipo_produto) : "—" },
     { label: "% PV", value: pasto.percentual_pv || "—" },
-    { label: "PESO VIVO TOTAL", value: pesoVivoTotal > 0 ? `${pesoVivoTotal.toLocaleString("pt-BR")} kg` : "—" },
+    { label: "PESO VIVO TOTAL", value: pesoVivoTotal > 0 ? `${pesoVivoTotal.toLocaleString(language)} kg` : "—" },
   ];
   cells.forEach((c, i) => {
     const cx = x + 3 + i * cellW;
     doc.setFontSize(6.5);
     doc.setTextColor(INK_SOFT);
     doc.setFont("helvetica", "bold");
-    doc.text(c.label, cx, lineY);
+    doc.text(tr(c.label), cx, lineY);
     doc.setFontSize(9);
     doc.setTextColor(INK);
     doc.setFont("helvetica", "bold");
@@ -455,7 +466,7 @@ async function drawPastoBlock(
     doc.setFontSize(6.5);
     doc.setTextColor(INK_SOFT);
     doc.setFont("helvetica", "bold");
-    doc.text(c.label, cx, lineY2);
+    doc.text(tr(c.label), cx, lineY2);
     doc.setFontSize(9);
     doc.setTextColor(INK);
     doc.setFont("helvetica", "bold");
@@ -482,7 +493,7 @@ async function drawPastoBlock(
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(INK_SOFT);
-    doc.text(label.toUpperCase(), cx, scoreY);
+    doc.text(tr(label).toUpperCase(), cx, scoreY);
     // Indicador único (círculo dourado + N/5) em vez das 5 opções.
     const notaNum = nota != null ? Number(nota.toFixed(1)) : null;
     const notaTxt = notaNum != null
@@ -499,7 +510,7 @@ async function drawPastoBlock(
     doc.setFontSize(5.6);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(INK_SOFT);
-    const legend = getScoreDescription(key);
+    const legend = tr(getScoreDescription(key));
     const legLines = doc.splitTextToSize(legend, scoreCellW - 4);
     doc.text(legLines.slice(0, 2), cx, dotY + 4.8);
   });
@@ -509,7 +520,7 @@ async function drawPastoBlock(
     doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(INK_SOFT);
-    doc.text("OBSERVAÇÃO", x + 3, y + 58);
+    doc.text(tr("OBSERVAÇÃO"), x + 3, y + 58);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(INK);
@@ -554,7 +565,9 @@ function drawConferenciaPastoBlock(
   doc: jsPDF, pasto: VisitaPdfPasto, fotosCache: Record<string, string | null>,
   x: number, y: number, width: number, height: number,
   numeroMap?: Record<string, number>,
+  language: SiteLanguage = "pt-BR",
 ) {
+  const tr = (source: string) => translatePdfLabel(language, source);
   doc.setDrawColor(LINE);
   doc.setLineWidth(0.4);
   doc.roundedRect(x, y, width, height, 2, 2, "S");
@@ -569,12 +582,12 @@ function drawConferenciaPastoBlock(
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text(`Pasto ${pasto.num_pasto || "—"}`, x + 20, y + 8);
+  doc.text(`${tr("Pasto ")}${pasto.num_pasto || "—"}`, x + 20, y + 8);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
   doc.text(
-    [pasto.fazenda_nome || null, pasto.retiro_nome ? `Retiro ${pasto.retiro_nome}` : null]
+    [pasto.fazenda_nome || null, pasto.retiro_nome ? `${tr("Retiro ")}${pasto.retiro_nome}` : null]
       .filter(Boolean).join(" · ") || "—",
     x + 20, y + 13,
   );
@@ -585,7 +598,7 @@ function drawConferenciaPastoBlock(
   const cellW = (width - 6) / 3;
   const salgaSacos = pasto.ultima_salga_sacos;
   const salgaTxt = pasto.ultima_salga
-    ? `${format(new Date(pasto.ultima_salga), "dd/MM/yyyy", { locale: ptBR })}${salgaSacos != null ? ` — ${salgaSacos} sacos` : ""}`
+    ? `${format(new Date(pasto.ultima_salga), language === "en-US" ? "MM/dd/yyyy" : "dd/MM/yyyy", { locale: ptBR })}${salgaSacos != null ? ` — ${salgaSacos}${tr(" sacos")}` : ""}`
     : "—";
   const rows: { label: string; value: string }[][] = [
     [
@@ -606,7 +619,7 @@ function drawConferenciaPastoBlock(
       doc.setFontSize(6.5);
       doc.setTextColor(INK_SOFT);
       doc.setFont("helvetica", "bold");
-      doc.text(c.label, cx, rowY);
+      doc.text(tr(c.label), cx, rowY);
       doc.setFontSize(9);
       doc.setTextColor(INK);
       doc.setFont("helvetica", "bold");
@@ -618,7 +631,7 @@ function drawConferenciaPastoBlock(
     doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(INK_SOFT);
-    doc.text("OBSERVAÇÃO", x + 3, y + 50);
+    doc.text(tr("OBSERVAÇÃO"), x + 3, y + 50);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(INK);
@@ -671,6 +684,8 @@ function drawTextBlock(doc: jsPDF, title: string, text: string, y: number, x = 1
 }
 
 export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Blob; fileName: string }> {
+  const language = data.language ?? "pt-BR";
+  const tr = (source: string) => translatePdfLabel(language, source);
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const photoLinks = new PhotoLinkCollector();
   setActivePhotoLinks(photoLinks);
@@ -695,9 +710,10 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   const isConf = data.modo === "conferencia";
   const headerBottom = drawCoverHeader(
     doc, logoDefault,
-    isConf ? "Visita de Rotina" : "Visita Técnica - Rotina",
+    tr(isConf ? "Visita de Rotina" : "Visita Técnica - Rotina"),
     logos,
     isConf ? 1.5 : 1, // Conferência: logo 50% maior
+    language,
   );
   let y = drawFarmBlock(doc, data, Math.max(50, headerBottom + 10));
   const numeroMap = data.numeroMap || {};
@@ -729,7 +745,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
     doc.setTextColor(GREEN_DARK);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text("INDICADORES GERAIS DA FAZENDA", 20, y + 4.5);
+    doc.text(tr("INDICADORES GERAIS DA FAZENDA"), 20, y + 4.5);
     y += 10;
     const wTable = pageW - 30;
     const labelW = wTable * 0.55;
@@ -741,7 +757,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       doc.setTextColor(INK);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
-      doc.text(r.label, 18, y + 4.8);
+      doc.text(tr(r.label), 18, y + 4.8);
       doc.setFont("helvetica", "bold");
       const lines = doc.splitTextToSize(r.value, wTable - labelW - 6);
       doc.text(lines[0] || "—", 15 + labelW, y + 4.8);
@@ -754,7 +770,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       doc.setFontSize(7);
       doc.setTextColor(INK_SOFT);
       if (data.nota_area) { doc.text(data.nota_area, 15, y); y += 3.4; }
-      doc.text("Valores de UA calculados com base apenas nos pastos avaliados nesta visita.", 15, y);
+      doc.text(tr("Valores de UA calculados com base apenas nos pastos avaliados nesta visita."), 15, y);
     }
     y += 6;
   };
@@ -785,7 +801,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
     if (!t && fotos.length === 0) return;
     const h = measureTopico(titulo, texto, fotos);
     y = ensureRoom(y, h);
-    if (t) y = drawIntroBlock(doc, titulo.trim() || " ", t, y);
+    if (t) y = drawIntroBlock(doc, tr(titulo.trim()) || " ", t, y);
     if (fotos.length > 0) {
       const wArea = pageW - 30;
       const cols = 5;
@@ -835,7 +851,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       if (!tt) continue;
       const h = measureTopico(title, tt, []);
       y = ensureRoom(y, h);
-      y = drawIntroBlock(doc, title, tt, y);
+      y = drawIntroBlock(doc, tr(title), tt, y);
     }
   }
   drawTabela();
@@ -857,14 +873,14 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       doc.setFontSize(7);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(INK_SOFT);
-      doc.text(SCORE_SCALE_HINT, 15, y);
+      doc.text(tr(SCORE_SCALE_HINT), 15, y);
       y += scaleH;
       pastoScaleShown = true;
     }
     if (isConferencia) {
-      drawConferenciaPastoBlock(doc, p, fotosCache, 15, y, pageW - 30, blockHeight, numeroMap);
+      drawConferenciaPastoBlock(doc, p, fotosCache, 15, y, pageW - 30, blockHeight, numeroMap, language);
     } else {
-      await drawPastoBlock(doc, p, fotosCache, 15, y, pageW - 30, blockHeight, numeroMap);
+      await drawPastoBlock(doc, p, fotosCache, 15, y, pageW - 30, blockHeight, numeroMap, language);
     }
     y += blockHeight + gap;
   }
@@ -875,14 +891,14 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       fezes: data.pastos.flatMap(p => p.samples?.fezes || []),
       corporal: data.pastos.flatMap(p => p.samples?.corporal || []),
       bebedouro: data.pastos.flatMap(p => p.samples?.bebedouro || []),
-    }, data.sampleChartTypes);
+    }, data.sampleChartTypes, { language });
 
     // Consumo por pasto — Real x Esperado (2 séries)
     const consumoPontos = data.pastos
       .map(p => {
         const n = normalizarConsumoPasto(p as any);
         return {
-          nome: p.num_pasto ? `Pasto ${p.num_pasto}` : (p.letra ? `Pasto ${p.letra}` : "Pasto"),
+          nome: p.num_pasto ? `${tr("Pasto ")}${p.num_pasto}` : (p.letra ? `${tr("Pasto ")}${p.letra}` : tr("Pasto")),
           real: n.realTotal,
           esp: n.espTotal,
         };
@@ -894,12 +910,13 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       drawDualLineChartPage(
         doc,
         data.fazenda.nome_fazenda || "",
-        "Consumo por Pasto - Real x Esperado",
+        tr("Consumo por Pasto - Real x Esperado"),
         consumoPontos.map(p => p.letra),
-        { name: "Consumo Real", values: consumoPontos.map(p => p.real) },
-        { name: "Consumo Esperado", values: consumoPontos.map(p => p.esp) },
-        "Pasto",
+        { name: tr("Consumo Real"), values: consumoPontos.map(p => p.real) },
+        { name: tr("Consumo Esperado"), values: consumoPontos.map(p => p.esp) },
+        tr("Pasto"),
         consumoPontos.map(p => ({ letra: p.letra, nome: p.nome })),
+        language,
       );
       // A página do gráfico é fechada por completo (tabela de referência pode
       // ocupar a faixa inferior): qualquer bloco seguinte começa em nova página.
@@ -932,8 +949,8 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
     if (hasConclusaoTopicos) {
       for (const t of conclusaoTopicos) drawTopico(t.titulo, t.texto, t.fotos);
     } else {
-      if (obsLegacy) { y = drawTextBlock(doc, "Observações Gerais", obsLegacy, y) + 8; }
-      if (concLegacy) { drawTextBlock(doc, "Conclusão da Visita", concLegacy, y); }
+      if (obsLegacy) { y = drawTextBlock(doc, tr("Observações Gerais"), obsLegacy, y) + 8; }
+      if (concLegacy) { drawTextBlock(doc, tr("Conclusão da Visita"), concLegacy, y); }
     }
   }
 
@@ -947,13 +964,13 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
       doc.addPage();
       sigY = slimHeader() + 6;
     }
-    drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome, sigY);
+    drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome, sigY, language);
   } else {
     const temAssinantes = (data.assinantes || []).some(a => (a?.nome || "").trim());
     if (temAssinantes) {
       // Assinaturas ficam na última página (junto da conclusão, quando existir).
       if (!temPaginaConclusao && y > pageH - 60) { doc.addPage(); slimHeader(); }
-      drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
+      drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome, undefined, language);
     }
   }
 
@@ -961,7 +978,7 @@ export async function generateVisitaPdf(data: VisitaPdfData): Promise<{ blob: Bl
   const total = doc.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
     doc.setPage(p);
-    drawFooter(doc, p, total, data.modo);
+    drawFooter(doc, p, total, data.modo, language);
   }
 
 
@@ -994,6 +1011,7 @@ export async function uploadVisitaPdf(
 // ============================================================================
 
 export interface VisitaFabricaPdfData {
+  language?: SiteLanguage;
   visitaId: string;
   fazenda: { nome_fazenda: string; proprietario?: string | null; responsavel?: string | null; municipio?: string | null; uf?: string | null; localizacao?: string | null };
   consultor: { nome: string };
@@ -1019,6 +1037,8 @@ function drawNumeroBadge(doc: jsPDF, x: number, y: number, n: number) {
 }
 
 export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ blob: Blob; fileName: string }> {
+  const language = data.language ?? "pt-BR";
+  const tr = (source: string) => translatePdfLabel(language, source);
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const photoLinks = new PhotoLinkCollector();
   setActivePhotoLinks(photoLinks);
@@ -1037,11 +1057,11 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
   Object.assign(fotosCache, await prefetchFotosDataUrls(BUCKET_FOTOS, allFotos));
 
   // PAGE 1
-  drawCoverHeader(doc, logoDefault, "Visita Técnica - Fábrica", logos);
+  drawCoverHeader(doc, logoDefault, tr("Visita Técnica - Fábrica"), logos, 1, language);
   let y = drawFarmBlock(doc, {
     fazenda: data.fazenda, consultor: data.consultor,
     hora_inicio: data.hora_inicio, hora_fim: data.hora_fim,
-    visitaId: data.visitaId, observacoes_gerais: null, conclusao: null, pastos: [],
+    visitaId: data.visitaId, observacoes_gerais: null, conclusao: null, pastos: [], language,
   } as VisitaPdfData, 50);
 
   // Bloco Avaliação
@@ -1051,7 +1071,7 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
   doc.setTextColor(GREEN_DARK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text("AVALIAÇÃO DA FÁBRICA", 20, y + 4.5);
+  doc.text(tr("AVALIAÇÃO DA FÁBRICA"), 20, y + 4.5);
   y += 10;
 
   const wTable = pageW - 30;
@@ -1071,12 +1091,12 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
     doc.setTextColor(INK);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9.5);
-    doc.text(q.rotulo, labelX, y + 5.4);
+    doc.text(tr(q.rotulo), labelX, y + 5.4);
     // Legenda em cinza logo abaixo
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.8);
     doc.setTextColor(INK_SOFT);
-    const legend = getScoreDescription(q.chave);
+    const legend = tr(getScoreDescription(q.chave));
     if (legend) {
       const legLines = doc.splitTextToSize(legend, wTable - notaColW - 8);
       doc.text(legLines.slice(0, 1), labelX, y + 10);
@@ -1106,14 +1126,14 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "italic");
   doc.setTextColor(INK_SOFT);
-  doc.text(SCORE_SCALE_HINT, 15, y);
+  doc.text(tr(SCORE_SCALE_HINT), 15, y);
   y += 5;
 
   if (notaValida.length) {
     doc.setTextColor(GREEN_DARK);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text(`Média geral: ${media.toFixed(1)}/5  ·  ${notaValida.length}/${data.quesitos.length} quesitos avaliados`, 15, y);
+    doc.text(`${tr("Média geral:")} ${media.toFixed(1)}/5  ·  ${notaValida.length}/${data.quesitos.length}${tr(" quesitos avaliados")}`, 15, y);
     y += 8;
   } else {
     y += 6;
@@ -1125,7 +1145,7 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
     const tx = (t.texto || "").trim();
     if (!tx && t.fotos.length === 0) return yy;
     if (tx) {
-      yy = drawIntroBlock(doc, t.titulo.trim() || " ", tx, yy);
+      yy = drawIntroBlock(doc, tr(t.titulo.trim()) || " ", tx, yy);
     }
     if (t.fotos.length > 0) {
       const wArea = pageW - 30;
@@ -1222,12 +1242,12 @@ export async function generateFabricaPdf(data: VisitaFabricaPdfData): Promise<{ 
 
 
   // Assinatura
-  drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome);
+  drawAssinaturas(doc, pageW, pageH, data.assinantes, data.consultor.nome, undefined, language);
 
   const total = doc.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
     doc.setPage(p);
-    drawFooter(doc, p, total);
+    drawFooter(doc, p, total, undefined, language);
   }
 
   photoLinks.apply(doc);

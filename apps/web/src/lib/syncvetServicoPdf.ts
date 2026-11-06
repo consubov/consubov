@@ -1,5 +1,7 @@
 import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import jsPDF from "jspdf";
+import { translatePdfLabel } from "@/lib/pdfUiLabels";
+import type { SiteLanguage } from "@/lib/siteLanguage";
 
 const GREEN_DARK = "#14432B";
 const GREEN = "#1F7A4D";
@@ -16,6 +18,8 @@ export interface ServicoPdfItem {
   valor_total: number;
 }
 export interface ServicoPdfData {
+  /** Selected App language; defaults to pt-BR. */
+  language?: SiteLanguage;
   numero: string;
   data_referencia: string;
   data_vencimento?: string | null;
@@ -32,13 +36,13 @@ export interface ServicoPdfData {
   observacoes?: string | null;
 }
 
-function fmtBRL(n: number) {
-  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+function fmtBRL(n: number, language: SiteLanguage = "pt-BR") {
+  return n.toLocaleString(language, { style: "currency", currency: "BRL" });
 }
-function fmtDate(iso: string) {
+function fmtDate(iso: string, language: SiteLanguage = "pt-BR") {
   if (!iso) return "-";
   const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
+  return language === "en-US" ? `${m}/${d}/${y}` : `${d}/${m}/${y}`;
 }
 
 async function loadLogo(): Promise<string | null> {
@@ -54,6 +58,8 @@ async function loadLogo(): Promise<string | null> {
 }
 
 export async function gerarServicoPDF(data: ServicoPdfData): Promise<Blob> {
+  const language = data.language ?? "pt-BR";
+  const tr = (source: string) => translatePdfLabel(language, source);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -69,12 +75,12 @@ export async function gerarServicoPDF(data: ServicoPdfData): Promise<Blob> {
   doc.setTextColor("#FFFFFF");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text("Relatório de Serviço", marginX, 40);
+  doc.text(tr("Relatório de Serviço"), marginX, 40);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.text(`Nº ${data.numero}`, marginX, 58);
-  doc.text(`Emissão: ${fmtDate(data.data_referencia)}`, marginX, 72);
-  if (data.data_vencimento) doc.text(`Vencimento: ${fmtDate(data.data_vencimento)}`, marginX + 180, 72);
+  doc.text(`${tr("Emissão:")} ${fmtDate(data.data_referencia, language)}`, marginX, 72);
+  if (data.data_vencimento) doc.text(`${tr("Vencimento:")} ${fmtDate(data.data_vencimento, language)}`, marginX + 180, 72);
 
   // Empresa (right)
   doc.setFontSize(11);
@@ -91,27 +97,27 @@ export async function gerarServicoPDF(data: ServicoPdfData): Promise<Blob> {
 
   // Bloco Fazenda / Período
   doc.setFont("helvetica", "bold"); doc.setFontSize(11);
-  doc.text("Cliente / Fazenda", marginX, y);
+  doc.text(tr("Cliente / Fazenda"), marginX, y);
   y += 16;
   doc.setFont("helvetica", "normal"); doc.setFontSize(10);
-  doc.text(`Fazenda: ${data.fazenda.nome}`, marginX, y); y += 13;
-  if (data.fazenda.proprietario) { doc.text(`Proprietário: ${data.fazenda.proprietario}`, marginX, y); y += 13; }
+  doc.text(`${tr("Fazenda:")} ${data.fazenda.nome}`, marginX, y); y += 13;
+  if (data.fazenda.proprietario) { doc.text(`${tr("Proprietário:")} ${data.fazenda.proprietario}`, marginX, y); y += 13; }
   if (data.fazenda.municipio || data.fazenda.estado) {
-    doc.text(`Local: ${[data.fazenda.municipio, data.fazenda.estado].filter(Boolean).join(" / ")}`, marginX, y); y += 13;
+    doc.text(`${tr("Local:")} ${[data.fazenda.municipio, data.fazenda.estado].filter(Boolean).join(" / ")}`, marginX, y); y += 13;
   }
-  if (data.periodo) { doc.text(`Período: ${fmtDate(data.periodo.inicio)} a ${fmtDate(data.periodo.fim)}`, marginX, y); y += 13; }
-  if (data.estacao) { doc.text(`Estação de Monta: ${data.estacao}`, marginX, y); y += 13; }
-  doc.text(`Modelo de cobrança: ${data.modelo_cobranca === "protocolo_completo" ? "Protocolo Completo" : "Mão de Obra + Km"}`, marginX, y); y += 20;
+  if (data.periodo) { doc.text(`${tr("Período:")} ${fmtDate(data.periodo.inicio, language)}${tr(" a ")}${fmtDate(data.periodo.fim, language)}`, marginX, y); y += 13; }
+  if (data.estacao) { doc.text(`${tr("Estação de Monta:")} ${data.estacao}`, marginX, y); y += 13; }
+  doc.text(`${tr("Modelo de cobrança:")} ${tr(data.modelo_cobranca === "protocolo_completo" ? "Protocolo Completo" : "Mão de Obra + Km")}`, marginX, y); y += 20;
 
   // Tabela de itens
   doc.setFillColor(GREEN);
   doc.rect(marginX, y, pageW - marginX * 2, 22, "F");
   doc.setTextColor("#FFFFFF");
   doc.setFont("helvetica", "bold"); doc.setFontSize(10);
-  doc.text("Descrição", marginX + 8, y + 15);
-  doc.text("Qtd", marginX + 320, y + 15, { align: "right" });
-  doc.text("Unitário", marginX + 400, y + 15, { align: "right" });
-  doc.text("Total", pageW - marginX - 8, y + 15, { align: "right" });
+  doc.text(tr("Descrição"), marginX + 8, y + 15);
+  doc.text(tr("Qtd"), marginX + 320, y + 15, { align: "right" });
+  doc.text(tr("Unitário"), marginX + 400, y + 15, { align: "right" });
+  doc.text(tr("Total"), pageW - marginX - 8, y + 15, { align: "right" });
   y += 22;
   doc.setTextColor(INK);
   doc.setFont("helvetica", "normal");
@@ -127,8 +133,8 @@ export async function gerarServicoPDF(data: ServicoPdfData): Promise<Blob> {
     const desc = doc.splitTextToSize(it.descricao || it.tipo_item, 300);
     doc.text(desc[0] ?? "", marginX + 8, y + 14);
     doc.text(String(it.quantidade), marginX + 320, y + 14, { align: "right" });
-    doc.text(fmtBRL(it.valor_unitario), marginX + 400, y + 14, { align: "right" });
-    doc.text(fmtBRL(it.valor_total), pageW - marginX - 8, y + 14, { align: "right" });
+    doc.text(fmtBRL(it.valor_unitario, language), marginX + 400, y + 14, { align: "right" });
+    doc.text(fmtBRL(it.valor_total, language), pageW - marginX - 8, y + 14, { align: "right" });
     y += rowH;
   }
 
@@ -138,18 +144,18 @@ export async function gerarServicoPDF(data: ServicoPdfData): Promise<Blob> {
   doc.setFillColor(GREEN_DARK);
   doc.rect(pageW - marginX - 220, y, 220, 28, "F");
   doc.setTextColor("#FFFFFF");
-  doc.text("VALOR TOTAL", pageW - marginX - 210, y + 18);
-  doc.text(fmtBRL(data.valor_total), pageW - marginX - 8, y + 18, { align: "right" });
+  doc.text(tr("VALOR TOTAL"), pageW - marginX - 210, y + 18);
+  doc.text(fmtBRL(data.valor_total, language), pageW - marginX - 8, y + 18, { align: "right" });
   y += 40;
 
   doc.setTextColor(INK);
   doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-  if (data.km_total != null) { doc.text(`Km percorrido no período: ${data.km_total.toFixed(2)} km`, marginX, y); y += 12; }
-  if (data.animais_atendidos != null) { doc.text(`Animais atendidos: ${data.animais_atendidos}`, marginX, y); y += 12; }
+  if (data.km_total != null) { doc.text(`${tr("Km percorrido no período:")} ${data.km_total.toFixed(2)} km`, marginX, y); y += 12; }
+  if (data.animais_atendidos != null) { doc.text(`${tr("Animais atendidos:")} ${data.animais_atendidos}`, marginX, y); y += 12; }
 
   if (data.observacoes) {
     y += 6;
-    doc.setFont("helvetica", "bold"); doc.text("Observações", marginX, y); y += 12;
+    doc.setFont("helvetica", "bold"); doc.text(tr("Observações"), marginX, y); y += 12;
     doc.setFont("helvetica", "normal");
     const lines = doc.splitTextToSize(data.observacoes, pageW - marginX * 2);
     doc.text(lines, marginX, y);
@@ -159,8 +165,8 @@ export async function gerarServicoPDF(data: ServicoPdfData): Promise<Blob> {
   // Rodapé
   doc.setFontSize(8);
   doc.setTextColor(INK_SOFT);
-  doc.text("Gerado por Consubov.com.br", marginX, pageH - 20);
-  doc.text(new Date().toLocaleString("pt-BR"), pageW - marginX, pageH - 20, { align: "right" });
+  doc.text(tr("Gerado por Consubov.com.br"), marginX, pageH - 20);
+  doc.text(new Date().toLocaleString(language), pageW - marginX, pageH - 20, { align: "right" });
 
   return doc.output("blob");
 }

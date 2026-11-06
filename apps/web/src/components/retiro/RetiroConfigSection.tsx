@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +52,7 @@ interface Props {
 }
 
 export default function RetiroConfigSection({ retiroId }: Props) {
+  const uiText = useStaticUiText();
   const [config, setConfig] = useState<RetiroConfig>({
     peso_saco_kg: 25, produto_id: null, preco_por_kg: null,
     consumo_recria1: null, consumo_recria2: null, consumo_engorda: null,
@@ -132,10 +133,10 @@ export default function RetiroConfigSection({ retiroId }: Props) {
         sexo_padrao: config.sexo_padrao,
       } as any).eq("id", retiroId);
       if (error) throw error;
-      toast.success("Configurações salvas!");
+      toast.success(uiText("Configurações salvas!"));
     } catch (err: any) {
       console.error("Erro ao salvar config:", err);
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`${uiText("Erro: ")}${err?.message || uiText("Erro desconhecido")}`);
     } finally {
       setSaving(false);
     }
@@ -159,7 +160,7 @@ export default function RetiroConfigSection({ retiroId }: Props) {
           <div className="space-y-2">
             <Label><LocalizedText source={"Produto"} /></Label>
             <Select value={config.produto_id ?? ""} onValueChange={handleProductChange}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={uiText("Selecione")} /></SelectTrigger>
               <SelectContent>
                 {produtos.map((p) => (
                   <SelectItem key={p.id} value={p.id}>

@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ interface BulkPastosModalProps {
 }
 
 export default function BulkPastosModal({ open, onOpenChange, retiroId, onCreated }: BulkPastosModalProps) {
+  const uiText = useStaticUiText();
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -26,7 +27,7 @@ export default function BulkPastosModal({ open, onOpenChange, retiroId, onCreate
       .filter(Boolean);
 
     if (names.length === 0) {
-      toast.error("Digite pelo menos um nome de pasto.");
+      toast.error(uiText("Digite pelo menos um nome de pasto."));
       return;
     }
 
@@ -35,13 +36,13 @@ export default function BulkPastosModal({ open, onOpenChange, retiroId, onCreate
       const rows = names.map((nome) => ({ nome, retiro_id: retiroId, num_animais: 0 }));
       const { error } = await supabase.from("pastos").insert(rows);
       if (error) throw error;
-      toast.success(`${names.length} pasto(s) criado(s) com sucesso!`);
+      toast.success(`${names.length} ${uiText(names.length === 1 ? "pasto criado com sucesso!" : "pastos criados com sucesso!")}`);
       setText("");
       onOpenChange(false);
       onCreated();
     } catch (err: any) {
       console.error("Erro ao criar pastos em lote:", err);
-      toast.error(`Erro: ${err?.message || "Erro desconhecido"}`);
+      toast.error(`${uiText("Erro: ")}${err?.message || uiText("Erro desconhecido")}`);
     } finally {
       setSaving(false);
     }

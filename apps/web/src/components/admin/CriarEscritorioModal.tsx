@@ -1,8 +1,10 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
+import { PARTIAL_PROFILE_MESSAGE, ProfileProvisioningError, provisionProfileUser } from "@/lib/profileProvisioning";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,9 +16,12 @@ interface Props {
 }
 
 export default function CriarEscritorioModal({ open, onClose }: Props) {
+  const uiText = useStaticUiText();
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [senha, setSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
   const [fazendaId, setFazendaId] = useState("");
   const [fazendas, setFazendas] = useState<{ id: string; nome: string }[]>([]);
   const [saving, setSaving] = useState(false);
@@ -31,30 +36,26 @@ export default function CriarEscritorioModal({ open, onClose }: Props) {
 
   const handleSave = async () => {
     if (!nome.trim() || !email.trim() || !fazendaId) {
-      toast.error("Preencha nome, email e selecione a fazenda.");
+      toast.error(uiText("Preencha nome, email e selecione a fazenda."));
       return;
     }
 
+    if (senha.length < 12 || senha !== confirmarSenha) {
+      toast.error(uiText("Defina uma senha de pelo menos 12 caracteres e confirme-a."));
+      return;
+    }
+    let accountCreated = false;
     setSaving(true);
     try {
       const normalizedEmail = email.trim().toLowerCase();
 
-      // 1. Create auth user via edge function with default password
-      const { data: fnData, error: fnError } = await supabase.functions.invoke("create-user", {
-        body: {
-          email: normalizedEmail,
-          senha: "Consubov@2025",
-          role: "usuario", // don't create admin record
-        },
+      // Identity is provisioned first; never reuse a shared default password.
+      const userId = await provisionProfileUser({
+        email: normalizedEmail,
+        senha,
+        role: "usuario",
       });
-
-      if (fnError) throw new Error(fnError.message || "Erro ao criar usuário");
-      
-      const responseData = typeof fnData === "string" ? JSON.parse(fnData) : fnData;
-      if (responseData?.error) throw new Error(responseData.error);
-
-      const userId = responseData?.user?.id;
-      if (!userId) throw new Error("ID do usuário não retornado");
+      accountCreated = true;
 
       // 2. Insert into escritorios table
       const { error: dbError } = await supabase.from("escritorios").insert({
@@ -68,11 +69,14 @@ export default function CriarEscritorioModal({ open, onClose }: Props) {
 
       if (dbError) throw dbError;
 
-      toast.success("Escritório criado com sucesso!");
+      toast.success(uiText("Escritório criado com sucesso!"));
       setNome(""); setEmail(""); setTelefone(""); setFazendaId("");
+      setSenha(""); setConfirmarSenha("");
       onClose();
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao criar escritório");
+    } catch (err: unknown) {
+      toast.error(accountCreated
+        ? PARTIAL_PROFILE_MESSAGE
+        : err instanceof ProfileProvisioningError ? err.message : "Não foi possível criar escritório.");
     } finally {
       setSaving(false);
     }
@@ -87,7 +91,7 @@ export default function CriarEscritorioModal({ open, onClose }: Props) {
         <div className="space-y-4">
           <div>
             <Label><LocalizedText source={"Nome *"} /></Label>
-            <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do escritório" />
+            <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder={uiText("Nome do escritório")} />
           </div>
           <div>
             <Label>Email *</Label>
@@ -98,10 +102,21 @@ export default function CriarEscritorioModal({ open, onClose }: Props) {
             <Input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(00) 00000-0000" />
           </div>
           <div>
+            <Label htmlFor="escritorio-senha">Senha de acesso *</Label>
+            <PasswordInput id="escritorio-senha" autoComplete="new-password"
+              value={senha} onChange={e => setSenha(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="escritorio-confirmar-senha">Confirmar senha *</Label>
+            <PasswordInput id="escritorio-confirmar-senha" autoComplete="new-password"
+              value={confirmarSenha} onChange={e => setConfirmarSenha(e.target.value)} />
+            <p className="text-xs text-muted-foreground mt-1">Mínimo de 12 caracteres, exclusivos deste perfil.</p>
+          </div>
+          <div>
             <Label><LocalizedText source={"Fazenda *"} /></Label>
             <Select value={fazendaId} onValueChange={setFazendaId}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione a fazenda" />
+                <SelectValue placeholder={uiText("Selecione a fazenda")} />
               </SelectTrigger>
               <SelectContent>
                 {fazendas.map(f => (
@@ -110,8 +125,6 @@ export default function CriarEscritorioModal({ open, onClose }: Props) {
               </SelectContent>
             </Select>
           </div>
-          <p className="text-xs text-muted-foreground">
-            <LocalizedText source={"Senha padrão: Consubov@2025 (definida automaticamente)"} /></p>
           <Button onClick={handleSave} disabled={saving} className="w-full">
             {saving ? "Criando..." : "Criar Escritório"}
           </Button>

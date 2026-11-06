@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -26,6 +26,7 @@ interface Props {
 
 /** Vincular (Gerente): só marca em quais fazendas o produto fica disponível. */
 export default function VincularProdutoGerenteModal({ open, onClose, produto, fazendas, onSaved }: Props) {
+  const uiText = useStaticUiText();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -71,12 +72,12 @@ export default function VincularProdutoGerenteModal({ open, onClose, produto, fa
     setSaving(true);
     try {
       await salvarVinculosProduto(pid, Array.from(fazSel), fazIds);
-      toast.success("Vínculos salvos!");
+      toast.success(uiText("Vínculos salvos!"));
       setConfirmOpen(false);
       onSaved();
       onClose();
     } catch (err: any) {
-      toast.error(`Erro ao salvar: ${err?.message || "erro desconhecido"}`);
+      toast.error(`${uiText("Erro ao salvar: ")}${err?.message || uiText("erro desconhecido")}`);
     } finally {
       setSaving(false);
     }

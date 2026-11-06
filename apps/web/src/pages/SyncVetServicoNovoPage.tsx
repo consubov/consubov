@@ -1,3 +1,5 @@
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { downloadGeneratedPdf, withReportExportDeadline } from "@/lib/reportPdfExport";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -42,6 +44,8 @@ function mensagemErro(error: unknown, fallback: string): string {
 }
 
 export default function SyncVetServicoNovoPage() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
   const { user, roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
   const navigate = useNavigate();
@@ -107,8 +111,8 @@ export default function SyncVetServicoNovoPage() {
   }, [estacao]);
 
   async function sugerirItens() {
-    if (!fazenda || !vetId) { toast.error("Selecione a fazenda"); return; }
-    if (!dataInicio || !dataFim) { toast.error("Informe o período"); return; }
+    if (!fazenda || !vetId) { toast.error(uiText("Selecione a fazenda")); return; }
+    if (!dataInicio || !dataFim) { toast.error(uiText("Informe o período")); return; }
     setSuggesting(true);
     try {
       // Buscar TODOS os manejos concluídos do vet nesta fazenda no período (avulsos + ciclo)
@@ -193,12 +197,12 @@ export default function SyncVetServicoNovoPage() {
       setItems(suggested);
       const semPreco = suggested.filter(s => s.tipo_item !== "km" && s.valor_unitario === 0).length;
       if (semPreco > 0) {
-        toast.warning(`${suggested.length} item(ns) sugerido(s). ${semPreco} sem preço na tabela — edite manualmente.`);
+        toast.warning(`${suggested.length}${uiText(" item(ns) sugerido(s). ")}${semPreco}${uiText(" sem preço na tabela — edite manualmente.")}`);
       } else {
-        toast.success(`${suggested.length} item(ns) sugerido(s)`);
+        toast.success(`${suggested.length}${uiText(" item(ns) sugerido(s)")}`);
       }
     } catch (e: unknown) {
-      console.error(e); toast.error(mensagemErro(e, "Erro ao sugerir itens"));
+      console.error(e); toast.error(mensagemErro(e, uiText("Erro ao sugerir itens")));
     } finally { setSuggesting(false); }
   }
 
@@ -219,7 +223,7 @@ export default function SyncVetServicoNovoPage() {
 
   async function confirmar() {
     if (!vetId || !fazenda) return;
-    if (items.length === 0) { toast.error("Adicione ao menos 1 item"); return; }
+    if (items.length === 0) { toast.error(uiText("Adicione ao menos 1 item")); return; }
     setSaving(true);
     try {
       const { data: srv, error: eSrv } = await supabase.from("syncvet_servicos").insert({
@@ -269,6 +273,7 @@ export default function SyncVetServicoNovoPage() {
         valor_total: (Number(it.quantidade) || 0) * (Number(it.valor_unitario) || 0),
       }));
       const blob = await withReportExportDeadline(gerarServicoPDF({
+        language,
         numero: servicoId.slice(0, 8).toUpperCase(),
         data_referencia: dataFim || new Date().toISOString().slice(0, 10),
         data_vencimento: dataVencimento || null,
@@ -289,10 +294,10 @@ export default function SyncVetServicoNovoPage() {
       }), "PDF do serviço", Date.now() + 60_000, 60_000);
       downloadGeneratedPdf(blob, `servico-${servicoId.slice(0, 8)}.pdf`);
 
-      toast.success("Serviço gerado com sucesso");
+      toast.success(uiText("Serviço gerado com sucesso"));
       navigate("/syncvet/contas");
     } catch (e: unknown) {
-      console.error(e); toast.error(mensagemErro(e, "Erro ao salvar"));
+      console.error(e); toast.error(mensagemErro(e, uiText("Erro ao salvar")));
     } finally { setSaving(false); }
   }
 
@@ -300,32 +305,32 @@ export default function SyncVetServicoNovoPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-bold text-primary flex items-center gap-2"><FileText className="w-5 h-5" /> Gerar Serviço</h1>
+      <h1 className="text-lg font-bold text-primary flex items-center gap-2"><FileText className="w-5 h-5" /> <LocalizedText source={"Gerar Serviço"} /></h1>
 
       <Card className="p-3 space-y-3">
         <div>
-          <Label>Fazenda</Label>
+          <Label><LocalizedText source={"Fazenda"} /></Label>
           <Select value={fazendaId} onValueChange={setFazendaId}>
-            <SelectTrigger><SelectValue placeholder="Selecione a fazenda" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={uiText("Selecione a fazenda")} /></SelectTrigger>
             <SelectContent>
               {fazendas.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
             </SelectContent>
           </Select>
           {fazenda && (
             <div className="text-xs text-muted-foreground mt-1">
-              Modelo de cobrança: <span className="font-semibold">
-                {fazenda.modelo_cobranca === "protocolo_completo" ? "Protocolo Completo" : "Mão de Obra + Km"}
+              <LocalizedText source={"Modelo de cobrança:"} /> <span className="font-semibold">
+                {uiText(fazenda.modelo_cobranca === "protocolo_completo" ? "Protocolo Completo" : "Mão de Obra + Km")}
               </span>
             </div>
           )}
         </div>
 
         <div>
-          <Label>Estação de Monta (opcional)</Label>
+          <Label><LocalizedText source={"Estação de Monta (opcional)"} /></Label>
           <Select value={estacaoId} onValueChange={setEstacaoId} disabled={!fazendaId}>
-            <SelectTrigger><SelectValue placeholder="Sem estação específica" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={uiText("Sem estação específica")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">— sem estação específica —</SelectItem>
+              <SelectItem value="none"><LocalizedText source={"— sem estação específica —"} /></SelectItem>
               {estacoes.map(e => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -333,80 +338,80 @@ export default function SyncVetServicoNovoPage() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label>Início</Label>
+            <Label><LocalizedText source={"Início"} /></Label>
             <Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
           </div>
           <div>
-            <Label>Fim</Label>
+            <Label><LocalizedText source={"Fim"} /></Label>
             <Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} />
           </div>
         </div>
 
         <Button variant="secondary" onClick={sugerirItens} disabled={suggesting || !fazenda}>
           {suggesting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1" />}
-          Sugerir itens automaticamente
+          <LocalizedText source={"Sugerir itens automaticamente"} />
         </Button>
       </Card>
 
       <Card className="p-3 space-y-2">
         <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold">Itens do serviço</div>
-          <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-4 h-4 mr-1" /> Item</Button>
+          <div className="text-sm font-semibold"><LocalizedText source={"Itens do serviço"} /></div>
+          <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-4 h-4 mr-1" /> <LocalizedText source={"Item"} /></Button>
         </div>
         {items.length === 0 ? (
           <div className="text-xs text-muted-foreground py-4 text-center">
-            Nenhum item. Clique em "Sugerir itens" ou adicione manualmente.
+            <LocalizedText source={'Nenhum item. Clique em "Sugerir itens" ou adicione manualmente.'} />
           </div>
         ) : items.map((it, i) => (
           <div key={i} className="grid grid-cols-12 gap-2 items-end border-b border-border pb-2">
             <div className="col-span-6">
-              <Label className="text-xs">Descrição</Label>
+              <Label className="text-xs"><LocalizedText source={"Descrição"} /></Label>
               <Input value={it.descricao} onChange={e => updateItem(i, { descricao: e.target.value })} />
             </div>
             <div className="col-span-2">
-              <Label className="text-xs">Qtd</Label>
+              <Label className="text-xs"><LocalizedText source={"Qtd"} /></Label>
               <Input inputMode="decimal" value={String(it.quantidade)} onChange={e => updateItem(i, { quantidade: parseFloat(e.target.value.replace(",", ".")) || 0 })} />
             </div>
             <div className="col-span-3">
-              <Label className="text-xs">Unitário</Label>
+              <Label className="text-xs"><LocalizedText source={"Unitário"} /></Label>
               <Input inputMode="decimal" value={String(it.valor_unitario)} onChange={e => updateItem(i, { valor_unitario: parseFloat(e.target.value.replace(",", ".")) || 0 })} />
             </div>
             <div className="col-span-1">
-              <Button size="icon" variant="ghost" onClick={() => removeItem(i)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+              <Button size="icon" variant="ghost" onClick={() => removeItem(i)} aria-label={uiText("Remover item")} title={uiText("Remover item")}><Trash2 className="w-4 h-4 text-destructive" /></Button>
             </div>
             <div className="col-span-12 text-right text-xs text-muted-foreground">
-              Total: <span className="font-semibold text-foreground">
-                {((it.quantidade || 0) * (it.valor_unitario || 0)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              <LocalizedText source={"Total:"} /> <span className="font-semibold text-foreground">
+                {((it.quantidade || 0) * (it.valor_unitario || 0)).toLocaleString(language, { style: "currency", currency: "BRL" })}
               </span>
             </div>
           </div>
         ))}
         <div className="flex justify-between items-center pt-2 border-t border-border">
           <div className="text-xs text-muted-foreground">
-            {kmTotal > 0 && <>Km: {kmTotal.toFixed(2)} · </>}
-            {animaisTotal > 0 && <>Animais: {animaisTotal} · </>}
-            {diasTrabalhados > 0 && <>Dias: {diasTrabalhados}</>}
+            {kmTotal > 0 && <><LocalizedText source={"Km:"} /> {kmTotal.toFixed(2)} · </>}
+            {animaisTotal > 0 && <><LocalizedText source={"Animais:"} /> {animaisTotal} · </>}
+            {diasTrabalhados > 0 && <><LocalizedText source={"Dias:"} /> {diasTrabalhados}</>}
           </div>
           <div className="text-lg font-bold text-primary">
-            {valorTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            {valorTotal.toLocaleString(language, { style: "currency", currency: "BRL" })}
           </div>
         </div>
       </Card>
 
       <Card className="p-3 space-y-3">
         <div>
-          <Label>Vencimento (opcional)</Label>
+          <Label><LocalizedText source={"Vencimento (opcional)"} /></Label>
           <Input type="date" value={dataVencimento} onChange={e => setDataVencimento(e.target.value)} />
         </div>
         <div>
-          <Label>Observações</Label>
+          <Label><LocalizedText source={"Observações"} /></Label>
           <Textarea value={observacoes} onChange={e => setObservacoes(e.target.value)} rows={3} />
         </div>
       </Card>
 
       <Button className="w-full" onClick={confirmar} disabled={saving || items.length === 0}>
         {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-        Confirmar e gerar PDF
+        <LocalizedText source={"Confirmar e gerar PDF"} />
       </Button>
     </div>
   );

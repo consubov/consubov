@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => {
 
   return {
     from: vi.fn(),
+    rpc: vi.fn(),
     pastos: createChain(),
     atual: createChain(),
     mes: createChain(),
@@ -33,6 +34,7 @@ const mocks = vi.hoisted(() => {
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: mocks.from,
+    rpc: mocks.rpc,
   },
 }));
 
@@ -46,10 +48,13 @@ describe("pastosRetiroRepository", () => {
     mocks.atual.response = { data: [], error: null };
     mocks.mes.response = { data: [], error: null };
 
+    mocks.rpc.mockImplementation((name: string) => {
+      if (name === "get_painel_pasto_atual_rapido") return mocks.atual;
+      throw new Error(`Unexpected RPC: ${name}`);
+    });
     mocks.from.mockImplementation((table: string) => {
       if (table === "pastos") return mocks.pastos;
-      if (table === "view_painel_mae_pasto_atual") return mocks.atual;
-      if (table === "view_painel_mae_pasto") return mocks.mes;
+      if (table === "lancamentos") return mocks.mes;
       throw new Error(`Unexpected table: ${table}`);
     });
   });
@@ -69,13 +74,14 @@ describe("pastosRetiroRepository", () => {
     expect(mocks.pastos.eq).toHaveBeenNthCalledWith(2, "ativo", true);
     expect(mocks.pastos.order).toHaveBeenCalledWith("nome");
 
-    expect(mocks.from).toHaveBeenCalledWith("view_painel_mae_pasto_atual");
-    expect(mocks.atual.select).toHaveBeenCalledWith(
-      "pasto_id, consumo_global_g_cab_dia, indice_global, status_global, num_animais, peso_medio_kg",
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "get_painel_pasto_atual_rapido",
+      { p_retiro_id: "retiro-1" },
     );
-    expect(mocks.atual.eq).toHaveBeenCalledWith("retiro_id", "retiro-1");
+    expect(mocks.from).not.toHaveBeenCalledWith("view_painel_mae_pasto_atual");
+    expect(mocks.from).not.toHaveBeenCalledWith("view_painel_mae_pasto");
 
-    expect(mocks.from).toHaveBeenCalledWith("view_painel_mae_pasto");
+    expect(mocks.from).toHaveBeenCalledWith("lancamentos");
     expect(mocks.mes.select).toHaveBeenCalledWith("pasto_id, num_sacos");
     expect(mocks.mes.eq).toHaveBeenNthCalledWith(
       1,

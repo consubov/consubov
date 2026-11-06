@@ -1,6 +1,7 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ProfileProvisioningError, PARTIAL_PROFILE_MESSAGE, provisionProfileUser } from "@/lib/profileProvisioning";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,13 +32,14 @@ interface Operador {
 }
 
 interface Form {
-  nome: string; email: string; telefone: string; senha: string;
+  nome: string; email: string; telefone: string; senha: string; confirmarSenha: string;
   fabrica_id: string; ativo: boolean;
 }
 
-const emptyForm: Form = { nome: "", email: "", telefone: "", senha: "", fabrica_id: "", ativo: true };
+const emptyForm: Form = { nome: "", email: "", telefone: "", senha: "", confirmarSenha: "", fabrica_id: "", ativo: true };
 
 export default function OperadoresFabricaPage() {
+  const uiText = useStaticUiText();
   const [operadores, setOperadores] = useState<Operador[]>([]);
   const [fabricas, setFabricas] = useState<Fabrica[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,19 +66,21 @@ export default function OperadoresFabricaPage() {
     setEditingId(o.id);
     setForm({
       nome: o.nome, email: o.email || "", telefone: o.telefone || "",
-      senha: "", fabrica_id: o.fabrica_id, ativo: o.ativo ?? true,
+      senha: "", confirmarSenha: "", fabrica_id: o.fabrica_id, ativo: o.ativo ?? true,
     });
     setDialogOpen(true);
   }
 
   async function handleSave() {
-    if (!form.nome.trim()) return toast.error("Nome é obrigatório");
-    if (!form.fabrica_id) return toast.error("Selecione uma fábrica");
+    if (!form.nome.trim()) return toast.error(uiText("Nome é obrigatório"));
+    if (!form.fabrica_id) return toast.error(uiText("Selecione uma fábrica"));
     if (!editingId) {
-      if (!form.email.trim()) return toast.error("Email é obrigatório");
-      if (form.senha.length < 6) return toast.error("Senha mínima de 6 caracteres");
+      if (!form.email.trim()) return toast.error(uiText("Email é obrigatório"));
+      if (form.senha.length < 12) return toast.error(uiText("Senha mínima de 12 caracteres"));
+      if (form.senha !== form.confirmarSenha) return toast.error(uiText("As senhas não coincidem"));
     }
     setSaving(true);
+    let accountCreated = false;
     try {
       if (editingId) {
         const { error } = await supabase.from("operadores_fabrica").update({
@@ -86,16 +90,14 @@ export default function OperadoresFabricaPage() {
           ativo: form.ativo,
         }).eq("id", editingId);
         if (error) throw error;
-        toast.success("Operador atualizado!");
+        toast.success(uiText("Operador atualizado!"));
       } else {
-        const res = await supabase.functions.invoke("create-user", {
-          body: { email: form.email.trim(), password: form.senha, role: "usuario" },
+        const userId = await provisionProfileUser({
+          email: form.email,
+          senha: form.senha,
+          role: "usuario",
         });
-        if (res.error) throw new Error(res.error.message || "Falha ao criar usuário");
-        const respData: any = res.data;
-        if (respData?.error) throw new Error(respData.error);
-        const userId = respData?.user?.id;
-        if (!userId) throw new Error("ID do usuário não retornado");
+        accountCreated = true;
 
         const { error } = await supabase.from("operadores_fabrica").insert({
           nome: form.nome.trim(),
@@ -106,20 +108,21 @@ export default function OperadoresFabricaPage() {
           ativo: form.ativo,
         });
         if (error) throw error;
-        toast.success("Operador criado!");
+        toast.success(uiText("Operador criado!"));
       }
       setDialogOpen(false);
       load();
-    } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+    } catch (err: unknown) {
+      toast.error(accountCreated ? PARTIAL_PROFILE_MESSAGE
+        : err instanceof ProfileProvisioningError ? err.message : "Não foi possível salvar o perfil.");
     } finally { setSaving(false); }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Excluir este operador?")) return;
+    if (!confirm(uiText("Excluir este operador?"))) return;
     const { error } = await supabase.from("operadores_fabrica").delete().eq("id", id);
-    if (error) toast.error("Erro: " + error.message);
-    else { toast.success("Operador excluído"); load(); }
+    if (error) toast.error(uiText("Erro: ") + error.message);
+    else { toast.success(uiText("Operador excluído")); load(); }
   }
 
   const fabMap = Object.fromEntries(fabricas.map(f => [f.id, f.nome]));
@@ -157,11 +160,11 @@ export default function OperadoresFabricaPage() {
                   <TableCell>{o.email || "—"}</TableCell>
                   <TableCell>{o.telefone || "—"}</TableCell>
                   <TableCell>{fabMap[o.fabrica_id] || "—"}</TableCell>
-                  <TableCell><Badge variant={o.ativo ? "default" : "secondary"}>{o.ativo ? "Ativo" : "Inativo"}</Badge></TableCell>
+                  <TableCell><Badge variant={o.ativo ? "default" : "secondary"}>{uiText(o.ativo ? "Ativo" : "Inativo")}</Badge></TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(o)}><Pencil className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(o.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(o)} aria-label={uiText("Editar operador")}><Pencil className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(o.id)} aria-label={uiText("Excluir operador")}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -174,20 +177,23 @@ export default function OperadoresFabricaPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Operador" : "Novo Operador"}</DialogTitle>
-            <DialogDescription>{editingId ? "Atualize os dados do operador." : "O operador poderá acessar apenas a fábrica selecionada."}</DialogDescription>
+            <DialogTitle>{uiText(editingId ? "Editar Operador" : "Novo Operador")}</DialogTitle>
+            <DialogDescription>{uiText(editingId ? "Atualize os dados do operador." : "O operador poderá acessar apenas a fábrica selecionada.")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div><Label><LocalizedText source={"Nome *"} /></Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
             <div><Label>Email {editingId ? "" : "*"}</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} disabled={!!editingId} /></div>
             {!editingId && (
-              <div><Label><LocalizedText source={"Senha *"} /></Label><Input type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} placeholder="Mínimo 6 caracteres" /></div>
+              <>
+              <div><Label><LocalizedText source={"Senha *"} /></Label><Input type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} placeholder="Mínimo 12 caracteres" /></div>
+              <div><Label>Confirmar senha *</Label><Input type="password" autoComplete="new-password" value={form.confirmarSenha} onChange={e => setForm(f => ({ ...f, confirmarSenha: e.target.value }))} placeholder="Repita a senha" /></div>
+              </>
             )}
             <div><Label><LocalizedText source={"Telefone"} /></Label><Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} /></div>
             <div>
               <Label><LocalizedText source={"Fábrica *"} /></Label>
               <Select value={form.fabrica_id} onValueChange={v => setForm(f => ({ ...f, fabrica_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione uma fábrica" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={uiText("Selecione uma fábrica")} /></SelectTrigger>
                 <SelectContent>
                   {fabricas.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
                 </SelectContent>

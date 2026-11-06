@@ -1,3 +1,6 @@
+import { useTranslation } from "@/hooks/useTranslation";
+import type { SiteLanguage } from "@/lib/siteLanguage";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   loadSyncVetTrajetos,
@@ -13,10 +16,10 @@ function fmtDate(iso: string) {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 }
-function fmtDateLong(iso: string) {
+function fmtDateLong(iso: string, language: SiteLanguage = "pt-BR") {
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(y, m - 1, d);
-  return dt.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+  return dt.toLocaleDateString(language, { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
 }
 function fmtDuracao(min: number | null) {
   if (min == null) return "-";
@@ -26,6 +29,8 @@ function fmtDuracao(min: number | null) {
 }
 
 export default function SyncVetTrajetosPage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const { user, roleData } = useAuth();
   const empresaId = roleData.syncvetEmpresaId ?? null;
   const [loading, setLoading] = useState(true);
@@ -41,7 +46,7 @@ export default function SyncVetTrajetosPage() {
       if (result.fazendas) setFazendas(result.fazendas);
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao carregar trajetos");
+      toast.error(uiText("Erro ao carregar trajetos"));
     } finally {
       setLoading(false);
     }
@@ -71,10 +76,10 @@ export default function SyncVetTrajetosPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-primary flex items-center gap-2">
-          <RouteIcon className="w-5 h-5" /> Meus Trajetos
+          <RouteIcon className="w-5 h-5" /> <LocalizedText source={"Meus Trajetos"} />
         </h1>
         <div className="text-xs text-muted-foreground">
-          Total: <span className="font-semibold text-foreground">{totalKm.toFixed(2)} km</span>
+          <LocalizedText source={"Total:"} /> <span className="font-semibold text-foreground">{totalKm.toFixed(2)} km</span>
         </div>
       </div>
 
@@ -83,13 +88,13 @@ export default function SyncVetTrajetosPage() {
           <Loader2 className="w-6 h-6 animate-spin" />
         </div>
       ) : grupos.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">Nenhum trajeto registrado</Card>
+        <Card className="p-8 text-center text-sm text-muted-foreground"><LocalizedText source={"Nenhum trajeto registrado"} /></Card>
       ) : (
         <div className="space-y-4">
           {grupos.map(([data, itens]) => (
             <div key={data} className="space-y-2">
               <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {fmtDateLong(data)}
+                {fmtDateLong(data, language)}
               </div>
               <div className="space-y-2">
                 {itens.map(t => (

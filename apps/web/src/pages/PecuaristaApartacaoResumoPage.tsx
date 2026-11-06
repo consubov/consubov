@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -41,24 +42,26 @@ type LoteRegistro = {
   identificado?: boolean | null;
 };
 
-const fmt = (n: number, d = 2) =>
-  n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
-const fmtHora = (iso: string) => {
-  try { return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
+const fmt = (n: number, language: string, d = 2) =>
+  n.toLocaleString(language, { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtHora = (iso: string, language: string) => {
+  try { return new Date(iso).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
 };
-const fmtDataLinha = (fim?: string | null) => {
+const fmtDataLinha = (fim: string | null | undefined, language: string) => {
   if (!fim) return null;
-  return new Date(fim).toLocaleDateString("pt-BR");
+  return new Date(fim).toLocaleDateString(language);
 };
-const fmtHorarioLinha = (fim?: string | null, ini?: string | null) => {
+const fmtHorarioLinha = (fim: string | null | undefined, ini: string | null | undefined, language: string) => {
   if (!fim) return null;
-  const hFim = fmtHora(fim);
-  const hIni = ini ? fmtHora(ini) : "";
-  if (hIni && hFim) return `Início da pesagem: ${hIni}h - Término da pesagem: ${hFim}h`;
+  const hFim = fmtHora(fim, language);
+  const hIni = ini ? fmtHora(ini, language) : "";
+  if (hIni && hFim) return `${language === "en-US" ? "Weighing started: " : "Início da pesagem: "}${hIni}${language === "en-US" ? "" : "h"} - ${language === "en-US" ? "Weighing ended: " : "Término da pesagem: "}${hFim}${language === "en-US" ? "" : "h"}`;
   return null;
 };
 
 export default function PecuaristaApartacaoResumoPage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const { fazendaId, loteId, apartacaoId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -111,12 +114,12 @@ export default function PecuaristaApartacaoResumoPage() {
       const file = new File([blob], `apartacao-${apartacaoId}.pdf`, { type: "application/pdf" });
       const nav = navigator;
       if (nav.canShare?.({ files: [file] }) && nav.share) {
-        await nav.share({ files: [file], title: "Relatório de Apartação" });
+        await nav.share({ files: [file], title: uiText("Relatório de Apartação") });
       } else if (nav.share) {
-        await nav.share({ title: "Relatório de Apartação", url: pdfUrl });
+        await nav.share({ title: uiText("Relatório de Apartação"), url: pdfUrl });
       } else {
         await navigator.clipboard.writeText(pdfUrl);
-        toast.success("Link copiado");
+        toast.success(uiText("Link copiado"));
       }
     } catch {/* ignore */} finally { setSharing(false); }
   }
@@ -129,11 +132,11 @@ export default function PecuaristaApartacaoResumoPage() {
     <div className="max-w-2xl mx-auto space-y-4 pb-40 px-2">
       <Card className="p-4">
         <div className="text-xs uppercase text-muted-foreground"><LocalizedText source={"Apartação finalizada"} /></div>
-        {fmtDataLinha(data.dataFim) && (
-          <div className="text-xs text-muted-foreground mt-1">{fmtDataLinha(data.dataFim)}</div>
+        {fmtDataLinha(data.dataFim, language) && (
+          <div className="text-xs text-muted-foreground mt-1">{fmtDataLinha(data.dataFim, language)}</div>
         )}
-        {fmtHorarioLinha(data.horaFim ?? data.dataFim, data.horaInicio) && (
-          <div className="text-xs text-muted-foreground">{fmtHorarioLinha(data.horaFim ?? data.dataFim, data.horaInicio)}</div>
+        {fmtHorarioLinha(data.horaFim ?? data.dataFim, data.horaInicio, language) && (
+          <div className="text-xs text-muted-foreground">{fmtHorarioLinha(data.horaFim ?? data.dataFim, data.horaInicio, language)}</div>
         )}
         <div className="grid grid-cols-2 gap-3 mt-2">
           <div>
@@ -142,7 +145,7 @@ export default function PecuaristaApartacaoResumoPage() {
           </div>
           <div>
             <div className="text-xs text-muted-foreground"><LocalizedText source={"Peso total"} /></div>
-            <div className="text-xl font-bold">{fmt(data.totalGeral.peso_total, 1)} kg</div>
+            <div className="text-xl font-bold">{fmt(data.totalGeral.peso_total, language, 1)} kg</div>
           </div>
         </div>
       </Card>
@@ -152,7 +155,7 @@ export default function PecuaristaApartacaoResumoPage() {
           <div className="flex items-center justify-between">
             <div>
               <div className="font-semibold">{d.nome_lote}</div>
-              <div className="text-xs text-muted-foreground">{d.identificado ? "Identificado" : "Sem identificação"}</div>
+              <div className="text-xs text-muted-foreground">{uiText(d.identificado ? "Identificado" : "Sem identificação")}</div>
             </div>
             <div className="text-right">
               <div className="text-xs text-muted-foreground"><LocalizedText source={"Animais"} /></div>
@@ -162,19 +165,19 @@ export default function PecuaristaApartacaoResumoPage() {
           <div className="grid grid-cols-2 gap-2 text-center text-xs">
             <div className="rounded bg-muted p-2">
               <div className="text-muted-foreground"><LocalizedText source={"Peso total"} /></div>
-              <div className="font-semibold">{fmt(d.peso_total, 1)} kg</div>
+              <div className="font-semibold">{fmt(d.peso_total, language, 1)} kg</div>
             </div>
             <div className="rounded bg-muted p-2">
               <div className="text-muted-foreground"><LocalizedText source={"Peso médio (kg)"} /></div>
-              <div className="font-semibold">{fmt(d.peso_medio, 1)} kg</div>
+              <div className="font-semibold">{fmt(d.peso_medio, language, 1)} kg</div>
             </div>
             <div className="rounded bg-muted p-2">
               <div className="text-muted-foreground"><LocalizedText source={"Peso médio (@)"} /></div>
-              <div className="font-semibold">{fmt(d.peso_medio / 30, 2)} @</div>
+              <div className="font-semibold">{fmt(d.peso_medio / 30, language, 2)} @</div>
             </div>
             <div className="rounded bg-muted p-2">
               <div className="text-muted-foreground"><LocalizedText source={"GMD"} /></div>
-              <div className="font-semibold">{d.gmd != null ? `${fmt(d.gmd, 3)}` : "—"}</div>
+              <div className="font-semibold">{d.gmd != null ? `${fmt(d.gmd, language, 3)}` : "—"}</div>
             </div>
           </div>
 
@@ -186,8 +189,8 @@ export default function PecuaristaApartacaoResumoPage() {
               {d.identificados.map((r, j) => (
                 <div key={j} className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-border/40 py-1">
                   <span>{r.numero}</span>
-                  <span className="text-right">{fmt(r.peso_kg, 1)} kg</span>
-                  <span className="text-right">{r.gmd_individual != null ? fmt(r.gmd_individual, 3) : "—"}</span>
+                  <span className="text-right">{fmt(r.peso_kg, language, 1)} kg</span>
+                  <span className="text-right">{r.gmd_individual != null ? fmt(r.gmd_individual, language, 3) : "—"}</span>
                 </div>
               ))}
             </div>

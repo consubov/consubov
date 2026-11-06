@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -95,6 +95,7 @@ export default function IndicadoresZootecnicosSection({
   visitaId: string;
   readOnly?: boolean;
 }) {
+  const uiText = useStaticUiText();
   const [indicador, setIndicador] = useState<IndicadorRow | null>(null);
   const [faixas, setFaixas] = useState<Record<IndicadorFaixaKey, IndicadorFaixaRow>>(() => {
     const init = {} as Record<IndicadorFaixaKey, IndicadorFaixaRow>;
@@ -334,7 +335,7 @@ export default function IndicadoresZootecnicosSection({
                       className="h-8"
                       disabled={readOnly}
                       defaultValue={row.consumo_medio_pv ?? ""}
-                      placeholder="ex: 1,94"
+                      placeholder={uiText("ex: 1,94")}
                       onChange={e => {
                         const v = parseNumOrNull(e.target.value);
                         debounced(`c-${f.key}`, () => void saveFaixa(f.key, { consumo_medio_pv: v }));

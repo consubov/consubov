@@ -1,6 +1,8 @@
 import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { translatePdfLabel } from "@/lib/pdfUiLabels";
+import type { SiteLanguage } from "@/lib/siteLanguage";
 
 const GREEN = "#1F7A4D";
 const INK = "#1C1C1A";
@@ -56,6 +58,7 @@ export interface PecuaristaLeituraBalancao {
 }
 
 export interface PecuaristaPdfData {
+  language?: SiteLanguage;
   header: PecuaristaPdfHeader;
   totais: PecuaristaPdfTotais;
   identificados?: PecuaristaPesoIdentificado[];
@@ -63,18 +66,19 @@ export interface PecuaristaPdfData {
   leiturasBalancao?: PecuaristaLeituraBalancao[];
 }
 
-function fmtN(v: number, d = 2) {
-  return v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+function fmtNLocale(v: number, d: number, language: SiteLanguage) {
+  return v.toLocaleString(language, { minimumFractionDigits: d, maximumFractionDigits: d });
 }
-function fmtDate(iso: string) { try { return new Date(iso).toLocaleDateString("pt-BR"); } catch { return iso; } }
-function fmtDateTime(iso: string) { try { return new Date(iso).toLocaleString("pt-BR"); } catch { return iso; } }
-function fmtHora(iso: string) {
-  try { return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
+function fmtDateLocale(iso: string, language: SiteLanguage) { try { return new Date(iso).toLocaleDateString(language); } catch { return iso; } }
+function fmtDateTimeLocale(iso: string, language: SiteLanguage) { try { return new Date(iso).toLocaleString(language); } catch { return iso; } }
+function fmtHoraLocale(iso: string, language: SiteLanguage) {
+  try { return new Date(iso).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
 }
-function fmtHorarioLinha(dataFim: string, dataInicio?: string | null): string | null {
-  const hFim = fmtHora(dataFim);
-  const hIni = dataInicio ? fmtHora(dataInicio) : "";
-  if (hIni && hFim) return `Início da pesagem: ${hIni}h - Término da pesagem: ${hFim}h`;
+function fmtHorarioLinha(dataFim: string, dataInicio?: string | null, language: SiteLanguage = "pt-BR"): string | null {
+  const tr = (source: string) => translatePdfLabel(language, source);
+  const hFim = fmtHoraLocale(dataFim, language);
+  const hIni = dataInicio ? fmtHoraLocale(dataInicio, language) : "";
+  if (hIni && hFim) return `${tr("Início da pesagem:")} ${hIni}h - ${tr("Término da pesagem:")} ${hFim}h`;
   return null;
 }
 
@@ -248,7 +252,8 @@ function drawFirstHeader(
   return stripeY + 12;
 }
 
-function drawFooter(doc: jsPDF) {
+function drawFooter(doc: jsPDF, language: SiteLanguage) {
+  const tr = (source: string) => translatePdfLabel(language, source);
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const total = doc.getNumberOfPages();
@@ -257,13 +262,17 @@ function drawFooter(doc: jsPDF) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor("#000000");
-    doc.text(`Página ${p} de ${total}`, W - 15, H - 8, { align: "right" });
+    doc.text(`${tr("Página")} ${p}${tr(" de ")}${total}`, W - 15, H - 8, { align: "right" });
     doc.text("consubov.com.br", 15, H - 8);
     doc.text("Mais Arrobas", 15, H - 12);
   }
 }
 
 export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<Blob> {
+  const language = data.language ?? "pt-BR";
+  const fmtN = (v: number, d = 2) => fmtNLocale(v, d, language);
+  const fmtDate = (iso: string) => fmtDateLocale(iso, language);
+  const tr = (source: string) => translatePdfLabel(language, source);
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
 
@@ -274,7 +283,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
     {
       line1: data.header.fazenda || "—",
       line2: data.header.produtor || null,
-      subtitle: "Relatório de pesagem",
+      subtitle: tr("Relatório de pesagem"),
     },
     logo,
   );
@@ -283,7 +292,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
-  doc.text("Informações da pesagem", 15, y);
+  doc.text(tr("Informações da pesagem"), 15, y);
   y += 6;
 
   const rows: [string, string][] = [
@@ -294,17 +303,17 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
   rows.push(
     ["Lote:", data.header.lote],
     ["Categoria:", data.header.categoria],
-    ["Tipo de lote:", data.header.identificado ? "Identificado" : "Sem identificação"],
+    ["Tipo de lote:", data.header.identificado ? tr("Identificado") : tr("Sem identificação")],
     ["Data:", fmtDate(data.header.data)],
   );
-  const horarioLinhaP = fmtHorarioLinha(data.header.horaFim ?? data.header.data, data.header.horaInicio);
+  const horarioLinhaP = fmtHorarioLinha(data.header.horaFim ?? data.header.data, data.header.horaInicio, language);
   if (horarioLinhaP) rows.push(["", horarioLinhaP]);
 
   doc.setFontSize(10);
   for (const [l, v] of rows) {
     doc.setFont("helvetica", "bold"); doc.setTextColor(INK);
-    doc.text(l, 15, y);
-    const lw = doc.getTextWidth(l);
+    doc.text(tr(l), 15, y);
+    const lw = doc.getTextWidth(tr(l));
     doc.setFont("helvetica", "normal");
     doc.text(String(v), 15 + lw + 2, y);
     y += 5.5;
@@ -318,7 +327,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
   // Totais card
   const t = data.totais;
   doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(INK);
-  doc.text("Resumo da rodada", 15, y);
+  doc.text(tr("Resumo da rodada"), 15, y);
   y += 5;
   const totRows: [string, string][] = [
     ["Animais pesados", String(t.quantidade)],
@@ -334,7 +343,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
   }
   autoTable(doc, {
     startY: y,
-    body: totRows,
+    body: totRows.map(([key, value]) => [tr(key), value]),
     theme: "grid",
     styles: { fontSize: 10, cellPadding: 2.5, textColor: INK, lineColor: LINE },
     columnStyles: {
@@ -351,7 +360,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
   // Detalhe
   if (data.header.identificado && data.identificados && data.identificados.length > 0) {
     doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(INK);
-    doc.text("Pesos por animal", 15, y);
+    doc.text(tr("Pesos por animal"), 15, y);
     y += 2;
     const body = data.identificados.map((r) => [
       r.numero,
@@ -365,7 +374,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
     ]);
     autoTable(doc, {
       startY: y + 2,
-      head: [["Nº", "Peso", "@", "Data/hora", "Anterior", "Data anterior", "Dias", "GMD"]],
+      head: [["Nº", "Peso", "@", "Data/hora", "Anterior", "Data anterior", "Dias", "GMD"].map(tr)],
       body,
       theme: "grid",
       styles: { fontSize: 9, cellPadding: 2, textColor: INK, lineColor: LINE },
@@ -376,7 +385,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
     pesosParaGrafico = data.identificados.map((r) => r.peso_kg);
   } else if (!data.header.identificado && data.semId && data.semId.length > 0) {
     doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(INK);
-    doc.text("Pesos registrados (peso vivo)", 15, y);
+    doc.text(tr("Pesos registrados (peso vivo)"), 15, y);
     y += 2;
     const attempts = [
       { cols: 4, rowH: 5.2, fontSize: 9 },
@@ -404,7 +413,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
 
   // Gráfico de pesos (sempre 1 página, comprime conforme necessário)
   if (pesosParaGrafico.length > 0) {
-    y = drawPesosChart(doc, pesosParaGrafico, W, H, y + 2, `Gráfico de Pesos (1 a ${pesosParaGrafico.length})`);
+    y = drawPesosChart(doc, pesosParaGrafico, W, H, y + 2, `${tr("Gráfico de Pesos (1 a ")}${pesosParaGrafico.length})`);
   }
 
 
@@ -412,10 +421,10 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
     doc.addPage();
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);
-    doc.text("Leituras em Balanção", 15, 20);
+    doc.text(tr("Leituras em Balanção"), 15, 20);
     autoTable(doc, {
       startY: 26,
-      head: [["Ordem", "Peso total (kg)", "Qtd animais", "Peso individual (kg)"]],
+      head: [["Ordem", "Peso total (kg)", "Qtd animais", "Peso individual (kg)"].map(tr)],
       body: data.leiturasBalancao.map((l) => [
         `#${l.ordem}`,
         fmtN(l.peso_total, 2),
@@ -429,7 +438,7 @@ export async function gerarPecuaristaLotePdf(data: PecuaristaPdfData): Promise<B
     });
   }
 
-  drawFooter(doc);
+  drawFooter(doc, language);
   return doc.output("blob");
 }
 
@@ -454,12 +463,17 @@ export interface ApartacaoDestinoSection {
 }
 
 export interface ApartacaoPdfData {
+  language?: SiteLanguage;
   header: Omit<PecuaristaPdfHeader, "identificado"> & { identificado: boolean };
   totalGeral: { quantidade: number; peso_total: number };
   destinos: ApartacaoDestinoSection[];
 }
 
 export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promise<Blob> {
+  const language = data.language ?? "pt-BR";
+  const fmtN = (v: number, d = 2) => fmtNLocale(v, d, language);
+  const fmtDate = (iso: string) => fmtDateLocale(iso, language);
+  const tr = (source: string) => translatePdfLabel(language, source);
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -471,7 +485,7 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
     {
       line1: data.header.fazenda || "—",
       line2: data.header.produtor || null,
-      subtitle: "Relatório de pesagem — apartação",
+      subtitle: tr("Relatório de pesagem — apartação"),
     },
     logo,
   );
@@ -479,7 +493,7 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
   doc.setTextColor(INK);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
-  doc.text("Informações da apartação", 15, y);
+  doc.text(tr("Informações da apartação"), 15, y);
   y += 6;
 
   const rows: [string, string][] = [
@@ -490,10 +504,10 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
   rows.push(
     ["Lote de origem:", data.header.lote],
     ["Categoria:", data.header.categoria],
-    ["Tipo:", data.header.identificado ? "Identificado" : "Sem identificação"],
+    ["Tipo:", data.header.identificado ? tr("Identificado") : tr("Sem identificação")],
     ["Data:", fmtDate(data.header.data)],
   );
-  const horarioLinhaA = fmtHorarioLinha(data.header.horaFim ?? data.header.data, data.header.horaInicio);
+  const horarioLinhaA = fmtHorarioLinha(data.header.horaFim ?? data.header.data, data.header.horaInicio, language);
   if (horarioLinhaA) rows.push(["", horarioLinhaA]);
   rows.push(
     ["Total animais apartados:", String(data.totalGeral.quantidade)],
@@ -502,8 +516,8 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
   doc.setFontSize(10);
   for (const [l, v] of rows) {
     doc.setFont("helvetica", "bold"); doc.setTextColor(INK);
-    doc.text(l, 15, y);
-    const lw = doc.getTextWidth(l);
+    doc.text(tr(l), 15, y);
+    const lw = doc.getTextWidth(tr(l));
     doc.setFont("helvetica", "normal");
     doc.text(String(v), 15 + lw + 2, y);
     y += 5.5;
@@ -523,9 +537,9 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
     doc.setTextColor("#ffffff");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text(`Destino: ${d.nome_lote}`, 17, y + 1.5);
+    doc.text(`${tr("Destino:")} ${d.nome_lote}`, 17, y + 1.5);
     doc.setFontSize(9);
-    doc.text(`${d.quantidade} animais`, W - 17, y + 1.5, { align: "right" });
+    doc.text(`${d.quantidade}${tr(" animais")}`, W - 17, y + 1.5, { align: "right" });
     y += 8;
 
     // Totais do destino
@@ -542,7 +556,7 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
     }
     autoTable(doc, {
       startY: y + 2,
-      body: tRows,
+      body: tRows.map(([key, value]) => [tr(key), value]),
       theme: "grid",
       styles: { fontSize: 9, cellPadding: 2, textColor: INK, lineColor: LINE },
       columnStyles: {
@@ -566,7 +580,7 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
       ]);
       autoTable(doc, {
         startY: y + 1,
-        head: [["Nº", "Peso", "@", "Data/hora", "GMD"]],
+        head: [["Nº", "Peso", "@", "Data/hora", "GMD"].map(tr)],
         body,
         theme: "grid",
         styles: { fontSize: 9, cellPadding: 1.8, textColor: INK, lineColor: LINE },
@@ -596,11 +610,11 @@ export async function gerarPecuaristaApartacaoPdf(data: ApartacaoPdfData): Promi
     }
 
     if (pesosDest.length > 0) {
-      y = drawPesosChart(doc, pesosDest, W, H, y, `Gráfico de Pesos — ${d.nome_lote} (1 a ${pesosDest.length})`);
+      y = drawPesosChart(doc, pesosDest, W, H, y, `${tr("Gráfico de Pesos — ")}${d.nome_lote}${tr(" (1 a ")}${pesosDest.length})`);
     }
   }
 
 
-  drawFooter(doc);
+  drawFooter(doc, language);
   return doc.output("blob");
 }

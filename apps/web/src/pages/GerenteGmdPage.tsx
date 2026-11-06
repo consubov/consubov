@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -61,6 +61,7 @@ function descreverInverno(ini: number | null, fim: number | null): string {
 }
 
 export default function GerenteGmdPage() {
+  const uiText = useStaticUiText();
   const navigate = useNavigate();
   const { roleData } = useAuth();
   const { fazendas, fazendaId, setFazendaId, carregado } = useGerenteFazendaAtiva();
@@ -171,18 +172,18 @@ export default function GerenteGmdPage() {
 
   function pedirSalvar() {
     if (saveInFlight.current || loadedFazendaId !== fazendaId || loadError) return;
-    if (!draftModo) { toast.error("Escolha como o GMD será definido nesta fazenda."); return; }
+    if (!draftModo) { toast.error(uiText("Escolha como o GMD será definido nesta fazenda.")); return; }
     if (draftModo === "geral") {
-      if ((draftVerao.ini == null) !== (draftVerao.fim == null)) { toast.error("Informe o mês de início e o de fim do verão."); return; }
+      if ((draftVerao.ini == null) !== (draftVerao.fim == null)) { toast.error(uiText("Informe o mês de início e o de fim do verão.")); return; }
       if ([draftGeral.verao, draftGeral.inverno].some((v) => parseGmd(v) === "invalid")) {
-        toast.error("GMD deve estar entre -1,000 e 3,000 kg/dia."); return;
+        toast.error(uiText("GMD deve estar entre -1,000 e 3,000 kg/dia.")); return;
       }
     } else {
       const chaves = draftModo === "categoria" ? ["faz"] : retiros.map((r) => r.id);
       for (const k of chaves) {
         if (Object.values(draftCat[k] ?? {}).some((v) => parseGmd(v) === "invalid")) {
           const nome = k === "faz" ? "Fazenda" : retiros.find((r) => r.id === k)?.nome;
-          toast.error(`${nome}: GMD deve estar entre -1,000 e 3,000 kg/dia.`); return;
+          toast.error(`${nome === "Fazenda" ? uiText("Fazenda") : nome}: ${uiText("GMD deve estar entre -1,000 e 3,000 kg/dia.")}`); return;
         }
       }
     }
@@ -277,11 +278,11 @@ export default function GerenteGmdPage() {
       }
       ensureFarm();
       if (!await load(id, expected)) throw new Error("Não foi possível confirmar a gravação.");
-      toast.success("Configuração de GMD salva");
+      toast.success(uiText("Configuração de GMD salva"));
     } catch {
-      toast.error(startedWrites
+      toast.error(uiText(startedWrites
         ? "Gravação não confirmada. Algumas alterações podem ter sido aplicadas; confira os dados antes de tentar novamente."
-        : "Configuração inválida ou indisponível. Nenhuma gravação foi iniciada.");
+        : "Configuração inválida ou indisponível. Nenhuma gravação foi iniciada."));
       if (selectedFazendaRef.current === id) {
         try { await load(id); } catch { /* leave the retry/error state visible */ }
       }

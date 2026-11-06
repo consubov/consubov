@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { modulosVisiveis } from "@/lib/avisosModulo";
@@ -36,6 +36,7 @@ function timeAgo(iso: string) {
 }
 
 export default function GerenteNotificacoesBell({ fazendaId }: { fazendaId: string }) {
+  const uiText = useStaticUiText();
   const { user } = useAuth();
   const [items, setItems] = useState<Notif[]>([]);
   const [open, setOpen] = useState(false);
@@ -87,16 +88,16 @@ export default function GerenteNotificacoesBell({ fazendaId }: { fazendaId: stri
   async function confirmarAprovacao() {
     if (!aprovar) return;
     const transferId = aprovar.dados?.transferencia_id;
-    if (!transferId) return toast.error("Transferência inválida");
+    if (!transferId) return toast.error(uiText("Transferência inválida"));
     const q = parseFloat(qtdReceb);
-    if (!q || q <= 0) return toast.error("Quantidade inválida");
+    if (!q || q <= 0) return toast.error(uiText("Quantidade inválida"));
     setSaving(true);
     try {
       const { data: transf } = await supabase.from("transferencias_fabrica")
         .select("*").eq("id", transferId).maybeSingle();
-      if (!transf) throw new Error("Transferência não encontrada");
-      if (transf.status === "concluida") throw new Error("Já concluída");
-      if (transf.status === "recusada") throw new Error("Já recusada");
+      if (!transf) throw new Error(uiText("Transferência não encontrada"));
+      if (transf.status === "concluida") throw new Error(uiText("Já concluída"));
+      if (transf.status === "recusada") throw new Error(uiText("Já recusada"));
 
       const enviadoSc = Number(transf.quantidade_sacos || 0);
       const divergSacos = enviadoSc - q;
@@ -142,11 +143,11 @@ export default function GerenteNotificacoesBell({ fazendaId }: { fazendaId: stri
       const ids = (notifs || []).filter((n: any) => n?.dados?.transferencia_id === transferId).map((n: any) => n.id);
       if (ids.length) await supabase.from("notificacoes").delete().in("id", ids);
 
-      toast.success("Recebimento aprovado");
+      toast.success(uiText("Recebimento aprovado"));
       setAprovar(null);
       load();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     } finally {
       setSaving(false);
     }
@@ -155,13 +156,13 @@ export default function GerenteNotificacoesBell({ fazendaId }: { fazendaId: stri
   async function recusar(n: Notif) {
     const transferId = n.dados?.transferencia_id;
     if (!transferId) return;
-    if (!confirm("Recusar esta transferência? Os sacos voltam para o estoque da fábrica.")) return;
+    if (!confirm(uiText("Recusar esta transferência? Os sacos voltam para o estoque da fábrica."))) return;
     try {
       const { data: transf } = await supabase.from("transferencias_fabrica")
         .select("*").eq("id", transferId).maybeSingle();
-      if (!transf) throw new Error("Transferência não encontrada");
+      if (!transf) throw new Error(uiText("Transferência não encontrada"));
       if (transf.status === "concluida" || transf.status === "recusada") {
-        throw new Error("Transferência já processada");
+        throw new Error(uiText("Transferência já processada"));
       }
 
       await supabase.from("transferencias_fabrica")
@@ -194,10 +195,10 @@ export default function GerenteNotificacoesBell({ fazendaId }: { fazendaId: stri
         { userIds: transf.registrado_por ? [transf.registrado_por] : [] },
       );
 
-      toast.success("Transferência recusada");
+      toast.success(uiText("Transferência recusada"));
       load();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "desconhecido"));
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
     }
   }
 
@@ -206,7 +207,7 @@ export default function GerenteNotificacoesBell({ fazendaId }: { fazendaId: stri
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <button
-            aria-label="Notificações"
+            aria-label={uiText("Notificações")}
             className="relative h-8 w-8 rounded-full bg-primary-foreground text-primary flex items-center justify-center border border-border shadow-sm"
           >
             <Bell className="h-3.5 w-3.5" />

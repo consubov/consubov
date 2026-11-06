@@ -1,5 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { translatePdfLabel } from "@/lib/pdfUiLabels";
+import type { SiteLanguage } from "@/lib/siteLanguage";
 
 export interface PastoSalgaRow {
   nome: string;
@@ -15,6 +17,8 @@ export interface PastoSalgaRow {
 }
 
 export interface SalgaPdfData {
+  /** App display language; pt-BR is the compatible default. */
+  language?: SiteLanguage;
   fazendaNome: string;
   retiroNome: string;
   periodoLabel: string;
@@ -46,7 +50,19 @@ function fmtDate(iso?: string | null): string | null {
   }
 }
 
+/** Translate only known, author-controlled reporting periods. Keep file names and IDs unchanged. */
+export function localizeSalgaPeriod(language: SiteLanguage, period: string): string {
+  if (language !== "en-US") return period;
+  const tr = (source: string) => translatePdfLabel(language, source);
+  if (period === "Últimos 7 dias") return tr(period);
+  if (period.startsWith("Última salga: ")) return `${tr("Última salga:")} ${period.slice("Última salga: ".length)}`;
+  const month = /^(Janeiro|Fevereiro|Março|Abril|Maio|Junho|Julho|Agosto|Setembro|Outubro|Novembro|Dezembro) ([0-9]{4})$/.exec(period);
+  return month ? `${tr(month[1])} ${month[2]}` : period;
+}
+
 export function gerarPdfSalga(data: SalgaPdfData): { blob: Blob; fileName: string } {
+  const language = data.language ?? "pt-BR";
+  const tr = (source: string) => translatePdfLabel(language, source);
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -63,11 +79,11 @@ export function gerarPdfSalga(data: SalgaPdfData): { blob: Blob; fileName: strin
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(102, 102, 102);
-  doc.text(`Retiro: ${data.retiroNome}`, margin, y);
+  doc.text(`${tr("Retiro:")} ${data.retiroNome}`, margin, y);
 
   y += 5;
   doc.setFontSize(8);
-  doc.text(`Período: ${data.periodoLabel}`, margin, y);
+  doc.text(`${tr("Período:")} ${localizeSalgaPeriod(language, data.periodoLabel)}`, margin, y);
 
   // Date range (since last sync)
   const startFmt = fmtDate(data.rangeStartIso);
@@ -75,20 +91,20 @@ export function gerarPdfSalga(data: SalgaPdfData): { blob: Blob; fileName: strin
   if (startFmt || endFmt) {
     y += 4;
     const rangeText = startFmt && endFmt
-      ? `Intervalo: ${startFmt} → ${endFmt}`
+      ? `${tr("Intervalo:")} ${startFmt} → ${endFmt}`
       : startFmt
-        ? `Desde: ${startFmt}`
-        : `Até: ${endFmt}`;
+        ? `${tr("Desde:")} ${startFmt}`
+        : `${tr("Até:")} ${endFmt}`;
     doc.text(rangeText, margin, y);
   }
 
   if (data.responsavel) {
     y += 4;
-    doc.text(`Responsável: ${data.responsavel}`, margin, y);
+    doc.text(`${tr("Responsável:")} ${data.responsavel}`, margin, y);
   }
 
   y += 4;
-  doc.text(`Gerado em: ${nowFormatted()}`, margin, y);
+  doc.text(`${tr("Gerado em:")} ${nowFormatted()}`, margin, y);
 
   y += 3;
   doc.setDrawColor(27, 67, 50);
@@ -110,9 +126,8 @@ export function gerarPdfSalga(data: SalgaPdfData): { blob: Blob; fileName: strin
 
   const hasStatusCol = data.pastos.some((p) => !!p.status);
 
-  const head = hasStatusCol
-    ? [["Pasto", "Nº Animais", "Peso Médio (kg)", "Sacos", "Status"]]
-    : [["Pasto", "Nº Animais", "Peso Médio (kg)", "Sacos"]];
+  const headColumns = ["Pasto", "Nº Animais", "Peso Médio (kg)", "Sacos"].map(tr);
+  const head = hasStatusCol ? [[...headColumns, tr("Status")]] : [headColumns];
 
   const tableBody = data.pastos.map((p) => {
     const base = [
@@ -121,7 +136,7 @@ export function gerarPdfSalga(data: SalgaPdfData): { blob: Blob; fileName: strin
       `${p.pesoMedioKg.toFixed(1)}`,
       fmtSacos(p),
     ];
-    if (hasStatusCol) base.push(p.status || "—");
+    if (hasStatusCol) base.push(p.status ? tr(p.status) : "—");
     return base;
   });
 
@@ -130,7 +145,7 @@ export function gerarPdfSalga(data: SalgaPdfData): { blob: Blob; fileName: strin
     "TOTAL",
     String(totalAnimais),
     "—",
-    totalCochoCheio > 0 ? `${totalSacos} sacos · ${totalCochoCheio} cocho cheio` : String(totalSacos),
+    totalCochoCheio > 0 ? `${totalSacos}${tr(" sacos · ")}${totalCochoCheio}${tr(" cocho cheio")}` : String(totalSacos),
   ];
   if (hasStatusCol) totalRow.push("—");
   tableBody.push(totalRow);
@@ -161,7 +176,8 @@ export function gerarPdfSalga(data: SalgaPdfData): { blob: Blob; fileName: strin
       }
       // Color status cell
       if (hasStatusCol && row.section === "body" && column.index === 4) {
-        const txt = String(cell.raw || "").toUpperCase();
+        // Colors must use the original business status, not its translated display copy.
+        const txt = String(data.pastos[row.index]?.status || "").toUpperCase();
         if (txt === "ABAIXO") {
           cell.styles.fillColor = [254, 226, 226]; // light red
           cell.styles.textColor = [153, 27, 27];
@@ -186,7 +202,7 @@ export function gerarPdfSalga(data: SalgaPdfData): { blob: Blob; fileName: strin
       doc.setFontSize(7);
       doc.setTextColor(150, 150, 150);
       doc.setFont("helvetica", "normal");
-      doc.text("Gerado por: Consubov  |  \u2713 = lancado via QR Code", margin, pageHeight - 8);
+      doc.text(`${tr("Gerado por: Consubov")}  |  \u2713 = ${tr("lancado via QR Code")}`, margin, pageHeight - 8);
       doc.text(nowFormatted(), pageWidth - margin, pageHeight - 8, { align: "right" });
     },
   });

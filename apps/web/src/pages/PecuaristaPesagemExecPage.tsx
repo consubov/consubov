@@ -1,4 +1,5 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMaOffline } from "@/components/maisarrobas/ModoOfflinePanel";
 import { useCriticalOperation } from "@/lib/criticalOperations";
@@ -58,6 +59,8 @@ type PrevInfo = {
 };
 
 export default function PecuaristaPesagemExecPage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
   const { fazendaId, loteId, pesagemId } = useParams<{ fazendaId: string; loteId: string; pesagemId: string }>();
   const navigate = useNavigate();
   const syncSnap = useMaisArrobasSync();
@@ -238,7 +241,7 @@ export default function PecuaristaPesagemExecPage() {
           });
         }
         if (recuperados > 0 && !fimNaFila) {
-          toast.success(`Pesagem retomada: ${recuperados} peso(s) recuperado(s).`);
+          toast.success(`${uiText("Pesagem retomada: ")}${recuperados}${uiText(" peso(s) recuperado(s).")}`);
         }
       } catch (err) {
         console.warn("[pecuarista] retomada falhou", err);
@@ -261,7 +264,7 @@ export default function PecuaristaPesagemExecPage() {
   async function iniciarLeituraBalancao() {
     if (!pesagemId || !lote || salvandoLeitura) return;
     const total = parseFloat(pesoBalancao.replace(",", "."));
-    if (!Number.isFinite(total) || total <= 0) return toast.error("Informe o peso total.");
+    if (!Number.isFinite(total) || total <= 0) return toast.error(uiText("Informe o peso total."));
     const qtd = qtdBalancaoAtual;
     if (!qtd || qtd < 2) return;
     setSalvandoLeitura(true);
@@ -500,7 +503,7 @@ export default function PecuaristaPesagemExecPage() {
     if (!lote || !pesagemId) return;
     const isId = lote.identificado;
     const qtd = isId ? linhasId.length : linhasSem.length;
-    if (qtd === 0) return toast.error("Nenhum peso registrado.");
+    if (qtd === 0) return toast.error(uiText("Nenhum peso registrado."));
     const pesos = isId ? linhasId.map((l) => l.peso_kg) : linhasSem.map((l) => l.peso_kg);
     const peso_total = pesos.reduce((s, v) => s + v, 0);
     const dataFim = new Date().toISOString();
@@ -544,7 +547,7 @@ export default function PecuaristaPesagemExecPage() {
     setFinalizando(false);
     if (restantes > 0) {
       return toast.error(
-        `Aguardando sincronizar ${restantes} registro(s) antes de gerar o PDF. Tente de novo quando a internet voltar.`,
+        `${uiText("Aguardando sincronizar ")}${restantes}${uiText(" registro(s) antes de gerar o PDF. Tente de novo quando a internet voltar.")}`,
       );
     }
     await gerarPdfEResumo(dataFimLocal);
@@ -591,7 +594,7 @@ export default function PecuaristaPesagemExecPage() {
         hora_inicio: horaIniFinal,
       })
       .eq("id", pesagemId);
-    if (error) { setFinalizando(false); return toast.error("Erro: " + error.message); }
+    if (error) { setFinalizando(false); return toast.error(uiText("Erro: ") + error.message); }
 
     // dados de cabeçalho
     const { data: fz } = await maFrom("fazendas_pecuarista").select("nome_fazenda, cidade, logo_url").eq("id", lote.fazenda_id).maybeSingle();
@@ -612,6 +615,7 @@ export default function PecuaristaPesagemExecPage() {
 
     try {
       const blob = await gerarPecuaristaLotePdf({
+        language,
         header: {
           produtor: (pc as any)?.nome ?? "",
           nomeEmpresa: null,
@@ -645,7 +649,7 @@ export default function PecuaristaPesagemExecPage() {
         await maFrom("pesagens_lote_pecuarista").update({ pdf_url: pdfUrl }).eq("id", pesagemId);
       }
     } catch (e: any) {
-      toast.error("PDF: " + (e?.message ?? ""));
+      toast.error(uiText("PDF: ") + (e?.message ?? ""));
     }
     setFinalizando(false);
     navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}/pesagem/${pesagemId}/resumo`, {
@@ -688,7 +692,7 @@ export default function PecuaristaPesagemExecPage() {
             // Cálculo local (mesma regra do resumo: média / 30).
             const ps = lote.identificado ? linhasId.map((l) => Number(l.peso_kg)) : linhasSem.map((l) => Number(l.peso_kg));
             const media = ps.length ? ps.reduce((s, v) => s + v, 0) / ps.length : 0;
-            const f = (n: number, d: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+            const f = (n: number, d: number) => n.toLocaleString(language, { minimumFractionDigits: d, maximumFractionDigits: d });
             return (
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg bg-muted">
@@ -763,7 +767,7 @@ export default function PecuaristaPesagemExecPage() {
                 ref={inputRef}
                 type="text"
                 inputMode="numeric"
-                placeholder="Número do animal"
+                placeholder={uiText("Número do animal")}
                 value={numeroAtual}
                 onChange={(e) => setNumeroAtual(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void confirmarNumeroBalancao(); } }}
@@ -785,7 +789,7 @@ export default function PecuaristaPesagemExecPage() {
                   ref={inputRef}
                   type="number"
                   inputMode="decimal"
-                  placeholder="Peso total (kg)"
+                  placeholder={uiText("Peso total (kg)")}
                   value={pesoBalancao}
                   onChange={(e) => setPesoBalancao(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void iniciarLeituraBalancao(); } }}
@@ -826,7 +830,7 @@ export default function PecuaristaPesagemExecPage() {
               <div><strong><LocalizedText source={"Pesagem anterior:"} /></strong></div>
               <div><LocalizedText source={"Peso:"} />{" "}{prev.peso_anterior_kg.toFixed(1)} kg</div>
               {prev.lote_anterior && <div><LocalizedText source={"Lote:"} />{" "}{prev.lote_anterior}</div>}
-              {prev.data_anterior && <div><LocalizedText source={"Data:"} />{" "}{new Date(prev.data_anterior).toLocaleString("pt-BR")}</div>}
+              {prev.data_anterior && <div><LocalizedText source={"Data:"} />{" "}{new Date(prev.data_anterior).toLocaleString(language)}</div>}
             </Card>
           )}
           {step === "peso" && prev?.peso_anterior_kg == null && (
@@ -837,7 +841,7 @@ export default function PecuaristaPesagemExecPage() {
             ref={inputRef}
             type={step === "numero" ? "text" : "number"}
             inputMode={step === "numero" ? "numeric" : "decimal"}
-            placeholder={step === "numero" ? "Número do animal" : "Peso (kg)"}
+            placeholder={uiText(step === "numero" ? "Número do animal" : "Peso (kg)")}
             value={step === "numero" ? numeroAtual : pesoAtual}
             onChange={(e) => (step === "numero" ? setNumeroAtual(e.target.value) : setPesoAtual(e.target.value))}
             onKeyDown={(e) => {
@@ -875,12 +879,12 @@ export default function PecuaristaPesagemExecPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="text-sm font-medium">Animal {animalNum} <LocalizedText source={"— Peso (kg)"} /></div>
+          <div className="text-sm font-medium">{uiText("Animal ")}{animalNum} <LocalizedText source={"— Peso (kg)"} /></div>
           <Input
             ref={inputRef}
             type="number"
             inputMode="decimal"
-            placeholder="Peso (kg)"
+            placeholder={uiText("Peso (kg)")}
             value={pesoSem}
             onChange={(e) => setPesoSem(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleSalvarPesoSem(); } }}
@@ -915,7 +919,7 @@ export default function PecuaristaPesagemExecPage() {
                   <span className="flex items-center gap-1">
                     <LocalizedText source={"Nº"} />{" "}{l.numero}
                     {syncSnap.pendingRefIds.has(l.pesoRowId) && (
-                      <CloudOff className="w-3 h-3 text-muted-foreground" aria-label="Pendente de envio" />
+                      <CloudOff className="w-3 h-3 text-muted-foreground" aria-label={uiText("Pendente de envio")} />
                     )}
                   </span>
                   <span>

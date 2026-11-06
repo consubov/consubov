@@ -1,4 +1,4 @@
-import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ interface AdicionarEstoqueModalProps {
 }
 
 export default function AdicionarEstoqueModal({ open, onOpenChange, retiros, onConfirm }: AdicionarEstoqueModalProps) {
+  const uiText = useStaticUiText();
   const [retiroId, setRetiroId] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [saving, setSaving] = useState(false);
@@ -39,7 +40,7 @@ export default function AdicionarEstoqueModal({ open, onOpenChange, retiros, onC
           <div>
             <Label><LocalizedText source={"Retiro"} /></Label>
             <Select value={retiroId} onValueChange={setRetiroId}>
-              <SelectTrigger><SelectValue placeholder="Selecione o retiro" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={uiText("Selecione o retiro")} /></SelectTrigger>
               <SelectContent>
                 {retiros.map(r => (
                   <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
