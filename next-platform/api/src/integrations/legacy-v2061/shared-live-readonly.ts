@@ -163,7 +163,7 @@ export async function handleSharedLiveRequest(req:Request,config:SharedLiveConfi
         const scope=await authorizeNoRlsRead(route.name,url.searchParams,{
           root,token:token!,publishableKey:config.publishableKey!,userId:found.data.id,fetcher
         });
-        if(!scope.ok)return denied(scope.status,scope.reason,origin,config.allowedOrigin);
+        if(scope.ok===false)return denied(scope.status,scope.reason,origin,config.allowedOrigin);
         upstream.search=scope.filter.toString();
       }
     }
