@@ -1,0 +1,438 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { useEffect, useState } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { usePainelPeriodo } from "@/hooks/usePainelPeriodo";
+import { useMapaData } from "@/hooks/useMapaData";
+import { useNomeUsuario } from "@/hooks/useNomeUsuario";
+import type { PastoMapaData } from "@/hooks/useMapaData";
+
+import MonthScroller from "@/components/MonthScroller";
+import MapaViewer, { clearMapImageMemoryCache } from "@/components/mapa/MapaViewer";
+import MapaEditor from "@/components/mapa/MapaEditor";
+import PastoInfoModal from "@/components/mapa/PastoInfoModal";
+import MapaActionSheet from "@/components/mapa/MapaActionSheet";
+import MapaTransferenciaModal from "@/components/mapa/MapaTransferenciaModal";
+import MapaAbateModal from "@/components/mapa/MapaAbateModal";
+import EditarPesoModal from "@/components/mapa/EditarPesoModal";
+import MapaEntradaAnimaisModal from "@/components/mapa/MapaEntradaAnimaisModal";
+import SelecionarEventoModal, { type TipoEvento } from "@/components/eventos/SelecionarEventoModal";
+import SanitarioFormModal, { type SanitarioFormData } from "@/components/eventos/SanitarioFormModal";
+import PesagemFlowModal from "@/components/eventos/PesagemFlowModal";
+import ObservacaoLoteModal from "@/components/eventos/ObservacaoLoteModal";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import {
+  Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { ArrowLeft, Loader2, Pencil, Map, RefreshCw, Beef } from "lucide-react";
+
+type MapAction = null | "action" | "info" | "transferir" | "abater" | "editarPeso" | "selectDestino" | "entrada";
+
+export default function MapaFazendaPage() {
+  const { fazendaId, retiroId } = useParams<{ fazendaId?: string; retiroId?: string }>();
+  const navigate = useNavigate();
+  const { role, user } = useAuth();
+  const nomePapel = useNomeUsuario(["administradores", "gerentes", "capatazes"], "");
+  const userName = (user?.user_metadata as any)?.nome || nomePapel || "";
+  const { mes, ano, setPeriodo } = usePainelPeriodo();
+
+  const [retiroNome, setRetiroNome] = useState("Retiro");
+  const [fazendaNome, setFazendaNome] = useState("Fazenda");
+
+  // The map itself is RLS-scoped by retiro. Names are nonessential and should
+  // never block the image when retiros/fazendas occasionally return HTTP 500.
+  const {
+    loading, mapa, error: mapError, warning: mapWarning, refresh,
+    detailsLoading, indicatorsLoading,
+  } = useMapaData(fazendaId, mes, ano, retiroId, user?.id);
+  const activeFazendaId = fazendaId ?? mapa?.fazenda_id ?? null;
+  const activeRetiroId = retiroId ?? "";
+
+  useEffect(() => {
+    let current = true;
+    setRetiroNome("Retiro");
+    if (!retiroId || !mapa) return () => { current = false; };
+    void Promise.resolve(supabase.from("retiros").select("nome")
+      .eq("id", retiroId).maybeSingle()).then(({ data }) => {
+        if (current && data?.nome) setRetiroNome(data.nome);
+      }).catch(() => undefined);
+    return () => { current = false; };
+  }, [retiroId, mapa?.id]);
+
+  useEffect(() => {
+    let current = true;
+    setFazendaNome("Fazenda");
+    if (!activeFazendaId) return () => { current = false; };
+    void Promise.resolve(supabase.from("fazendas").select("nome")
+      .eq("id", activeFazendaId).maybeSingle()).then(({ data }) => {
+        if (current && data?.nome) setFazendaNome(data.nome);
+      }).catch(() => undefined);
+    return () => { current = false; };
+  }, [activeFazendaId]);
+
+  const totalAnimaisRetiro = (mapa?.pastos ?? []).reduce((sum, p) => sum + (p.num_animais || 0), 0);
+  const [editing, setEditing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Action state
+  const [currentAction, setCurrentAction] = useState<MapAction>(null);
+  const [selectedPasto, setSelectedPasto] = useState<PastoMapaData | null>(null);
+  const [destinoPasto, setDestinoPasto] = useState<PastoMapaData | null>(null);
+
+  // Evento modals state
+  const [eventoSelectorOpen, setEventoSelectorOpen] = useState(false);
+  const [sanitarioOpen, setSanitarioOpen] = useState(false);
+  const [pesagemOpen, setPesagemOpen] = useState(false);
+  const [observacaoLoteOpen, setObservacaoLoteOpen] = useState(false);
+  const [combinedMode, setCombinedMode] = useState(false);
+  const [pendingSanitarioData, setPendingSanitarioData] = useState<SanitarioFormData | null>(null);
+
+  // An action opened for one period must not use a pasture snapshot from
+  // another month, user or retiro after navigation.
+  useEffect(() => {
+    setCurrentAction(null);
+    setSelectedPasto(null);
+    setDestinoPasto(null);
+  }, [mes, ano, retiroId, user?.id]);
+
+  const isAdmin = role === "administrador";
+  const canEditMapa = isAdmin && Boolean(fazendaId);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await refresh(); }
+    finally { setRefreshing(false); }
+  };
+
+  const handlePastoClick = (pasto: PastoMapaData) => {
+    // If selecting destination for transfer
+    if (currentAction === "selectDestino" && selectedPasto && pasto.pasto_id !== selectedPasto.pasto_id) {
+      setDestinoPasto(pasto);
+      setCurrentAction("transferir");
+      return;
+    }
+
+    // Normal click → show action sheet
+    setSelectedPasto(pasto);
+    setDestinoPasto(null);
+    setCurrentAction("action");
+  };
+
+  const resetAction = () => {
+    setCurrentAction(null);
+    setSelectedPasto(null);
+    setDestinoPasto(null);
+  };
+
+  const handleActionDone = async () => {
+    resetAction();
+    await refresh();
+  };
+
+  if (loading && !mapa) {
+    return (
+      <div className="flex justify-center p-12">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (mapError) {
+    return (
+      <Card className="mx-auto max-w-xl space-y-3 p-5 text-center" role="alert">
+        <p className="text-sm text-destructive">{mapError}</p>
+        <Button type="button" variant="outline" onClick={() => {
+void handleRefresh();
+        }}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          <LocalizedText source={"Tentar novamente"} />
+        </Button>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-4">
+      {canEditMapa && (
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild><Link to="/admin/fazendas"><LocalizedText source={"Fazendas"} /></Link></BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild><Link to={`/admin/fazendas/${fazendaId}`}>{fazendaNome}</Link></BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild><Link to={`/admin/fazendas/${fazendaId}/retiros/${retiroId}`}>{retiroNome}</Link></BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem><BreadcrumbPage><LocalizedText source={"Mapa"} /></BreadcrumbPage></BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      )}
+
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate(-1)}>
+          <ArrowLeft className="w-4 h-4" /> <LocalizedText source={"Voltar"} /></Button>
+        <div className="flex gap-2">
+          {currentAction === "selectDestino" && (
+            <Button size="sm" variant="outline" onClick={resetAction}><LocalizedText source={"Cancelar seleção"} /></Button>
+          )}
+          {canEditMapa && mapa && !editing && (
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setEditing(true)}>
+              <Pencil className="w-4 h-4" /> <LocalizedText source={"Editar Mapa"} /></Button>
+          )}
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+      </div>
+
+      <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+        <Map className="w-5 h-5" /> <LocalizedText source={"Mapa —"} />{" "}{retiroNome}
+      </h1>
+
+      <Card className="p-2">
+        <MonthScroller selectedMonth={mes} selectedYear={ano} onChange={(m, y) => setPeriodo(m, y)} />
+      </Card>
+
+      {(detailsLoading || indicatorsLoading) && (
+        <p className="text-xs text-muted-foreground" role="status">
+          <Loader2 className="inline-block mr-1 h-3 w-3 animate-spin" />
+          <LocalizedText source={detailsLoading ? "Carregando os desenhos do mapa..." : "Atualizando indicadores em segundo plano..."} />
+        </p>
+      )}
+
+      {mapWarning && (
+        <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+          {mapWarning}
+        </p>
+      )}
+
+      {editing && canEditMapa ? (
+        <MapaEditor
+          fazendaId={activeFazendaId!}
+          retiroId={activeRetiroId}
+          mapaId={mapa?.id}
+          imagemUrl={mapa?.imagem_url}
+          existingPolygons={mapa?.pastos.map((p) => ({
+            id: p.id,
+            pasto_id: p.pasto_id,
+            coordenadas: p.coordenadas,
+            cor: p.cor || "#16a34a",
+            label_offset_x: p.label_offset_x,
+            label_offset_y: p.label_offset_y,
+            label_rotation: p.label_rotation,
+            pasto_nome: p.pasto_nome,
+            num_animais: p.num_animais,
+            peso_medio_kg: p.peso_medio_kg,
+            categoria: p.categoria,
+            sexo: p.sexo,
+            status_consumo: p.status_consumo,
+          }))}
+          existingLines={(mapa?.linhas ?? []).map((l) => ({
+            id: l.id,
+            coordenadas: l.coordenadas,
+            cor: l.cor,
+            tipo: l.tipo,
+            rotulo: l.rotulo || "",
+          }))}
+          existingElements={(mapa?.elementos ?? []).map((e) => ({
+            id: e.id,
+            tipo: e.tipo,
+            emoji: e.emoji,
+            posicao_x: e.posicao_x,
+            posicao_y: e.posicao_y,
+            rotulo: e.rotulo || "",
+          }))}
+          onSaved={() => {
+            clearMapImageMemoryCache();
+            setEditing(false);
+            refresh();
+          }}
+        />
+      ) : mapa ? (
+        <MapaViewer
+          mapa={mapa}
+          cacheScope={user?.id}
+          detailsLoading={detailsLoading}
+          onPastoClick={handlePastoClick}
+          selectedPastoId={selectedPasto?.pasto_id}
+          selectingDestino={currentAction === "selectDestino"}
+          highlightDestinos={currentAction === "selectDestino"}
+        />
+      ) : canEditMapa ? (
+        <div className="text-center py-12 space-y-3">
+          <Map className="w-12 h-12 text-muted-foreground mx-auto" />
+          <p className="text-muted-foreground text-sm"><LocalizedText source={"Nenhum mapa cadastrado para este retiro."} /></p>
+          <Button onClick={() => setEditing(true)} className="gap-1.5">
+            <Map className="w-4 h-4" /> <LocalizedText source={"Adicionar Mapa"} /></Button>
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <Map className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
+          <p className="text-muted-foreground text-sm"><LocalizedText source={"Este retiro ainda não possui mapa cadastrado."} /></p>
+        </div>
+      )}
+
+      {/* Resumo de animais no retiro */}
+      {mapa && mapa.pastos.length > 0 && (
+        <Card className="p-3 flex items-center gap-3">
+          <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10">
+            <Beef className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground"><LocalizedText source={"Total de animais no retiro"} /></p>
+            <p className="text-lg font-bold text-foreground">
+              {totalAnimaisRetiro.toLocaleString("pt-BR")} <span className="text-sm font-medium text-muted-foreground">cab</span>
+            </p>
+          </div>
+        </Card>
+      )}
+
+      {/* Action Sheet */}
+      <MapaActionSheet
+        open={currentAction === "action"}
+        onClose={resetAction}
+        pasto={selectedPasto}
+        onVerDetalhes={() => setCurrentAction("info")}
+        onTransferir={() => setCurrentAction("transferir")}
+        onAbater={() => setCurrentAction("abater")}
+        onEditarPeso={() => setCurrentAction("editarPeso")}
+        onEntrada={() => setCurrentAction("entrada")}
+        onRegistrarEvento={() => {
+          setCurrentAction(null);
+          setEventoSelectorOpen(true);
+        }}
+      />
+
+      {/* Info Modal */}
+      <PastoInfoModal
+        open={currentAction === "info"}
+        onOpenChange={(open) => !open && resetAction()}
+        pasto={selectedPasto}
+      />
+
+      {/* Transferência Modal */}
+      <MapaTransferenciaModal
+        open={currentAction === "transferir"}
+        onClose={resetAction}
+        pasto={selectedPasto}
+        allPastos={mapa?.pastos ?? []}
+        fazendaId={activeFazendaId ?? ""}
+        retiroId={activeRetiroId}
+        mes={mes}
+        ano={ano}
+        onDone={handleActionDone}
+        selectedDestino={destinoPasto}
+        onSelectDestino={() => setCurrentAction("selectDestino")}
+      />
+
+      {/* Abate Modal */}
+      <MapaAbateModal
+        open={currentAction === "abater"}
+        onClose={resetAction}
+        pasto={selectedPasto}
+        fazendaId={activeFazendaId ?? ""}
+        retiroId={activeRetiroId}
+        mes={mes}
+        ano={ano}
+        onDone={handleActionDone}
+      />
+
+      {/* Editar Peso Modal */}
+      <EditarPesoModal
+        open={currentAction === "editarPeso"}
+        onClose={resetAction}
+        pasto={selectedPasto}
+        onDone={handleActionDone}
+      />
+
+      {/* Entrada Animais Modal */}
+      <MapaEntradaAnimaisModal
+        open={currentAction === "entrada"}
+        onClose={resetAction}
+        pasto={selectedPasto}
+        fazendaId={activeFazendaId ?? ""}
+        retiroId={activeRetiroId}
+        mes={mes}
+        ano={ano}
+        onDone={handleActionDone}
+      />
+
+      {/* Evento Modals */}
+      {selectedPasto && (
+        <>
+          <SelecionarEventoModal
+            open={eventoSelectorOpen}
+            onClose={() => setEventoSelectorOpen(false)}
+            pastoNome={selectedPasto.pasto_nome}
+            onSelect={(tipo: TipoEvento) => {
+              setEventoSelectorOpen(false);
+              if (tipo === "pesagem") {
+                setCombinedMode(false);
+                setPendingSanitarioData(null);
+                setPesagemOpen(true);
+              } else if (tipo === "sanitario") {
+                setCombinedMode(false);
+                setSanitarioOpen(true);
+              } else if (tipo === "pesagem_sanitario") {
+                setCombinedMode(true);
+                setSanitarioOpen(true);
+              } else if (tipo === "observacao") {
+                setObservacaoLoteOpen(true);
+              }
+            }}
+          />
+
+          <SanitarioFormModal
+            open={sanitarioOpen}
+            onClose={() => { setSanitarioOpen(false); setCombinedMode(false); }}
+            pastoId={selectedPasto.pasto_id}
+            pastoNome={selectedPasto.pasto_nome}
+            numAnimais={selectedPasto.num_animais}
+            userId={user?.id || ""}
+            userName={userName}
+            collectOnly={combinedMode}
+            onCollected={(data) => {
+              setPendingSanitarioData(data);
+              setSanitarioOpen(false);
+              setPesagemOpen(true);
+            }}
+            onSaved={() => refresh()}
+          />
+
+          <PesagemFlowModal
+            open={pesagemOpen}
+            onClose={() => { setPesagemOpen(false); setPendingSanitarioData(null); }}
+            pastoId={selectedPasto.pasto_id}
+            pastoNome={selectedPasto.pasto_nome}
+            numAnimais={selectedPasto.num_animais}
+            pesoMedioAtual={(selectedPasto as any).peso_medio_kg ?? null}
+            userId={user?.id || ""}
+            userName={userName}
+            fazendaId={activeFazendaId ?? ""}
+            fazendaNome={fazendaNome}
+            retiroNome={retiroNome}
+            retiroId={activeRetiroId}
+            sanitarioData={pendingSanitarioData}
+            onSaved={() => refresh()}
+          />
+
+          <ObservacaoLoteModal
+            open={observacaoLoteOpen}
+            onClose={() => setObservacaoLoteOpen(false)}
+            pastoId={selectedPasto.pasto_id}
+            pastoNome={selectedPasto.pasto_nome}
+            userId={user?.id || ""}
+            onSaved={() => refresh()}
+          />
+        </>
+      )}
+    </div>
+  );
+}

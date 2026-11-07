@@ -1,0 +1,486 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, Plus, Loader2, Clock, FileCheck, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import CurralVisitaModal, { type VisitaCurralRow } from "@/components/consultor/CurralVisitaModal";
+import VisitaTopicosSection, { type Topico } from "@/components/consultor/VisitaTopicosSection";
+import { useNumeroMapFotos } from "@/hooks/useNumeroMapFotos";
+import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
+import IndicadoresZootecnicosSection from "@/components/consultor/IndicadoresZootecnicosSection";
+import PennStateSection from "@/components/consultor/PennStateSection";
+import { useCriticalOperation } from "@/lib/criticalOperations";
+import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineDelete, offlineUpdate, offlineUpsert, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
+
+interface Visita {
+  id: string;
+  tipo: string;
+  status: string;
+  hora_inicio: string;
+  hora_fim: string | null;
+  observacoes_gerais: string | null;
+  conclusao: string | null;
+  fazenda_consultor_id: string;
+  deleted_at?: string | null;
+}
+interface Fazenda { id: string; nome_fazenda: string; proprietario?: string | null; responsavel?: string | null; municipio?: string | null; uf?: string | null; }
+
+interface CurralComAmostras extends VisitaCurralRow {
+  samples: { fezes: number[]; corporal: number[]; bebedouro: number[] };
+}
+
+interface Props { visitaId: string; visita: Visita; fazenda: Fazenda | null; }
+
+export default function ConfinamentoVisitaView({ visitaId, visita: initialVisita, fazenda }: Props) {
+  const uiText = useStaticUiText();
+  const navigate = useNavigate();
+  const [visita, setVisita] = useState<Visita>(initialVisita);
+  const [currais, setCurrais] = useState<CurralComAmostras[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<VisitaCurralRow | null>(null);
+  const [curralExcluir, setCurralExcluir] = useState<VisitaCurralRow | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
+  const [finalizarOpen, setFinalizarOpen] = useState(false);
+  const [obsGerais, setObsGerais] = useState(initialVisita.observacoes_gerais || "");
+  const [conclusao, setConclusao] = useState(initialVisita.conclusao || "");
+  const [finalizando, setFinalizando] = useState(false);
+  const [topicos, setTopicos] = useState<Topico[]>([]);
+  const numeroMap = useNumeroMapFotos({
+    visitaId,
+    tipo: "confinamento",
+    topicos: topicos.map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
+  });
+
+  // Avaliação da fábrica (por visita)
+  const [fabricaNota, setFabricaNota] = useState<number | null>(null);
+  const [insumosNota, setInsumosNota] = useState<number | null>(null);
+
+  const readOnly = false;
+
+  // Enquanto a visita estiver aberta, bloqueia auto-reload do PWA.
+  useCriticalOperation(true, "visita-confinamento");
+
+  useEffect(() => { load(); }, [visitaId]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const snap = await loadSnapshot(visitaId);
+    const online = typeof navigator === "undefined" || navigator.onLine;
+    const preferLocal = !!snap?.visita && await hasPendingLocalChanges(visitaId);
+    const cRes = online && !preferLocal
+      ? await supabase.from("visita_currais").select("*").eq("visita_id", visitaId).order("ordem")
+      : { data: null };
+    let curraisData = (cRes.data as any[]) || [];
+    if (curraisData.length === 0 && snap?.currais?.length) curraisData = snap.currais as any[];
+    const ids = curraisData.map(c => c.id);
+    const samplesByCurral: Record<string, { fezes: number[]; corporal: number[]; bebedouro: number[] }> = {};
+    if (ids.length > 0 && online && !preferLocal) {
+      const { data: scoresData } = await supabase.from("avaliacoes_score")
+        .select("visita_curral_id, tipo, nota")
+        .in("visita_curral_id", ids);
+      (scoresData || []).forEach((s: any) => {
+        const bucket = samplesByCurral[s.visita_curral_id] ??= { fezes: [], corporal: [], bebedouro: [] };
+        if (s.tipo in bucket) bucket[s.tipo as "fezes" | "corporal" | "bebedouro"].push(s.nota);
+      });
+    }
+    const built = curraisData.map(c => {
+      const snapSamples = (c as any).samples || {};
+      const samples = samplesByCurral[c.id] || {
+        fezes: (snapSamples.fezes || []).map((s: any) => s.nota ?? s),
+        corporal: (snapSamples.corporal || []).map((s: any) => s.nota ?? s),
+        bebedouro: (snapSamples.bebedouro || []).map((s: any) => s.nota ?? s),
+      };
+      return {
+        ...c,
+        samples,
+        scores: {
+          fezes: averageOf(samples.fezes),
+          corporal: averageOf(samples.corporal),
+          bebedouro: averageOf(samples.bebedouro),
+        },
+      };
+    });
+    setCurrais(built);
+
+    // load avaliacao fabrica
+    const { data: af } = online && !preferLocal
+      ? await (supabase as any).from("avaliacao_fabrica_visita")
+          .select("id, organizacao_fabrica_nota, organizacao_insumos_nota")
+          .eq("visita_id", visitaId).maybeSingle()
+      : { data: null };
+    const afRow = af || snap?.avaliacao_fabrica_visita || null;
+    setFabricaNota(afRow?.organizacao_fabrica_nota ?? null);
+    setInsumosNota(afRow?.organizacao_insumos_nota ?? null);
+
+    // refresh visita
+    const vRes = online && !preferLocal
+      ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId).is("deleted_at", null).maybeSingle()
+      : { data: null };
+    if (vRes.data) {
+      const v = vRes.data as Visita;
+      if (isVisitaDeleted(v as any)) { setLoading(false); return; }
+      setVisita(v);
+      setObsGerais(v.observacoes_gerais || "");
+      setConclusao(v.conclusao || "");
+    }
+    if (!preferLocal) {
+      void patchSnapshot(visitaId, (current) => ({
+        ...current,
+        visita: vRes.data || snap?.visita || initialVisita,
+        fazenda: fazenda || snap?.fazenda,
+        currais: built,
+        avaliacao_fabrica_visita: afRow,
+      })).catch(() => {});
+    }
+    setLoading(false);
+  }, [visitaId, fazenda, initialVisita]);
+
+  const nextOrdem = useMemo(
+    () => (currais.length > 0 ? Math.max(...currais.map(c => c.ordem)) + 1 : 0),
+    [currais],
+  );
+
+  async function upsertFabrica(patch: { organizacao_fabrica_nota?: number | null; organizacao_insumos_nota?: number | null }) {
+    const next = {
+      organizacao_fabrica_nota: patch.organizacao_fabrica_nota !== undefined ? patch.organizacao_fabrica_nota : fabricaNota,
+      organizacao_insumos_nota: patch.organizacao_insumos_nota !== undefined ? patch.organizacao_insumos_nota : insumosNota,
+    };
+    if (patch.organizacao_fabrica_nota !== undefined) setFabricaNota(patch.organizacao_fabrica_nota);
+    if (patch.organizacao_insumos_nota !== undefined) setInsumosNota(patch.organizacao_insumos_nota);
+    const rowId = (await loadSnapshot(visitaId))?.avaliacao_fabrica_visita?.id || crypto.randomUUID();
+    const res = await offlineUpsert({
+      visitaId,
+      table: "avaliacao_fabrica_visita",
+      rowId,
+      payload: { visita_id: visitaId, ...next },
+      onConflict: "visita_id",
+      applyToSnapshot: (curr, payload) => ({ ...curr, avaliacao_fabrica_visita: { id: rowId, ...payload } }),
+    });
+    if (!res.ok && !res.queued) toast.error(uiText("Erro ao salvar avaliação da fábrica"));
+  }
+
+  function openNew() { setEditing(null); setModalOpen(true); }
+
+  async function handleSavedFromModal({ continueSequential }: { continueSequential: boolean }) {
+    setModalOpen(false);
+    await load();
+    if (continueSequential && !readOnly) {
+      setTimeout(() => { setEditing(null); setModalOpen(true); }, 150);
+    }
+  }
+
+  async function handleExcluirCurral() {
+    if (!curralExcluir) return;
+    const alvo = curralExcluir;
+    setExcluindo(true);
+    try {
+      // Remove avaliações vinculadas (não há cascade no banco) — best-effort.
+      if (typeof navigator === "undefined" || navigator.onLine !== false) {
+        await supabase.from("avaliacoes_score").delete().eq("visita_curral_id", alvo.id);
+      }
+
+      const { queued } = await offlineDelete({
+        visitaId,
+        table: "visita_currais",
+        rowId: alvo.id,
+        applyToSnapshot: (curr) => ({
+          ...curr,
+          currais: ((curr.currais as any[]) || []).filter((c: any) => c.id !== alvo.id),
+          avaliacoes_score: ((curr.avaliacoes_score as any[]) || []).filter(
+            (s: any) => s.visita_curral_id !== alvo.id,
+          ),
+        }),
+      });
+
+      setCurrais(prev => prev.filter(c => c.id !== alvo.id));
+      setCurralExcluir(null);
+      toast.success(uiText(queued ? "Curral excluído (será sincronizado)" : "Curral excluído"));
+      await load();
+    } catch (err) {
+      console.error("[confinamento] excluir curral", err);
+      toast.error(uiText("Não foi possível excluir o curral."));
+    } finally {
+      setExcluindo(false);
+    }
+  }
+
+  async function handleFinalizar() {
+    setFinalizando(true);
+    try {
+      const { queued } = await offlineUpdate({
+        visitaId,
+        table: "visitas_tecnicas",
+        rowId: visitaId,
+        patch: {
+        observacoes_gerais: obsGerais.trim() || null,
+        conclusao: conclusao.trim() || null,
+        status: "rascunho",
+        },
+      });
+      toast.success(uiText(queued ? "Visita salva off-line." : "Visita salva!"));
+      setFinalizarOpen(false);
+      load();
+    } catch (err: any) {
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
+    } finally { setFinalizando(false); }
+  }
+
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1 -ml-2">
+        <ArrowLeft className="w-4 h-4" /> <LocalizedText source={"Voltar"} /></Button>
+
+      <Card className="p-3 bg-primary/5 border-primary/20">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="font-bold text-foreground truncate">{fazenda?.nome_fazenda || "—"}</div>
+            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+              <Clock className="w-3 h-3" />
+              <LocalizedText source={"Início:"} />{" "}{format(new Date(visita.hora_inicio), "dd/MM 'às' HH:mm", { locale: ptBR })}
+              {visita.hora_fim && ` · Fim: ${format(new Date(visita.hora_fim), "HH:mm", { locale: ptBR })}`}
+            </div>
+          </div>
+          <Badge variant="secondary" className="capitalize shrink-0"><LocalizedText source={"Confinamento"} /></Badge>
+        </div>
+      </Card>
+
+      {/* Avaliação da Fábrica (única por visita) */}
+      <Card className="p-3 space-y-3">
+        <div className="text-sm font-semibold text-foreground"><LocalizedText source={"Avaliação da Fábrica"} /></div>
+        <div className="text-[11px] text-muted-foreground -mt-2">
+          <LocalizedText source={"Avaliada uma única vez por visita"} /></div>
+        <FabricaScore label={uiText("Organização de Fábrica")} value={fabricaNota} onChange={n => upsertFabrica({ organizacao_fabrica_nota: n })} disabled={readOnly} />
+        <FabricaScore label={uiText("Organização de Insumos")} value={insumosNota} onChange={n => upsertFabrica({ organizacao_insumos_nota: n })} disabled={readOnly} />
+      </Card>
+
+      {/* Indicadores Zootécnicos (única por visita) */}
+      <IndicadoresZootecnicosSection visitaId={visitaId} readOnly={readOnly} />
+
+      {/* Análise Penn State (por visita) */}
+      <PennStateSection
+        visitaId={visitaId}
+        fazendaConsultorId={visita.fazenda_consultor_id || null}
+        readOnly={readOnly}
+        numeroMap={numeroMap}
+      />
+
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-foreground"><LocalizedText source={"Currais avaliados ("} />{currais.length})</h2>
+        {!readOnly && (
+          <Button size="sm" onClick={openNew} className="gap-1.5 bg-primary hover:bg-primary/90">
+            <Plus className="w-4 h-4" /> <LocalizedText source={"Curral"} /></Button>
+        )}
+      </div>
+
+      {currais.length === 0 ? (
+        <Card className="p-6 text-center text-sm text-muted-foreground">
+          <LocalizedText source={"Nenhum curral adicionado ainda."} /></Card>
+      ) : (
+        <div className="space-y-2">
+          {currais.map(c => (
+            <Card
+              key={c.id}
+              className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => { setEditing(c); setModalOpen(true); }}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className="min-w-10 max-w-[96px] min-h-10 px-1.5 py-1 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0 text-center leading-tight break-words"
+                  style={{ fontSize: (c.num_curral?.length ?? 0) > 6 ? "0.65rem" : (c.num_curral?.length ?? 0) > 3 ? "0.75rem" : "0.875rem" }}
+                  title={c.num_curral}
+                >
+                  {c.num_curral}
+                </div>
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="text-sm font-medium text-foreground"><LocalizedText source={"Curral"} />{" "}{c.num_curral}</div>
+                  <div className="flex gap-1.5 flex-wrap text-[10px]">
+                    <ScorePill label="F" avg={c.scores?.fezes} n={c.samples.fezes.length} />
+                    <ScorePill label="C" avg={c.scores?.corporal} n={c.samples.corporal.length} />
+                    <ScorePill label="B" avg={c.scores?.bebedouro} n={c.samples.bebedouro.length} />
+                  </div>
+                </div>
+                {!readOnly && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label={`Editar curral ${c.num_curral}`}
+                      onClick={(e) => { e.stopPropagation(); setEditing(c); setModalOpen(true); }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      aria-label={`Excluir curral ${c.num_curral}`}
+                      onClick={(e) => { e.stopPropagation(); setCurralExcluir(c); }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <VisitaTopicosSection visitaId={visitaId} onChange={setTopicos} numeroMap={numeroMap} />
+
+
+      {!readOnly && (
+        <div className="sticky bottom-16 pt-2 space-y-2">
+          <Button
+            onClick={() => navigate(`/consultor/visitas/${visitaId}/revisao`)}
+            className="w-full gap-2 bg-primary hover:bg-primary/90"
+            disabled={currais.length === 0}
+          >
+            <FileCheck className="w-4 h-4" />
+            {visita.status === "revisao" ? "Continuar Revisão" : "Revisar Visita"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setFinalizarOpen(true)}
+            className="w-full gap-2"
+            disabled={currais.length === 0}
+          >
+            <LocalizedText source={"Salvar observações e conclusão"} /></Button>
+          {currais.length === 0 && (
+            <p className="text-xs text-center text-muted-foreground">
+              <LocalizedText source={"Adicione pelo menos um curral para revisar"} /></p>
+          )}
+        </div>
+      )}
+
+      {(visita.observacoes_gerais || visita.conclusao) && (
+        <Card className="p-3 space-y-2">
+          {visita.observacoes_gerais && (
+            <div>
+              <div className="text-xs font-semibold text-muted-foreground"><LocalizedText source={"Observações gerais"} /></div>
+              <div className="text-sm text-foreground whitespace-pre-wrap">{visita.observacoes_gerais}</div>
+            </div>
+          )}
+          {visita.conclusao && (
+            <div>
+              <div className="text-xs font-semibold text-muted-foreground"><LocalizedText source={"Conclusão"} /></div>
+              <div className="text-sm text-foreground whitespace-pre-wrap">{visita.conclusao}</div>
+            </div>
+          )}
+        </Card>
+      )}
+
+      <CurralVisitaModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        visitaId={visitaId}
+        curral={editing}
+        proximaOrdem={nextOrdem}
+        onSaved={handleSavedFromModal}
+        readOnly={readOnly}
+      />
+
+      <AlertDialog open={!!curralExcluir} onOpenChange={(v) => { if (!v) setCurralExcluir(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle><LocalizedText source={"Excluir curral"} />{" "}{curralExcluir?.num_curral}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <LocalizedText source={"As avaliações e notas deste curral serão removidas desta visita. Esta ação não pode ser desfeita."} /></AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluindo}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); void handleExcluirCurral(); }}
+              disabled={excluindo}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {excluindo ? <Loader2 className="w-4 h-4 animate-spin" /> : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
+
+      <Dialog open={finalizarOpen} onOpenChange={setFinalizarOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle><LocalizedText source={"Finalizar Visita"} /></DialogTitle>
+            <DialogDescription><LocalizedText source={"Adicione as observações gerais e a conclusão da visita."} /></DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label><LocalizedText source={"Observações gerais"} /></Label>
+              <Textarea rows={3} value={obsGerais} onChange={e => setObsGerais(e.target.value)} />
+            </div>
+            <div>
+              <Label><LocalizedText source={"Conclusão"} /></Label>
+              <Textarea rows={3} value={conclusao} onChange={e => setConclusao(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFinalizarOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
+            <Button onClick={handleFinalizar} disabled={finalizando} className="bg-primary hover:bg-primary/90">
+              {finalizando && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Confirmar"} /></Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function FabricaScore({ label, value, onChange, disabled }: {
+  label: string; value: number | null; onChange: (n: number) => void; disabled?: boolean;
+}) {
+  return (
+    <div>
+      <div className="text-xs font-medium mb-1">{label}</div>
+      <div className="flex gap-1.5">
+        {[1, 2, 3, 4, 5].map(n => (
+          <button
+            key={n}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(n)}
+            className={cn(
+              "w-9 h-9 rounded-full border-2 text-sm font-semibold transition-colors",
+              value === n
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary/50",
+              disabled && "opacity-60 cursor-not-allowed",
+            )}
+          >{n}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ScorePill({ label, avg, n }: { label: string; avg?: number; n: number }) {
+  return (
+    <span className={`px-1.5 py-0.5 rounded font-semibold ${n > 0 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+      {label}: {formatAvg(avg)}
+      {n > 1 && <span className="opacity-60"> ({n})</span>}
+    </span>
+  );
+}

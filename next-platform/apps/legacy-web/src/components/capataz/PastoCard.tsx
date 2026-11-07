@@ -1,0 +1,58 @@
+import { LocalizedText } from "@/components/i18n/LocalizedText";
+import { Card, CardContent } from "@/components/ui/card";
+import CarenciaBadge from "@/components/eventos/CarenciaBadge";
+
+interface PastoCardProps {
+  nome: string;
+  numAnimais: number;
+  pesoMedio: number | null;
+  diasNoPasto: number | null;
+  sacosHoje: number;
+  status: 'feito' | 'pendente' | 'atrasado';
+  statusConsumo?: string | null;
+  indiceConsumo?: number | null;
+  dataFimCarencia?: string | null;
+}
+
+const statusConfig = {
+  feito: { icon: '🟢', label: 'Salga feita' },
+  pendente: { icon: '🟡', label: 'Pendente' },
+  atrasado: { icon: '🔴', label: 'Atrasado' },
+};
+
+export default function PastoCard({ nome, numAnimais, pesoMedio, diasNoPasto, sacosHoje, status, dataFimCarencia }: PastoCardProps) {
+  const s = statusConfig[status];
+
+  return (
+    <Card className="border-border hover:shadow-md transition-shadow active:scale-[0.98]">
+      <CardContent className="p-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="font-semibold text-sm text-foreground">{nome}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs" title={s.label}>{s.icon}</span>
+          </div>
+        </div>
+
+        <CarenciaBadge dataFimCarencia={dataFimCarencia} className="mb-1 text-[9px]" />
+        <div className="grid grid-cols-4 gap-1 text-xs text-muted-foreground">
+          <div className="text-center">
+            <p className="font-semibold text-foreground">{numAnimais}</p>
+            <p><LocalizedText source={"animais"} /></p>
+          </div>
+          <div className="text-center">
+            <p className="font-semibold text-foreground">{pesoMedio ?? '—'}</p>
+            <p>kg</p>
+          </div>
+          <div className="text-center">
+            <p className="font-semibold text-foreground">{diasNoPasto ?? 0}</p>
+            <p><LocalizedText source={"dias"} /></p>
+          </div>
+          <div className="text-center">
+            <p className="font-semibold text-foreground">{sacosHoje}</p>
+            <p><LocalizedText source={"sacos"} /></p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

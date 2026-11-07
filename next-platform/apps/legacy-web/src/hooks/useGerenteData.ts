@@ -1,0 +1,583 @@
+import { dataReferenciaGmd, fetchGmdPastosAgrupados, gmdPonderado } from "@/lib/gmdConfigurado";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { diasCalendarioSP } from "@/lib/diasCalendario";
+import { fetchScoresCapataz } from "@/lib/scoreCapatazData";
+import { supabase } from "@/integrations/supabase/client";
+import { requireReadRows, DataReadFailure, dataReadErrorMessage } from "@/lib/dataReadGuard";
+import { fetchGerenteLancamentos } from "@/features/painel/repositories/gerenteLancamentosRepository";
+import { requireConsumoRows } from "@/lib/consumoViewReadGuard";
+import { useAuth } from "@/hooks/useAuth";
+import { confirmObservationRead, confirmObservationResolved, isObservationAccessDenied, isObservationContextCurrent } from "@/lib/observacoesGuard";
+import { toast } from "sonner";
+import { computeConsumoMedioPonderado } from "@/lib/painelMetrics";
+import { useGerenteCustos } from "@/hooks/useGerenteCustos";
+import { aggregateGerenteCustos } from "@/lib/gerenteCustosAggregate";
+import { usePainelMae } from "@/hooks/usePainelMae";
+import type { GerenteFazenda } from "@/lib/gerenteAccessScope";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { fetchProdutoIdsDaFazenda } from "@/lib/produtosFazenda";
+import { getScreenCache, setScreenCache, dropScreenCacheScopes, screenCacheKey, useResumeRefresh, useScreenCacheInvalidation } from "@/lib/screenCache";
+const OBSERVATION_ACCESS_ERROR = "Acesso às observações não confirmado. Faça login novamente ou contate o suporte.";
+
+// Push de salga atrasada agora é disparado pelo cron server-side
+// (verificar_salgas_atrasadas), escopado à fazenda do gerente.
+
+// ---------- Types ----------
+interface Retiro { id: string; nome: string; capataz: string; ultima_salga_em: string | null; alerta_atraso_enviado: boolean; produto_id: string | null; }
+interface Pasto {
+  id: string; nome: string; retiro_id: string; num_animais: number;
+  peso_medio_kg: number | null; gmd_kg_dia: number | null;
+  peso_abate_meta_kg: number | null; produto_id: string | null; categoria: string | null;
+}
+interface Lancamento {
+  id: string; pasto_id: string; num_sacos: number;
+  num_animais: number; peso_medio_kg: number | null;
+  categoria: string | null; sexo: string | null;
+  dias_no_pasto: number; origem: string | null;
+  created_at: string | null;
+  mes_referencia: number; ano_referencia: number;
+  fazenda_id: string; retiro_id: string;
+  consumo_g_cab_dia: number | null;
+  status_consumo: string | null; indice_consumo: number | null;
+}
+interface Produto { id: string; peso_saco_kg: number; preco_por_kg: number | null; }
+interface Ciclo { id: string; fazenda_id: string; mes: number; ano: number; num_dias: number; fechado: boolean | null; duracao_dias: number | null; }
+interface FazendaRow { nome: string; intervalo_padrao_dias: number; gmd_modo?: string | null; }
+
+export interface Observacao {
+  id: string; fazenda_id: string; retiro_id: string | null; pasto_id: string | null;
+  capataz_nome: string | null; tipo: string | null; descricao: string | null;
+  foto_url: string | null; resolvido: boolean; resolvido_por: string | null;
+  resolvido_em: string | null; criado_em: string | null;
+}
+
+export interface RetiroComDados {
+  id: string; nome: string; capataz: string;
+  totalAnimais: number; sacosUtilizados: number;
+  consumoMedio: number; gmd: number | null; pastos: Pasto[];
+  lancamentos: Lancamento[];
+  intervaloDefinido: number;
+  intervaloRealMedio: number | null;
+  diasSemSalga: number | null;
+  alertaAtraso: boolean;
+  ultimaSalga: string | null;
+}
+
+export interface AlertaAtraso {
+  retiroNome: string;
+  capataz: string;
+  ultimaSalga: string | null;
+  intervaloDefinido: number;
+  diasSemSalga: number;
+  gravidade: 'leve' | 'moderado' | 'critico';
+}
+
+export interface StatusDistribution {
+  baixo: number; ideal: number; alto: number;
+  baixoPct: number; idealPct: number; altoPct: number;
+}
+
+export interface PainelData {
+  totalAnimais: number; consumoMedio: number; pastosNaMeta: number;
+  totalPastos: number; sacosUtilizados: number; custoDiario: number;
+  custoMensal: number; eficiencia: number; gmdMedio: number | null;
+  statusDistribution: StatusDistribution;
+}
+
+export interface CapatazScore {
+  retiroId: string; retiro: string; capataz: string; score: number;
+  scoreMeta: number; scoreSalga: number; scoreCocho: number | null;
+  pesoMeta: number; pesoSalga: number; pesoCocho: number;
+  detalheMeta: string; detalheSalga: string; detalheCocho: string;
+}
+export interface GmdRankItem { retiro: string; capataz: string; gmd: number | null; animais: number; }
+
+interface GerenteCache {
+  gerenteNome: string; fazendaData: FazendaRow; ciclo: Ciclo | null; ciclosDisponiveis: Ciclo[];
+  retiros: Retiro[]; pastos: Pasto[]; lancamentos: Lancamento[]; produtos: Produto[]; observacoes: Observacao[];
+}
+
+const CONSUMO_META = 50; // g/cab/dia target
+
+export interface GerenteFilters {
+  fazendaConfirmada?: GerenteFazenda;
+  ano: number;
+  mes: number | null; // null = todos os meses
+  cicloStatus: 'aberto' | 'fechado' | 'todos';
+  fazendaId?: string | null;
+  painelRetiroId?: string | null;
+}
+
+export function useGerenteData(filters?: GerenteFilters, rankingAtivo = false) {
+  const { roleData, user } = useAuth();
+  const fazendaId = filters?.fazendaId ?? roleData.fazendaId;
+  const consumoMes = filters?.mes ?? new Date().getMonth() + 1;
+  const consumoAno = filters?.ano ?? new Date().getFullYear();
+  // Manager-only scoped costs. Other profiles retain the legacy RPC.
+  const { data: consumoData, loading: consumoLoading, error: consumoError, refresh: refreshConsumo } =
+    useGerenteCustos(fazendaId ?? null, consumoMes, consumoAno, user?.id);
+  // Eficiência: fonte única get_painel_mae (mesma do Painel do Retiro/Fazenda).
+  const { painelMae, error: painelMaeError, loading: painelMaeLoading } = usePainelMae(
+    fazendaId ?? null,
+    filters?.painelRetiroId ?? null,
+    consumoMes,
+    consumoAno,
+    false, // Manager never fans out to legacy views if RPC is unavailable.
+  );
+
+  const cacheKey = screenCacheKey("gerente", [user?.id, fazendaId, roleData.roleId, filters?.ano, filters?.mes, filters?.cicloStatus]);
+  const ic = getScreenCache<GerenteCache>(cacheKey);
+  const [loading, setLoading] = useState(!ic);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Tag the loaded snapshot so old farm data never drives a new farm\u0027s GMD requests.
+  const [loadedCacheKey, setLoadedCacheKey] = useState(ic ? cacheKey : "");
+  const currentKey = useRef(cacheKey);
+  currentKey.current = cacheKey;
+  const loadSequence = useRef(0);
+  const resolvingIds = useRef(new Set<string>());
+  const [gerenteNome, setGerenteNome] = useState(ic?.gerenteNome ?? "");
+  const [fazendaData, setFazendaData] = useState<FazendaRow>(ic?.fazendaData ?? { nome: '', intervalo_padrao_dias: 3 });
+  const [ciclo, setCiclo] = useState<Ciclo | null>(ic?.ciclo ?? null);
+  const [ciclosDisponiveis, setCiclosDisponiveis] = useState<Ciclo[]>(ic?.ciclosDisponiveis ?? []);
+  const [retiros, setRetiros] = useState<Retiro[]>(ic?.retiros ?? []);
+  const [pastos, setPastos] = useState<Pasto[]>(ic?.pastos ?? []);
+  const [lancamentos, setLancamentos] = useState<Lancamento[]>(ic?.lancamentos ?? []);
+  const [produtos, setProdutos] = useState<Produto[]>(ic?.produtos ?? []);
+  const [observacoes, setObservacoes] = useState<Observacao[]>(ic?.observacoes ?? []);
+
+  const applyCache = useCallback((c: GerenteCache) => {
+    setGerenteNome(c.gerenteNome); setFazendaData(c.fazendaData); setCiclo(c.ciclo);
+    setCiclosDisponiveis(c.ciclosDisponiveis); setRetiros(c.retiros); setPastos(c.pastos);
+    setLancamentos(c.lancamentos); setProdutos(c.produtos); setObservacoes(c.observacoes);
+  }, []);
+
+  const revokeObservations = useCallback(() => {
+    dropScreenCacheScopes(["gerente"]);
+    setLoadedCacheKey("");
+    setObservacoes([]);
+  }, []);
+
+  const fazendaNome = fazendaData.nome;
+
+  const loadData = useCallback(async () => {
+    const requestId = ++loadSequence.current;
+    const isCurrent = () => isObservationContextCurrent(cacheKey, currentKey.current, requestId, loadSequence.current);
+    if (!fazendaId) { if (isCurrent()) setLoading(false); return; }
+    if (!getScreenCache(cacheKey) && isCurrent()) setLoading(true);
+    let observationsDenied = false;
+    const snap: GerenteCache = { gerenteNome: "", fazendaData: { nome: "", intervalo_padrao_dias: 3 }, ciclo: null, ciclosDisponiveis: [], retiros: [], pastos: [], lancamentos: [], produtos: [], observacoes: [] };
+    try {
+      if (!filters?.fazendaConfirmada || filters.fazendaConfirmada.id !== fazendaId ||
+          typeof filters.fazendaConfirmada.gerente_nome !== "string") {
+        throw new DataReadFailure("permission");
+      }
+      // The verified server-side farm roster replaces repeated fazendas/gerentes
+      // lookups that trigger is_admin() and time out for the manager profile.
+      snap.gerenteNome = filters.fazendaConfirmada.gerente_nome;
+      snap.fazendaData = {
+        nome: filters.fazendaConfirmada.nome,
+        intervalo_padrao_dias: filters.fazendaConfirmada.intervalo_padrao_dias ?? 3,
+        gmd_modo: filters.fazendaConfirmada.gmd_modo ?? null,
+      };
+      const [allCiclosRes, retirosRes] = await Promise.all([
+        supabase.from("ciclos").select("*").eq("fazenda_id", fazendaId)
+          .order("ano", { ascending: false }).order("mes", { ascending: false }),
+        supabase.from("retiros").select("id, nome, capataz, ultima_salga_em, alerta_atraso_enviado, produto_id, intervalo_padrao_dias").eq("fazenda_id", fazendaId).eq("ativo", true),
+      ]);
+
+      const allCiclos = requireReadRows(allCiclosRes) as Ciclo[];
+      snap.ciclosDisponiveis = (allCiclos);
+
+      let activeCiclo: Ciclo | null = null;
+      if (filters) {
+        let filtered = allCiclos;
+        filtered = filtered.filter(c => c.ano === filters.ano);
+        if (filters.mes != null) {
+          filtered = filtered.filter(c => c.mes === filters.mes);
+        }
+        if (filters.cicloStatus === 'aberto') {
+          filtered = filtered.filter(c => !c.fechado);
+        } else if (filters.cicloStatus === 'fechado') {
+          filtered = filtered.filter(c => c.fechado);
+        }
+        activeCiclo = filtered[0] ?? null;
+      } else {
+        activeCiclo = allCiclos.find(c => !c.fechado) ?? null;
+      }
+      snap.ciclo = (activeCiclo);
+
+      const retirosList = requireReadRows(retirosRes).map((r) => ({
+        id: r.id, nome: r.nome, capataz: r.capataz,
+        ultima_salga_em: r.ultima_salga_em ?? null,
+        alerta_atraso_enviado: r.alerta_atraso_enviado ?? false,
+        produto_id: r.produto_id ?? null,
+      })) as Retiro[];
+      snap.retiros = (retirosList);
+
+      const retiroIds = retirosList.map(r => r.id);
+      if (retiroIds.length > 0) {
+        const pastosRes = await supabase.from("pastos")
+          .select("id, nome, retiro_id, num_animais, peso_medio_kg, gmd_kg_dia, peso_abate_meta_kg, produto_id, categoria")
+          .in("retiro_id", retiroIds)
+          .eq("ativo", true);
+        const pastosList = requireReadRows(pastosRes) as Pasto[];
+        snap.pastos = (pastosList);
+
+        // Monthly manager snapshot: one authorized RPC instead of expensive views.
+        // Fail closed on missing RPC, timeout and denied scope. Never fan out to a
+        // less restrictive or costly view, especially during month switches.
+        const lancRows = await fetchGerenteLancamentos({
+          fazendaId, mes: consumoMes, ano: consumoAno,
+        });
+        snap.lancamentos = requireConsumoRows(
+          lancRows, fazendaId, retiroIds,
+        ) as Lancamento[];
+
+
+      } else {
+        snap.pastos = ([]);
+        snap.lancamentos = ([]);
+      }
+
+      // Optional products/observations must not suppress confirmed totals.
+      // A failed products link read is never replaced by an unscoped query.
+      const produtoIdsFazenda = await fetchProdutoIdsDaFazenda(fazendaId);
+      if (produtoIdsFazenda !== null && produtoIdsFazenda.length) {
+        const produtosRes = await supabase.from("produtos")
+          .select("id, peso_saco_kg, preco_por_kg").in("id", produtoIdsFazenda);
+        if (!produtosRes.error) snap.produtos = requireReadRows(produtosRes) as Produto[];
+      }
+
+      const obsRes = await supabase.from("observacoes").select("*").eq("fazenda_id", fazendaId);
+      observationsDenied = isObservationAccessDenied(obsRes.error, obsRes.status);
+      // Never display cached observations when a permission check fails.
+      if (!obsRes.error && !observationsDenied) {
+        snap.observacoes = confirmObservationRead(obsRes, fazendaId);
+      } else {
+        snap.observacoes = [];
+        if (observationsDenied) revokeObservations();
+      }
+      if (!isCurrent()) return;
+      setScreenCache(cacheKey, snap);
+      applyCache(snap);
+      setLoadedCacheKey(cacheKey);
+      setLoadError(null);
+    } catch (e) {
+      if (isCurrent()) {
+        if (observationsDenied) {
+          // An authorization rejection must not expose stale observation cache.
+          revokeObservations();
+        }
+        setLoadError(observationsDenied
+          ? OBSERVATION_ACCESS_ERROR
+          : dataReadErrorMessage(e));
+      }
+    } finally {
+      if (isCurrent()) setLoading(false);
+    }
+  }, [fazendaId, roleData.roleId, filters, cacheKey, applyCache, revokeObservations]);
+
+  useEffect(() => {
+    const c = getScreenCache<GerenteCache>(cacheKey);
+    if (c) { applyCache(c); setLoadedCacheKey(cacheKey); setLoading(false); }
+    else {
+      setLoadedCacheKey("");
+      applyCache({ gerenteNome: "", fazendaData: { nome: "", intervalo_padrao_dias: 3 }, ciclo: null, ciclosDisponiveis: [], retiros: [], pastos: [], lancamentos: [], produtos: [], observacoes: [] });
+      setLoading(true);
+    }
+    setLoadError(null);
+    void loadData();
+  }, [loadData, cacheKey, applyCache]);
+
+  // Realtime: auto-refresh when key tables change
+  useRealtimeSync(["pastos", "lancamentos", "movimentacoes_animais", "abates", "mortalidades", "ciclos"], () => {
+    loadData();
+    refreshConsumo();
+  });
+
+  // Volta do segundo plano: uma única atualização silenciosa após 5 min.
+  useResumeRefresh(() => { void loadData(); });
+  useScreenCacheInvalidation(() => { void loadData(); });
+
+  useEffect(() => {
+    const channel = supabase.channel("gerente-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "observacoes" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "pastos" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "retiros" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "ciclos" }, () => loadData())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [loadData]);
+
+  // GMD is independent from other farm metrics: isolate scope, cancel obsolete
+  // requests and surface failures instead of silently treating them as no GMD.
+  const [gmdState, setGmdState] = useState<{
+    scope: string; values: Record<string, number | null>; error: string | null;
+  }>({ scope: "", values: {}, error: null });
+  const [gmdRetryTick, setGmdRetryTick] = useState(0);
+  const retryGmd = useCallback(() => setGmdRetryTick(t => t + 1), []);
+  const gmdPastoScopes = useMemo(
+    () => loadedCacheKey === cacheKey && pastos.every(p => Object.prototype.hasOwnProperty.call(p, "categoria"))
+      ? pastos.map(p => ({ id: p.id, retiro_id: p.retiro_id, categoria: p.categoria }))
+      : [],
+    [loadedCacheKey, cacheKey, pastos],
+  );
+  const gmdDia = dataReferenciaGmd(filters ? filters.mes : consumoMes, consumoAno);
+  const gmdModo = loadedCacheKey === cacheKey ? fazendaData.gmd_modo : null;
+  const gmdScope = JSON.stringify([roleData.roleId, fazendaId, gmdPastoScopes, gmdDia, gmdModo]);
+  const gmdPastos = useMemo<Record<string, number | null>>(
+    () => gmdState.scope === gmdScope ? gmdState.values : {},
+    [gmdState.scope, gmdState.values, gmdScope],
+  );
+  const gmdError = gmdState.scope === gmdScope ? gmdState.error : null;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setGmdState({ scope: gmdScope, values: {}, error: null });
+    if (!fazendaId || gmdPastoScopes.length === 0) return () => controller.abort();
+
+    fetchGmdPastosAgrupados(gmdPastoScopes, gmdDia, controller.signal, gmdModo)
+      .then(values => {
+        if (!controller.signal.aborted) {
+          setGmdState({ scope: gmdScope, values, error: null });
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setGmdState({
+            scope: gmdScope, values: {},
+            error: "Não foi possível confirmar o GMD. Tente novamente.",
+          });
+        }
+      });
+    return () => controller.abort();
+  }, [gmdScope, gmdPastoScopes, gmdDia, gmdModo, fazendaId, gmdRetryTick]);
+
+  const painelData = useMemo<PainelData>(() => {
+    // Fonte única: view_consumo_tempo_real (via `lancamentos` state).
+    // Consumo Médio e Eficiência são computados aqui com a mesma fórmula
+    // canônica usada no Painel de Detalhe do Retiro, PDF e Painel de
+    // Inteligência Nutricional — garantindo que os 6 pontos convirjam.
+    const painelConsumoData = filters?.painelRetiroId
+      ? consumoData.filter(r => r.retiro_id === filters.painelRetiroId)
+      : consumoData;
+    const custos = aggregateGerenteCustos(painelConsumoData);
+    const painelLancamentos = filters?.painelRetiroId
+      ? lancamentos.filter(l => l.retiro_id === filters.painelRetiroId)
+      : lancamentos;
+    const painelPastos = filters?.painelRetiroId
+      ? pastos.filter(p => p.retiro_id === filters.painelRetiroId)
+      : pastos;
+    const consumoMedio = computeConsumoMedioPonderado(
+      painelLancamentos.map(l => ({ consumo_g_cab_dia: l.consumo_g_cab_dia, num_animais: l.num_animais }))
+    );
+    // Eficiência vem de get_painel_mae: por pasto 100 - |1 - índice global| x 100,
+    // ponderada por cabeças-dia — idêntica ao Painel do Retiro/Fazenda.
+    const eficiencia = painelMae.eficiencia;
+    // GMD configurado (projeção): gmd_do_pasto, ponderado por animais.
+    const gmdMedio = gmdPonderado(painelPastos, gmdPastos);
+
+    return {
+      totalAnimais: painelPastos.reduce((s, p) => s + (p.num_animais || 0), 0),
+      consumoMedio,
+      pastosNaMeta: painelMae.pastos_na_meta_num,
+      totalPastos: painelMae.pastos_na_meta_den,
+      // A failed independent RPC does not invalidate totals from the
+      // already confirmed realtime consumption view.
+      sacosUtilizados: consumoError || consumoLoading
+        ? painelLancamentos.reduce((total, item) => total + (item.num_sacos || 0), 0)
+        : custos.sacosUtilizados,
+      custoDiario: custos.custoDiario,
+      custoMensal: custos.custoMensal,
+      eficiencia,
+      gmdMedio,
+      // The costs RPC has no global status classification; do not manufacture one.
+      statusDistribution: { baixo: 0, ideal: 0, alto: 0, baixoPct: 0, idealPct: 0, altoPct: 0 },
+    };
+  }, [consumoData, consumoError, consumoLoading, lancamentos, pastos, filters?.painelRetiroId, painelMae.eficiencia, painelMae.pastos_na_meta_num, painelMae.pastos_na_meta_den, gmdPastos]);
+
+  const retirosComDados = useMemo<RetiroComDados[]>(() => {
+    const intervaloFazenda = fazendaData.intervalo_padrao_dias;
+    const now = new Date();
+
+    // Consumo/índice/dias já vêm ajustados dinamicamente pela view
+    // `view_consumo_tempo_real` (fonte única de verdade no banco).
+    // Consumo Médio do retiro = fórmula ponderada canônica sobre os
+    // lançamentos da view — idêntica ao Painel de Detalhe.
+    return retiros.map(r => {
+      const rPastos = pastos.filter(p => p.retiro_id === r.id);
+      const rLanc = lancamentos.filter(l => l.retiro_id === r.id);
+      const rpcRow = consumoData.find(c => c.retiro_id === r.id);
+      // Intervalo do retiro (retiros.intervalo_padrao_dias), com a fazenda como reserva.
+      const intervaloDoRetiro = "intervalo_padrao_dias" in r ? r.intervalo_padrao_dias : null;
+      const intervaloDefinido = Number(intervaloDoRetiro ?? intervaloFazenda);
+
+      const consumoMedio = computeConsumoMedioPonderado(
+        rLanc.map(l => ({ consumo_g_cab_dia: l.consumo_g_cab_dia, num_animais: l.num_animais }))
+      );
+      const sacosUtilizados = rpcRow ? Number(rpcRow.total_sacos) : rLanc.reduce((s, l) => s + (l.num_sacos || 0), 0);
+      const gmd = gmdPonderado(rPastos, gmdPastos);
+
+      const sortedRLanc = [...rLanc].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
+      const validIntervals = sortedRLanc
+        .filter(item => item.dias_no_pasto > 0)
+        .slice(0, 5)
+        .map(item => item.dias_no_pasto);
+      const intervaloRealMedio = validIntervals.length > 0
+        ? Number((validIntervals.reduce((a, b) => a + b, 0) / validIntervals.length).toFixed(1))
+        : null;
+
+      const ultimaSalga = r.ultima_salga_em;
+      let diasSemSalga: number | null = null;
+      if (ultimaSalga) {
+        diasSemSalga = diasCalendarioSP(ultimaSalga, now);
+      }
+
+      const horaAtual = now.getHours();
+      const alertaAtraso = diasSemSalga != null && diasSemSalga >= intervaloDefinido + 1 && horaAtual >= 6;
+
+      const intervaloRealExibido = Math.max(intervaloRealMedio ?? 0, diasSemSalga ?? 0) || null;
+
+      return {
+        ...r,
+        // Total de Animais = rebanho REAL (pastos.num_animais ativos).
+        totalAnimais: rPastos.reduce((s, p) => s + (p.num_animais || 0), 0),
+        sacosUtilizados,
+        consumoMedio,
+        gmd,
+        pastos: rPastos,
+        lancamentos: rLanc,
+        intervaloDefinido,
+        intervaloRealMedio: intervaloRealExibido,
+        diasSemSalga,
+        alertaAtraso,
+        ultimaSalga,
+      };
+    });
+  }, [retiros, pastos, lancamentos, consumoData, fazendaData, gmdPastos]);
+
+  // Nota do Capataz: fonte única compartilhada com a Seção 2 do PDF.
+  const [capatazScores, setCapatazScores] = useState<CapatazScore[]>([]);
+  const [scoresTick, setScoresTick] = useState(0);
+  useEffect(() => {
+    // Do not run expensive ranking SQL until the Ranking tab is visible.
+    if (!fazendaId || !rankingAtivo) { setCapatazScores([]); return; }
+    let cancelled = false;
+    const anual = filters != null && filters.mes == null;
+    const start = anual ? new Date(consumoAno, 0, 1) : new Date(consumoAno, consumoMes - 1, 1);
+    const end = anual ? new Date(consumoAno, 11, 31, 23, 59, 59) : new Date(consumoAno, consumoMes, 0, 23, 59, 59);
+    fetchScoresCapataz({
+      fazendaId, start, end,
+      periodo: anual ? "anual" : "mensal",
+      mes: consumoMes, ano: consumoAno,
+    }).then(({ list }) => {
+      if (cancelled) return;
+      setCapatazScores(list.map((s) => ({
+        retiroId: s.retiroId, retiro: s.retiro, capataz: s.capataz, score: s.score,
+        scoreMeta: Number(s.result.scoreMeta.toFixed(1)),
+        scoreSalga: Number(s.result.scoreSalga.toFixed(1)),
+        scoreCocho: s.result.scoreCocho != null ? Number(s.result.scoreCocho.toFixed(1)) : null,
+        pesoMeta: s.result.pesoMeta, pesoSalga: s.result.pesoSalga, pesoCocho: s.result.pesoCocho,
+        detalheMeta: s.result.detalheMeta, detalheSalga: s.result.detalheSalga, detalheCocho: s.result.detalheCocho,
+      })));
+    }).catch((e) => console.error("Score capataz error:", e));
+    return () => { cancelled = true; };
+  }, [fazendaId, consumoMes, consumoAno, filters?.mes, rankingAtivo, scoresTick]);
+
+  const gmdRanking = useMemo<GmdRankItem[]>(() => {
+    return retirosComDados
+      .map(r => ({ retiro: r.nome, capataz: r.capataz, gmd: r.gmd == null ? null : Number(r.gmd.toFixed(3)), animais: r.totalAnimais }))
+      .sort((a, b) => (b.gmd ?? -Infinity) - (a.gmd ?? -Infinity) || b.animais - a.animais);
+  }, [retirosComDados]);
+
+  // Alertas de atraso
+  const alertasAtraso = useMemo<AlertaAtraso[]>(() => {
+    return retirosComDados
+      .filter(r => r.alertaAtraso && r.diasSemSalga != null)
+      .map(r => {
+        const excesso = r.diasSemSalga! - r.intervaloDefinido;
+        const gravidade: AlertaAtraso['gravidade'] = excesso >= 3 ? 'critico' : excesso >= 2 ? 'moderado' : 'leve';
+        return {
+          retiroNome: r.nome,
+          capataz: r.capataz,
+          ultimaSalga: r.ultimaSalga,
+          intervaloDefinido: r.intervaloDefinido,
+          diasSemSalga: r.diasSemSalga!,
+          gravidade,
+        };
+      });
+  }, [retirosComDados]);
+
+  // Push de salga atrasada é disparado pelo cron server-side
+  // (public.verificar_salgas_atrasadas), escopado à fazenda do gerente.
+  // Removido o envio client-side para evitar duplicação e evitar
+  // enviar alerta a gerentes de outras fazendas.
+
+  // Frontend ACK prevents false success; it is not a substitute for database RLS.
+  const resolverObservacao = useCallback(async (id: string, resolvidoPor: string) => {
+    if (!fazendaId || !id.trim() || !resolvidoPor.trim() || loadError ||
+        loadedCacheKey !== cacheKey ||
+        !observacoes.some(o => o.id === id && o.fazenda_id === fazendaId && !o.resolvido)) {
+      toast.error("Observação indisponível para esta fazenda.");
+      return;
+    }
+    if (resolvingIds.current.has(id)) return;
+    resolvingIds.current.add(id);
+    const contextAtStart = cacheKey;
+    const sequenceAtStart = loadSequence.current;
+    try {
+      const response = await supabase.from("observacoes")
+        .update({ resolvido: true, resolvido_por: resolvidoPor, resolvido_em: new Date().toISOString() })
+        .eq("id", id).eq("fazenda_id", fazendaId)
+        .select("id, fazenda_id, resolvido, resolvido_em, resolvido_por");
+      if (isObservationAccessDenied(response.error, response.status)) {
+        if (currentKey.current === contextAtStart) {
+          loadSequence.current++;
+          revokeObservations();
+          setLoadError(OBSERVATION_ACCESS_ERROR);
+        }
+        toast.error("Acesso às observações não confirmado.");
+        return;
+      }
+      const acknowledged = confirmObservationResolved(response, id, fazendaId);
+      if (!isObservationContextCurrent(contextAtStart, currentKey.current, sequenceAtStart, loadSequence.current)) return;
+      const applyAcknowledged = (rows: Observacao[]) => rows.map(o =>
+        o.id === id && o.fazenda_id === fazendaId ? { ...o, ...acknowledged } : o
+      );
+      setObservacoes(applyAcknowledged);
+      const cached = getScreenCache<GerenteCache>(contextAtStart);
+      if (cached) setScreenCache(contextAtStart, { ...cached, observacoes: applyAcknowledged(cached.observacoes) });
+      toast.success("Observação resolvida");
+    } catch {
+      if (currentKey.current === contextAtStart) toast.error("Não foi possível confirmar a resolução da observação.");
+    } finally {
+      resolvingIds.current.delete(id);
+    }
+  }, [fazendaId, cacheKey, loadError, loadedCacheKey, observacoes, revokeObservations]);
+
+  // Never show a previous farm's observations while the new scope is loading.
+  const [obsPendentes, obsResolvidas] = useMemo(() => {
+    const visible = loadedCacheKey === cacheKey ? observacoes : [];
+    const newestFirst = (field: "criado_em" | "resolvido_em") =>
+      (a: Observacao, b: Observacao) => new Date(b[field] ?? 0).getTime() - new Date(a[field] ?? 0).getTime();
+    return [
+      visible.filter(o => !o.resolvido).sort(newestFirst("criado_em")),
+      visible.filter(o => o.resolvido).sort(newestFirst("resolvido_em")),
+    ];
+  }, [loadedCacheKey, cacheKey, observacoes]);
+
+  const refresh = useCallback(async () => {
+    setScoresTick((t) => t + 1);
+    await Promise.all([loadData(), refreshConsumo()]);
+  }, [loadData, refreshConsumo]);
+
+  return {
+    // Independent RPC timeouts must not hide other verified farm data.
+    loading, error: loadError, consumoError, consumoLoading, retryConsumo: refreshConsumo,
+    gmdError, retryGmd, painelMae, painelMaeError, painelMaeLoading, gerenteNome, fazendaNome, ciclo, ciclosDisponiveis, painelData,
+    retirosComDados, lancamentos, capatazScores, gmdRanking,
+    obsPendentes, obsResolvidas, resolverObservacao, refresh,
+    alertasAtraso, intervaloDefinido: fazendaData.intervalo_padrao_dias,
+  };
+}

@@ -1,0 +1,1111 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { useEffect, useRef, useState } from "react";
+import { diasCalendarioSP } from "@/lib/diasCalendario";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+import { ArrowLeft, ScanLine, Loader2, FileText, Pencil, Trash2, History as HistoryIcon, ClipboardCheck } from "lucide-react";
+import { toast } from "sonner";
+import QrScanner from "@/components/capataz/QrScanner";
+import ConferenciaResultado, { type DadosConferencia, type HistoricoEvento } from "@/components/conferencia/ConferenciaResultado";
+import ConferenciaChecklist from "@/components/conferencia/ConferenciaChecklist";
+import ConferenciaVisitaPastoForm, { type FotoExistente } from "@/components/conferencia/ConferenciaVisitaPastoForm";
+import VisitaTopicosSection, { type Topico } from "@/components/consultor/VisitaTopicosSection";
+import useNumeroMapFotos from "@/hooks/useNumeroMapFotos";
+import { getCachedSignedUrl } from "@/lib/consultorOffline/signedUrlCache";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { syncPendingChecklists } from "@/lib/conferenciaOffline";
+import { browserLocationProvider } from "@/platform/adapters/BrowserLocationProvider";
+import { auditConferenciaLocation } from "@/lib/conferenciaGeoAudit";
+import {
+  getOrCreateConferenciaVisita,
+  getConferenciaById,
+  findConferenciaAtiva,
+  reabrirConferenciaSeFinalizada,
+  listConferenciasHistorico,
+  excluirConferencia,
+  listConferenciaPastos,
+  salvarPastoConferencia,
+  atualizarPastoConferencia,
+  excluirPastoConferencia,
+  encerrarConferenciaVisita,
+  salvarCabecalhoConferencia,
+  type ConferenciaVisita,
+  type ConferenciaPastoRegistro,
+  type ConferenciaHistoricoItem,
+} from "@/lib/conferenciaAdminVisita";
+import { uploadVisitaPdf } from "@/lib/visitaPdf";
+import { generateVisitaPdf, type VisitaPdfPasto } from "@/lib/visitaPdf";
+import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
+import ConferenciaAssinaturasSection, { type ConferenciaAssinante } from "@/components/conferencia/ConferenciaAssinaturasSection";
+
+type Etapa = "inicio" | "scan" | "carregando" | "resultado" | "checklist" | "visita_form" | "editar_pasto" | "historico";
+
+/** Cabeçalho do PDF da Conferência — editável localmente, não altera o cadastro da fazenda. */
+type CabecalhoRelatorio = {
+  fazenda: string;
+  proprietario: string;
+  gerente: string;
+  consultor: string;
+  /** yyyy-MM-dd */
+  data: string;
+};
+
+const isoParaInputDate = (iso: string) => {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+
+
+
+function diasEntre(iso: string | null): number | null {
+  if (!iso) return null;
+  const dias = diasCalendarioSP(iso);
+  if (dias === null) return null;
+  return Math.max(0, dias);
+}
+
+import { extractQrUuid, isQrResourceAvailable } from "@/lib/qrUtils";
+
+const fmtSalgaInfo = (iso: string | null, sacos: number | null | undefined) => {
+  if (!iso) return null;
+  const d = new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return `Última salga: ${d}${sacos != null ? ` — ${sacos} sacos` : ""}`;
+};
+
+function conferenciaErrorMessage(error: unknown, fallback: string): string {
+  // Supabase may reject with a plain object instead of an Error instance.
+  if (typeof error === "object" && error !== null && "message" in error && typeof error.message === "string") {
+    return error.message || fallback;
+  }
+  return fallback;
+}
+
+export default function ConferenciaPage() {
+  const uiText = useStaticUiText();
+  const { language } = useTranslation();
+  const navigate = useNavigate();
+  const { user, role, roleData } = useAuth();
+  const isAdmin = role === "administrador";
+  const [etapa, setEtapa] = useState<Etapa>("inicio");
+  const [dados, setDados] = useState<DadosConferencia | null>(null);
+  const [visita, setVisita] = useState<ConferenciaVisita | null>(null);
+  const [registroFormalConfirmado, setRegistroFormalConfirmado] = useState(false);
+  const [registros, setRegistros] = useState<ConferenciaPastoRegistro[]>([]);
+  const [savingPasto, setSavingPasto] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
+  const [pdfGerado, setPdfGerado] = useState<{ url: string; fileName: string } | null>(null);
+  const [pdfAberto, setPdfAberto] = useState(false);
+  const [topicos, setTopicos] = useState<Topico[]>([]);
+  const [editando, setEditando] = useState<ConferenciaPastoRegistro | null>(null);
+  const [fotosEdicao, setFotosEdicao] = useState<FotoExistente[]>([]);
+  const [confirmarExclusao, setConfirmarExclusao] = useState<ConferenciaPastoRegistro | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
+  const [assinantes, setAssinantes] = useState<ConferenciaAssinante[]>([]);
+  const [adminNome, setAdminNome] = useState<string>("");
+  const [fazendaIdConf, setFazendaIdConf] = useState<string | null>(null);
+  const [cabecalho, setCabecalho] = useState<CabecalhoRelatorio | null>(null);
+
+  const [criandoVisita, setCriandoVisita] = useState(false);
+  const [historico, setHistorico] = useState<ConferenciaHistoricoItem[]>([]);
+  const [loadingHistorico, setLoadingHistorico] = useState(false);
+  const [pdfHistorico, setPdfHistorico] = useState<{ url: string; nome: string } | null>(null);
+  const [confirmarExclusaoConf, setConfirmarExclusaoConf] = useState<ConferenciaHistoricoItem | null>(null);
+  const topicosCarregados = useRef<string | null>(null);
+  const assinantesCarregados = useRef<string | null>(null);
+
+  const numeroMap = useNumeroMapFotos({
+    visitaId: visita?.id,
+    tipo: "rotina",
+    topicos,
+    itens: registros.map(r => ({ id: r.id, fotos: r.fotos.map(f => ({ id: f.id, ordem: f.ordem })) })),
+  });
+
+  const proximoNumeroFoto = Object.values(numeroMap).reduce((m, n) => Math.max(m, n), 0) + 1;
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from("administradores").select("nome").eq("user_id", user.id).maybeSingle();
+      if (!cancelled) setAdminNome(data?.nome || "");
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+
+
+  useEffect(() => {
+    // Never flush an earlier user's offline queue under a new session.
+    const userId = user?.id;
+    if (!userId) return;
+    const controller = new AbortController();
+    const sync = () => {
+      void syncPendingChecklists(userId, controller.signal).catch(() => {
+        // Keep pending records untouched when local storage is unavailable.
+      });
+    };
+    sync();
+    window.addEventListener("online", sync);
+    return () => {
+      controller.abort();
+      window.removeEventListener("online", sync);
+    };
+  }, [user?.id]);
+
+  // Retoma (apenas leitura) a conferência formal já iniciada pelo Admin.
+  // Nada é criado aqui: o modo padrão é verificação livre.
+  useEffect(() => {
+    if (!isAdmin || !roleData.roleId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const v = await findConferenciaAtiva(roleData.roleId!);
+        if (cancelled || !v) return;
+        setVisita(v);
+        setRegistros(await listConferenciaPastos(v.id));
+      } catch { /* modo verificação livre segue disponível */ }
+    })();
+    return () => { cancelled = true; };
+  }, [isAdmin, roleData.roleId]);
+
+  const totalFotos = registros.reduce((acc, r) => acc + r.fotos.length, 0);
+
+  /** Garante o registro formal da conferência (cria sob demanda). */
+  const garantirVisita = async (): Promise<ConferenciaVisita> => {
+    if (visita) return visita;
+    if (!roleData.roleId) throw new Error("Perfil de administrador não identificado.");
+    const v = await getOrCreateConferenciaVisita(roleData.roleId, fazendaIdConf, dados?.fazenda.nome ?? null);
+    setVisita(v);
+    setRegistros(await listConferenciaPastos(v.id));
+    return v;
+  };
+
+  /** Editou algo depois do PDF? Invalida o PDF antigo e volta para revisão. */
+  const invalidarPdf = async (v: ConferenciaVisita | null) => {
+    const reaberta = await reabrirConferenciaSeFinalizada(v);
+    if (reaberta && v) {
+      setVisita({ ...v, status: "revisao", pdf_url: null });
+      setPdfGerado(null);
+    }
+  };
+
+  /** Transforma a verificação livre em registro formal (tópicos + assinaturas liberados). */
+  const handleRegistrarConferencia = async () => {
+    if (registros.length === 0) {
+      toast.error(uiText("Escaneie e registre pelo menos um pasto antes de registrar a conferência."));
+      return;
+    }
+    setCriandoVisita(true);
+    try {
+      await garantirVisita();
+      setRegistroFormalConfirmado(true);
+      toast.success(uiText("Conferência registrada. Os pastos escaneados entram no relatório."));
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível registrar a conferência.")));
+    } finally {
+      setCriandoVisita(false);
+    }
+  };
+
+  const abrirConferenciaHistorico = async (item: ConferenciaHistoricoItem) => {
+    setLoadingHistorico(true);
+    try {
+      const [v, pastos] = await Promise.all([
+        getConferenciaById(item.id),
+        listConferenciaPastos(item.id),
+      ]);
+      setVisita(v);
+      setRegistros(pastos);
+      setFazendaIdConf(v.fazenda_id);
+      setRegistroFormalConfirmado(true);
+      setTopicos([]);
+      setAssinantes([]);
+      setPdfGerado(null);
+      setPdfHistorico(null);
+      topicosCarregados.current = null;
+      assinantesCarregados.current = null;
+      setEtapa("inicio");
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível abrir a conferência para edição.")));
+    } finally {
+      setLoadingHistorico(false);
+    }
+  };
+
+  const abrirHistorico = async () => {
+    setEtapa("historico");
+    if (!roleData.roleId) return;
+    setLoadingHistorico(true);
+    try {
+      setHistorico(await listConferenciasHistorico(roleData.roleId));
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível carregar o histórico.")));
+    } finally {
+      setLoadingHistorico(false);
+    }
+  };
+
+  const handleExcluirConferencia = async () => {
+    if (!confirmarExclusaoConf) return;
+    try {
+      await excluirConferencia(confirmarExclusaoConf.id);
+      setHistorico(prev => prev.filter(h => h.id !== confirmarExclusaoConf.id));
+      if (visita?.id === confirmarExclusaoConf.id) {
+        setVisita(null); setRegistroFormalConfirmado(false); setRegistros([]); setTopicos([]); setAssinantes([]); setPdfGerado(null);
+      }
+      toast.success(uiText("Conferência excluída."));
+      setConfirmarExclusaoConf(null);
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível excluir a conferência.")));
+    }
+  };
+
+
+
+  const handleSalvarPasto = async (observacao: string, fotosDataUrls: string[]) => {
+    if (!dados) return;
+    setSavingPasto(true);
+    try {
+      const v = await garantirVisita();
+      await invalidarPdf(v);
+      await salvarPastoConferencia({
+        visitaId: v.id,
+        pasto_id: dados.pasto.id,
+        num_pasto: dados.pasto.nome,
+        fazenda_nome: dados.fazenda.nome,
+        retiro_nome: dados.retiro.nome,
+        categoria: dados.categoria,
+        sexo: dados.sexo,
+        peso_medio_kg: dados.peso_medio_kg,
+        qtd_animais: dados.num_animais,
+        consumo_medio_g: dados.consumo_medio_g,
+        ultima_salga: dados.ultima_salga_data,
+        ultima_salga_sacos: dados.ultima_salga_sacos,
+        observacao: observacao || null,
+        fotosDataUrls,
+      });
+      if (dados.fazenda.id) setFazendaIdConf(dados.fazenda.id);
+      setRegistros(await listConferenciaPastos(v.id));
+      toast.success(uiText("Pasto registrado na visita."));
+      setDados(null);
+      setEtapa("inicio");
+
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível salvar o registro.")));
+    } finally {
+      setSavingPasto(false);
+    }
+  };
+
+  const abrirEdicao = async (r: ConferenciaPastoRegistro) => {
+    setEditando(r);
+    setFotosEdicao(r.fotos.map(f => ({ id: f.id, url: f.url })));
+    setEtapa("editar_pasto");
+    const comSrc = await Promise.all(
+      [...r.fotos].sort((a, b) => a.ordem - b.ordem).map(async f => ({
+        id: f.id, url: f.url, src: await getCachedSignedUrl(f.url).catch(() => undefined),
+      })),
+    );
+    setFotosEdicao(comSrc);
+  };
+
+  const handleSalvarEdicao = async (values: {
+    observacao: string; qtd_animais: number | null; peso_medio_kg: number | null;
+    consumo_medio_g: number | null; novasFotos: string[]; fotosRemovidas: FotoExistente[];
+  }) => {
+    if (!editando || !visita) return;
+    setSavingPasto(true);
+    try {
+      await invalidarPdf(visita);
+      await atualizarPastoConferencia({
+        registroId: editando.id,
+        visitaId: visita.id,
+        observacao: values.observacao || null,
+        qtd_animais: values.qtd_animais,
+        peso_medio_kg: values.peso_medio_kg,
+        consumo_medio_g: values.consumo_medio_g,
+        fotosRemovidas: values.fotosRemovidas.map(f => ({ id: f.id, url: f.url })),
+        novasFotosDataUrls: values.novasFotos,
+      });
+      setRegistros(await listConferenciaPastos(visita.id));
+      toast.success(uiText("Pasto atualizado."));
+      setEditando(null);
+      setFotosEdicao([]);
+      setEtapa("inicio");
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível salvar as alterações.")));
+    } finally {
+      setSavingPasto(false);
+    }
+  };
+
+  const handleExcluirRegistro = async () => {
+    if (!confirmarExclusao || !visita) return;
+    setExcluindo(true);
+    try {
+      await invalidarPdf(visita);
+      await excluirPastoConferencia(confirmarExclusao, visita.id);
+      setRegistros(await listConferenciaPastos(visita.id));
+      toast.success(uiText("Pasto removido da conferência."));
+      setConfirmarExclusao(null);
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível excluir o pasto.")));
+    } finally {
+      setExcluindo(false);
+    }
+  };
+
+  /** Busca os valores padrão do cabeçalho (fazenda, proprietário, gerente, data). */
+  const resolverCabecalhoPadrao = async (): Promise<CabecalhoRelatorio> => {
+    const base: CabecalhoRelatorio = {
+      fazenda: visita?.fazenda_nome_override || registros[0]?.fazenda_nome || "",
+      proprietario: visita?.proprietario_override || "",
+      gerente: visita?.responsavel_override || "",
+      consultor: visita?.consultor_nome_override || adminNome || "",
+      data: visita?.data_override || isoParaInputDate(visita?.hora_inicio || new Date().toISOString()),
+    };
+
+    // Só busca no cadastro o que ainda não tem override salvo.
+    if (base.proprietario && base.gerente) return base;
+
+    try {
+      let fazendaId = fazendaIdConf;
+      if (!fazendaId && base.fazenda) {
+        const { data: f } = await supabase
+          .from("fazendas").select("id").eq("nome", base.fazenda).maybeSingle();
+        fazendaId = f?.id ?? null;
+      }
+      if (fazendaId) {
+        const [{ data: faz }, { data: ger }] = await Promise.all([
+          supabase.from("fazendas").select("administrador_id").eq("id", fazendaId).maybeSingle(),
+          supabase.from("gerentes").select("nome").eq("fazenda_id", fazendaId).limit(1).maybeSingle(),
+        ]);
+        if (!base.gerente) base.gerente = ger?.nome ?? "";
+        if (!base.proprietario && faz?.administrador_id) {
+          const { data: adm } = await supabase
+            .from("administradores").select("nome").eq("id", faz.administrador_id).maybeSingle();
+          base.proprietario = adm?.nome ?? "";
+        }
+      }
+    } catch {
+      /* cadastro indisponível: mantém os campos editáveis em branco */
+    }
+    return base;
+  };
+
+  // O cabeçalho precisa existir SEMPRE que a conferência estiver registrada.
+  // Preenche imediatamente com o que já temos e enriquece em seguida (sem travar a UI).
+  useEffect(() => {
+    if (!isAdmin || !registroFormalConfirmado || registros.length === 0 || cabecalho) return;
+    setCabecalho({
+      fazenda: visita?.fazenda_nome_override || registros[0]?.fazenda_nome || "",
+      proprietario: visita?.proprietario_override || "",
+      gerente: visita?.responsavel_override || "",
+      consultor: visita?.consultor_nome_override || adminNome || "",
+      data: visita?.data_override || isoParaInputDate(visita?.hora_inicio || new Date().toISOString()),
+    });
+    let cancelado = false;
+    void (async () => {
+      try {
+        const c = await resolverCabecalhoPadrao();
+        if (!cancelado) setCabecalho(prev => (prev ? { ...c, ...Object.fromEntries(Object.entries(prev).filter(([, v]) => v)) } as CabecalhoRelatorio : c));
+      } catch { /* mantém o cabeçalho básico já preenchido */ }
+    })();
+    return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, registroFormalConfirmado, registros.length, cabecalho]);
+
+  /** Salva o cabeçalho editado no registro da conferência (não altera o cadastro). */
+  const persistirCabecalho = async (cab: CabecalhoRelatorio, v: ConferenciaVisita | null) => {
+    if (!v) return;
+    try {
+      await salvarCabecalhoConferencia(v.id, {
+        fazenda_nome_override: cab.fazenda.trim() || null,
+        proprietario_override: cab.proprietario.trim() || null,
+        responsavel_override: cab.gerente.trim() || null,
+        consultor_nome_override: cab.consultor.trim() || null,
+        data_override: cab.data || null,
+      });
+      setVisita(prev => prev ? {
+        ...prev,
+        fazenda_nome_override: cab.fazenda.trim() || null,
+        proprietario_override: cab.proprietario.trim() || null,
+        responsavel_override: cab.gerente.trim() || null,
+        consultor_nome_override: cab.consultor.trim() || null,
+        data_override: cab.data || null,
+      } : prev);
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível salvar o cabeçalho do relatório.")));
+    }
+  };
+
+
+
+  const handleEncerrarVisita = async () => {
+    if (!visita || registros.length === 0) return;
+    setGerandoPdf(true);
+    try {
+
+      const pastos: VisitaPdfPasto[] = registros.map(r => ({
+        id: r.id,
+        letra: r.letra,
+        num_pasto: r.num_pasto,
+        qtd_animais: r.qtd_animais,
+        tipo_produto: null,
+        percentual_pv: null,
+        consumo_kg_dia: null,
+        categoria: r.categoria,
+        peso_medio_kg: r.peso_medio_kg,
+        observacao: r.observacao,
+        scores: {},
+        fotos: r.fotos,
+        fazenda_nome: r.fazenda_nome,
+        retiro_nome: r.retiro_nome,
+        sexo: r.sexo,
+        ultima_salga: r.ultima_salga,
+        ultima_salga_sacos: r.ultima_salga_sacos,
+        consumo_medio_g: r.consumo_medio_g,
+      }));
+
+      const cab = cabecalho ?? (await resolverCabecalhoPadrao());
+      await persistirCabecalho(cab, visita);
+      const responsavelNome: string | null = (cab.consultor || adminNome || "").trim() || null;
+      const dataIso = cab.data ? new Date(`${cab.data}T12:00:00`).toISOString() : visita.hora_inicio;
+
+      const { blob, fileName } = await generateVisitaPdf({
+        language,
+        visitaId: visita.id,
+        modo: "conferencia",
+        fazenda: {
+          nome_fazenda: (cab.fazenda || "").trim() || "Conferência",
+          proprietario: (cab.proprietario || "").trim() || null,
+          gerente: (cab.gerente || "").trim() || null,
+        },
+        consultor: { nome: responsavelNome || "Administrador" },
+        hora_inicio: dataIso,
+
+        hora_fim: new Date().toISOString(),
+        observacoes_gerais: null,
+        conclusao: null,
+        topicos: topicos.map(t => ({
+          id: t.id,
+          titulo: t.titulo,
+          texto: t.texto,
+          ordem: t.ordem,
+          zona: t.zona,
+          fotos: t.fotos.map(f => ({ id: f.id, url: f.url, ordem: f.ordem, signedUrl: t.signed?.[f.id] })),
+        })),
+        pastos,
+        numeroMap,
+        assinantes: assinantes
+          .filter(a => (a.nome || "").trim())
+          .map(a => ({ nome: a.nome, cargo_funcao: a.cargo_funcao })),
+      });
+
+      const url = URL.createObjectURL(blob);
+      setPdfGerado({ url, fileName });
+
+      // Upload para o histórico (mesmo padrão do Relatto). Falha no upload não perde o PDF local.
+      let pdfUrl: string | null = null;
+      try {
+        pdfUrl = await uploadVisitaPdf(blob, fileName, roleData.roleId || "admin", visita.id);
+      } catch {
+        toast.error(uiText("PDF gerado, mas não foi possível enviá-lo ao histórico."));
+      }
+
+      await encerrarConferenciaVisita(visita.id, pdfUrl);
+      setVisita({ ...visita, status: "finalizada", pdf_url: pdfUrl });
+      toast.success(`${uiText("Conferência finalizada. PDF gerado: ")}${fileName}`);
+    } catch (e: unknown) {
+      toast.error(conferenciaErrorMessage(e, uiText("Não foi possível gerar o PDF.")));
+    } finally {
+      setGerandoPdf(false);
+    }
+  };
+
+
+  const handleScan = async (raw: string) => {
+    const qrUuid = extractQrUuid(raw);
+    if (!qrUuid) {
+      toast.error(uiText("QR Code não encontrado ou inativo."));
+      setEtapa("inicio");
+      return;
+    }
+    setEtapa("carregando");
+
+    try {
+      // 1) pasto + retiro + fazenda + produto
+      const { data: pasto, error: pErr } = await supabase
+        .from("pastos")
+        .select(`
+          id, nome, qr_uuid, num_animais, peso_medio_kg, categoria, sexo, ativo,
+          retiro:retiros!inner(
+            id, nome, fazenda_id, produto_id,
+            fazenda:fazendas(id, nome),
+            produto:produtos(id, nome)
+          ),
+          produto:produtos(id, nome)
+        `)
+        .eq("qr_uuid", qrUuid)
+        .maybeSingle();
+
+      if (!isQrResourceAvailable(pasto, pErr)) {
+        toast.error(uiText("QR Code não encontrado ou inativo."));
+        setEtapa("inicio");
+        return;
+      }
+
+      const retiro = pasto.retiro;
+      const fazenda = retiro?.fazenda;
+      const produtoNome = pasto.produto?.nome ?? retiro?.produto?.nome ?? null;
+
+      // 2) auditoria automática (não bloqueia)
+      const recordAudit = async (lat: number | null, lng: number | null) => {
+        if (!user) return;
+        try {
+          await supabase.from("audit_conferencias").insert({
+            fazenda_id: fazenda?.id ?? null,
+            retiro_id: retiro?.id ?? null,
+            pasto_id: pasto.id,
+            user_id: user.id,
+            perfil: role ?? null,
+            qr_code: qrUuid,
+            latitude: lat,
+            longitude: lng,
+          });
+        } catch { /* silencioso */ }
+      };
+
+      void auditConferenciaLocation(browserLocationProvider, recordAudit);
+
+      // 3) último lançamento (salga) do pasto
+      const { data: ultLanc } = await supabase
+        .from("lancamentos")
+        .select("data_salga_informada, created_at, criado_por, mes_referencia, ano_referencia, num_sacos")
+        .eq("pasto_id", pasto.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // 3b) consumo/status — fonte única: view_painel_mae_pasto_atual (Consumo Global, sem filtro de mês)
+      const { data: maePastoData } = await supabase
+        .rpc("get_painel_pasto_atual_rapido" as never,
+          { p_pasto_id: pasto.id } as never)
+        .maybeSingle();
+      const maePasto = maePastoData as {
+        consumo_global_g_cab_dia: number | null; status_global: string | null;
+      } | null;
+
+
+      // 4) responsável (nome) da última salga
+      // Ordem de resolução: 1) capataz por user_id; 2) gerente/admin por user_id;
+      // 3) capataz do retiro; 4) campo texto retiros.capataz. Nunca exibir e-mail.
+      let respNome: string | null = null;
+      if (ultLanc?.criado_por) {
+        const { data: c } = await supabase.from("capatazes").select("nome").eq("user_id", ultLanc.criado_por).maybeSingle();
+        if (c?.nome) respNome = c.nome;
+        if (!respNome) {
+          const { data: g } = await supabase.from("gerentes").select("nome").eq("user_id", ultLanc.criado_por).maybeSingle();
+          if (g?.nome) respNome = g.nome;
+        }
+        if (!respNome) {
+          const { data: a } = await supabase.from("administradores").select("nome").eq("user_id", ultLanc.criado_por).maybeSingle();
+          if (a?.nome) respNome = a.nome;
+        }
+      }
+      if (!respNome && retiro?.id) {
+        const { data: cRet } = await supabase.from("capatazes").select("nome").eq("retiro_id", retiro.id).maybeSingle();
+        if (cRet?.nome) {
+          respNome = cRet.nome;
+        } else {
+          const { data: r } = await supabase.from("retiros").select("capataz").eq("id", retiro.id).maybeSingle();
+          if (r?.capataz && !r.capataz.includes("@")) respNome = r.capataz;
+        }
+      }
+      if (!respNome || respNome.includes("@")) respNome = null;
+
+      // 5) últimas movimentações
+      const { data: ultMov } = await supabase
+        .from("movimentacoes_animais")
+        .select("data")
+        .or(`pasto_origem_id.eq.${pasto.id},pasto_destino_id.eq.${pasto.id}`)
+        .order("data", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // 6) eventos do mês corrente
+      const hoje = new Date();
+      const mes = hoje.getMonth() + 1;
+      const ano = hoje.getFullYear();
+      const inicioMes = new Date(ano, mes - 1, 1).toISOString();
+
+      const [{ count: nLanc }, { count: nMort }, { count: nMov }] = await Promise.all([
+        supabase.from("lancamentos").select("id", { count: "exact", head: true }).eq("pasto_id", pasto.id).eq("mes_referencia", mes).eq("ano_referencia", ano),
+        supabase.from("mortalidades").select("id", { count: "exact", head: true }).eq("pasto_id", pasto.id).eq("mes", mes).eq("ano", ano),
+        supabase.from("movimentacoes_animais").select("id", { count: "exact", head: true }).or(`pasto_origem_id.eq.${pasto.id},pasto_destino_id.eq.${pasto.id}`).gte("data", inicioMes),
+      ]);
+      const eventosMes = (nLanc ?? 0) + (nMort ?? 0) + (nMov ?? 0);
+
+      // 7) histórico rápido (5 últimos eventos combinados)
+      const [lancHist, mortHist, movHist] = await Promise.all([
+        supabase.from("lancamentos").select("created_at, num_sacos, data_salga_informada, cocho_cheio").eq("pasto_id", pasto.id).order("created_at", { ascending: false }).limit(5),
+        supabase.from("mortalidades").select("created_at, data, quantidade").eq("pasto_id", pasto.id).order("created_at", { ascending: false }).limit(5),
+        supabase.from("movimentacoes_animais").select("created_at, data, quantidade, pasto_origem_id, pasto_destino_id").or(`pasto_origem_id.eq.${pasto.id},pasto_destino_id.eq.${pasto.id}`).order("created_at", { ascending: false }).limit(5),
+      ]);
+
+      const historico: HistoricoEvento[] = [];
+      lancHist.data?.forEach((l) => historico.push({
+        tipo: "salga",
+        data: l.data_salga_informada ?? l.created_at,
+        descricao: l.cocho_cheio ? "C (cheio)" : `${l.num_sacos ?? 0} saco(s)`,
+      }));
+      mortHist.data?.forEach((m) => historico.push({
+        tipo: "morte",
+        data: m.data ?? m.created_at,
+        descricao: `${m.quantidade} animal(is)`,
+      }));
+      movHist.data?.forEach((mv) => historico.push({
+        tipo: mv.pasto_origem_id === pasto.id ? "movimentacao" : "transferencia",
+        data: mv.data ?? mv.created_at,
+        descricao: `${mv.quantidade} animal(is)`,
+      }));
+      historico.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+      const top5 = historico.slice(0, 5);
+
+      const ultSalgaData = ultLanc?.data_salga_informada ?? ultLanc?.created_at ?? null;
+
+      const dadosFinais: DadosConferencia = {
+        fazenda: { id: fazenda?.id ?? null, nome: fazenda?.nome ?? "—" },
+        retiro: { id: retiro?.id ?? null, nome: retiro?.nome ?? "—" },
+        pasto: { id: pasto.id, nome: pasto.nome, qr_uuid: pasto.qr_uuid },
+        num_animais: pasto.num_animais ?? 0,
+        peso_medio_kg: pasto.peso_medio_kg ?? null,
+        categoria: pasto.categoria ?? null,
+        sexo: pasto.sexo ?? null,
+        produto_nome: produtoNome,
+        consumo_medio_g: maePasto?.consumo_global_g_cab_dia != null ? Number(maePasto.consumo_global_g_cab_dia) : null,
+        status_consumo: maePasto?.status_global ?? null,
+        ultima_salga_data: ultSalgaData,
+        ultima_salga_sacos: ultLanc?.num_sacos ?? null,
+        ultima_salga_responsavel: respNome,
+        ultima_movimentacao_data: ultMov?.data ?? null,
+        dias_desde_salga: diasEntre(ultSalgaData),
+        dias_desde_movimentacao: diasEntre(ultMov?.data ?? null),
+        eventos_mes: eventosMes,
+        historico: top5,
+      };
+
+      setDados(dadosFinais);
+      setEtapa("resultado");
+    } catch (err) {
+      console.error(err);
+      toast.error(uiText("Erro ao consultar dados do pasto."));
+      setEtapa("inicio");
+    }
+  };
+
+  if (etapa === "scan") {
+    return (
+      <QrScanner
+        onScan={handleScan}
+        onBack={() => setEtapa("inicio")}
+        onManualSelect={() => setEtapa("inicio")}
+      />
+    );
+  }
+
+  if (etapa === "carregando") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-3">
+          <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" />
+          <p className="text-sm text-muted-foreground"><LocalizedText source={"Consultando dados do pasto..."} /></p>
+        </div>
+      </div>
+    );
+  }
+
+  if (etapa === "resultado" && dados) {
+    return (
+      <ConferenciaResultado
+        dados={dados}
+        onVoltar={() => { setDados(null); setEtapa("inicio"); }}
+        onRegistrarConferencia={() => setEtapa(isAdmin ? "visita_form" : "checklist")}
+      />
+    );
+  }
+
+  if (etapa === "visita_form" && dados) {
+    return (
+      <ConferenciaVisitaPastoForm
+        titulo={`Registrar ${dados.pasto.nome}`}
+        subtitulo={`${dados.retiro.nome} • ${dados.fazenda.nome}`}
+        infoUltimaSalga={fmtSalgaInfo(dados.ultima_salga_data, dados.ultima_salga_sacos)}
+        numeroInicial={proximoNumeroFoto}
+        saving={savingPasto}
+        onBack={() => setEtapa("resultado")}
+        onSalvar={(v) => void handleSalvarPasto(v.observacao, v.novasFotos)}
+      />
+    );
+  }
+
+  if (etapa === "editar_pasto" && editando) {
+    return (
+      <ConferenciaVisitaPastoForm
+        titulo={`Editar ${editando.num_pasto || editando.letra}`}
+        subtitulo={`${editando.retiro_nome || "—"} • ${editando.fazenda_nome || "—"}`}
+        infoUltimaSalga={fmtSalgaInfo(editando.ultima_salga, editando.ultima_salga_sacos)}
+        numeroInicial={proximoNumeroFoto}
+        numerosExistentes={fotosEdicao.map(f => numeroMap[f.id])}
+        saving={savingPasto}
+        edicao
+        initial={{
+          observacao: editando.observacao,
+          qtd_animais: editando.qtd_animais,
+          peso_medio_kg: editando.peso_medio_kg,
+          consumo_medio_g: editando.consumo_medio_g,
+          fotos: fotosEdicao,
+        }}
+        onBack={() => { setEditando(null); setFotosEdicao([]); setEtapa("inicio"); }}
+        onSalvar={(v) => void handleSalvarEdicao(v)}
+      />
+    );
+  }
+
+
+  if (etapa === "checklist" && dados && user) {
+    return (
+      <ConferenciaChecklist
+        dados={dados}
+        userId={user.id}
+        perfil={role ?? ""}
+        onBack={() => setEtapa("resultado")}
+        onSaved={() => { setDados(null); setEtapa("inicio"); }}
+      />
+    );
+  }
+
+
+  if (etapa === "historico") {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => setEtapa("inicio")} className="text-primary-foreground hover:bg-primary/80">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <h1 className="text-lg font-bold"><LocalizedText source={"Histórico de Conferências"} /></h1>
+        </header>
+
+        <main className="flex-1 px-4 py-4 max-w-md mx-auto w-full space-y-3">
+          {loadingHistorico ? (
+            <div className="flex justify-center p-10"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+          ) : historico.length === 0 ? (
+            <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
+              <LocalizedText source={"Nenhuma conferência registrada ainda."} /></div>
+          ) : historico.map(h => (
+            <div key={h.id} className="rounded-lg border bg-card p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{h.fazenda_nome || "Conferência"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    <LocalizedText source={"Conferência via QR Code •"} />{" "}{new Date(h.hora_inicio).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+                <span className="text-[10px] uppercase font-bold rounded-full bg-primary/10 text-primary px-2 py-1 shrink-0">
+                  {h.status}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" className="gap-1.5"
+                  onClick={() => void abrirConferenciaHistorico(h)}>
+                  <Pencil className="w-4 h-4" /> <LocalizedText source={"Editar"} /></Button>
+                {h.pdf_url && (
+                  <Button size="sm" variant="outline" className="flex-1 gap-1.5"
+                    onClick={() => setPdfHistorico({ url: h.pdf_url!, nome: h.fazenda_nome || "conferencia" })}>
+                    <FileText className="w-4 h-4" /> <LocalizedText source={"Ver / Baixar PDF"} /></Button>
+                )}
+                <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 gap-1.5"
+                  onClick={() => setConfirmarExclusaoConf(h)}>
+                  <Trash2 className="w-4 h-4" /> <LocalizedText source={"Excluir"} /></Button>
+              </div>
+            </div>
+          ))}
+
+          <AlertDialog open={!!confirmarExclusaoConf} onOpenChange={(o) => { if (!o) setConfirmarExclusaoConf(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle><LocalizedText source={"Excluir conferência?"} /></AlertDialogTitle>
+                <AlertDialogDescription>
+                  <LocalizedText source={"Tem certeza? Essa ação não pode ser desfeita e o relatório sairá do histórico."} /></AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
+                <AlertDialogAction onClick={(e) => { e.preventDefault(); void handleExcluirConferencia(); }}>
+                  <LocalizedText source={"Excluir"} /></AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <PdfViewerDialog
+            url={pdfHistorico?.url ?? null}
+            fileName={pdfHistorico ? `conferencia-${pdfHistorico.nome}.pdf` : undefined}
+            title={pdfHistorico ? `Conferência — ${pdfHistorico.nome}` : undefined}
+            onClose={() => setPdfHistorico(null)}
+          />
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-primary-foreground hover:bg-primary/80">
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <h1 className="text-lg font-bold flex-1"><LocalizedText source={"Conferência"} /></h1>
+        {isAdmin && (
+          <Button variant="ghost" size="sm" onClick={() => void abrirHistorico()} className="text-primary-foreground hover:bg-primary/80 gap-1.5">
+            <HistoryIcon className="w-4 h-4" /> <LocalizedText source={"Histórico"} /></Button>
+        )}
+      </header>
+
+      <main className="flex-1 flex flex-col items-center px-6 py-6 gap-6 text-center max-w-md mx-auto w-full">
+        <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center">
+          <ScanLine className="w-12 h-12 text-primary" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold text-foreground"><LocalizedText source={"Conferência via QR Code"} /></h2>
+          <p className="text-sm text-muted-foreground">
+            {registroFormalConfirmado
+              ? "Conferência registrada: os pastos escaneados entram no relatório."
+              : "Aponte a câmera para o QR do pasto e consulte a situação atual. Nada é registrado até você clicar em “Registrar Conferência”."}
+          </p>
+        </div>
+        <Button size="lg" onClick={() => setEtapa("scan")} className="w-full gap-2">
+          <ScanLine className="w-5 h-5" />
+          <LocalizedText source={"ESCANEAR QR CODE"} /></Button>
+
+        {isAdmin && !registroFormalConfirmado && registros.length > 0 && (
+          <Button
+            size="lg"
+            variant="secondary"
+            className="w-full gap-2"
+            disabled={criandoVisita}
+            onClick={() => void handleRegistrarConferencia()}
+          >
+            {criandoVisita ? <Loader2 className="w-5 h-5 animate-spin" /> : <ClipboardCheck className="w-5 h-5" />}
+            <LocalizedText source={"REGISTRAR CONFERÊNCIA"} /></Button>
+        )}
+
+
+        {isAdmin && registros.length > 0 && (
+          <div className="w-full space-y-2 border-t pt-4 text-left">
+            <p className="text-xs uppercase tracking-wide font-bold text-primary">
+              <LocalizedText source={"Pastos registrados ("} />{registros.length})
+            </p>
+            {registros.map(r => (
+              <div key={r.id} className="flex items-center gap-3 rounded-lg border bg-card p-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm shrink-0">
+                  {r.letra}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate">{r.num_pasto || "Pasto"}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {[r.retiro_nome, r.fazenda_nome].filter(Boolean).join(" • ") || "—"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {r.qtd_animais ?? 0} <LocalizedText source={"animais ·"} />{" "}{r.fotos.length} <LocalizedText source={"foto(s)"} /></p>
+                </div>
+                <button
+                  type="button"
+                  aria-label={uiText("Editar pasto")}
+                  onClick={() => void abrirEdicao(r)}
+                  className="p-2 rounded hover:bg-muted"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={uiText("Excluir pasto")}
+                  onClick={() => setConfirmarExclusao(r)}
+                  className="p-2 rounded hover:bg-destructive/10 text-destructive"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {isAdmin && registroFormalConfirmado && registros.length > 0 && cabecalho && (
+          <div className="w-full border-t pt-4 text-left space-y-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide font-bold text-primary"><LocalizedText source={"Cabeçalho do relatório"} /></p>
+              <p className="text-[11px] text-muted-foreground">
+                <LocalizedText source={"Edições valem apenas para este PDF — não alteram o cadastro da fazenda."} /></p>
+            </div>
+            <div className="space-y-2">
+              <div>
+                <Label className="text-xs"><LocalizedText source={"Fazenda"} /></Label>
+                <Input
+                  value={cabecalho.fazenda}
+                  onChange={(e) => setCabecalho({ ...cabecalho, fazenda: e.target.value })}
+                  onBlur={() => void persistirCabecalho(cabecalho, visita)}
+                  placeholder={uiText("Nome da fazenda")}
+                />
+              </div>
+              <div>
+                <Label className="text-xs"><LocalizedText source={"Proprietário"} /></Label>
+                <Input
+                  value={cabecalho.proprietario}
+                  onChange={(e) => setCabecalho({ ...cabecalho, proprietario: e.target.value })}
+                  onBlur={() => void persistirCabecalho(cabecalho, visita)}
+                  placeholder={uiText("Proprietário")}
+                />
+              </div>
+              <div>
+                <Label className="text-xs"><LocalizedText source={"Gerente"} /></Label>
+                <Input
+                  value={cabecalho.gerente}
+                  onChange={(e) => setCabecalho({ ...cabecalho, gerente: e.target.value })}
+                  onBlur={() => void persistirCabecalho(cabecalho, visita)}
+                  placeholder={uiText("Gerente")}
+                />
+              </div>
+              <div>
+                <Label className="text-xs"><LocalizedText source={"Responsável pela conferência"} /></Label>
+                <Input
+                  value={cabecalho.consultor}
+                  onChange={(e) => setCabecalho({ ...cabecalho, consultor: e.target.value })}
+                  onBlur={() => void persistirCabecalho(cabecalho, visita)}
+                  placeholder={uiText("Responsável")}
+                />
+              </div>
+              <div>
+                <Label className="text-xs"><LocalizedText source={"Data"} /></Label>
+                <Input
+                  type="date"
+                  value={cabecalho.data}
+                  onChange={(e) => setCabecalho({ ...cabecalho, data: e.target.value })}
+                  onBlur={() => void persistirCabecalho(cabecalho, visita)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+
+
+        {isAdmin && registroFormalConfirmado && visita && registros.length > 0 && (
+          <div className="w-full border-t pt-4 text-left">
+            <p className="text-xs uppercase tracking-wide font-bold text-primary mb-2"><LocalizedText source={"Tópicos do relatório"} /></p>
+            <VisitaTopicosSection
+              visitaId={visita.id}
+              onChange={(t) => {
+                setTopicos(t);
+                if (topicosCarregados.current === visita.id) void invalidarPdf(visita);
+                else topicosCarregados.current = visita.id;
+              }}
+              numeroMap={numeroMap}
+            />
+          </div>
+        )}
+
+        {isAdmin && registroFormalConfirmado && visita && registros.length > 0 && (
+          <div className="w-full border-t pt-4 text-left">
+            <ConferenciaAssinaturasSection
+              visitaId={visita.id}
+              nomePadrao={adminNome}
+              onChange={(a) => {
+                setAssinantes(a);
+                if (assinantesCarregados.current === visita.id) void invalidarPdf(visita);
+                else assinantesCarregados.current = visita.id;
+              }}
+            />
+          </div>
+        )}
+
+        {isAdmin && registroFormalConfirmado && visita && registros.length > 0 && (
+          <div className="w-full space-y-2 border-t pt-4">
+            <p className="text-sm text-muted-foreground">
+              <LocalizedText source={"Conferência"} />{" "}{visita.status === "finalizada" ? "finalizada" : "em andamento"}: {registros.length} <LocalizedText source={"pasto(s),"} />{" "}{totalFotos} <LocalizedText source={"foto(s)."} /></p>
+            <Button
+              size="lg"
+              variant="secondary"
+              className="w-full gap-2"
+              disabled={gerandoPdf}
+              onClick={() => void handleEncerrarVisita()}
+            >
+              {gerandoPdf ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileText className="w-5 h-5" />}
+              {visita.status === "finalizada" ? "GERAR NOVO PDF" : "ENCERRAR E GERAR PDF"}
+            </Button>
+            {visita.status === "finalizada" && (
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => {
+                  setVisita(null); setRegistroFormalConfirmado(false); setRegistros([]); setTopicos([]); setAssinantes([]);
+                  setPdfGerado(null); setFazendaIdConf(null); setCabecalho(null);
+                }}
+              >
+                <ClipboardCheck className="w-5 h-5" /> <LocalizedText source={"NOVA CONFERÊNCIA"} /></Button>
+            )}
+          </div>
+        )}
+
+        <AlertDialog open={!!confirmarExclusao} onOpenChange={(o) => { if (!o) setConfirmarExclusao(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle><LocalizedText source={"Tem certeza?"} /></AlertDialogTitle>
+              <AlertDialogDescription>
+                <LocalizedText source={"Essa ação não pode ser desfeita. O pasto"} />{" "}{confirmarExclusao?.num_pasto || ""} <LocalizedText source={"e suas fotos serão removidos desta conferência."} /></AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={excluindo}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
+              <AlertDialogAction
+                disabled={excluindo}
+                onClick={(e) => { e.preventDefault(); void handleExcluirRegistro(); }}
+              >
+                {excluindo ? "Excluindo..." : "Excluir"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+
+        {isAdmin && pdfGerado && (
+          <div className="w-full space-y-2 border-t pt-4">
+            <p className="text-sm text-muted-foreground">
+              <LocalizedText source={"PDF gerado:"} />{" "}{pdfGerado.fileName}
+            </p>
+            <Button size="lg" className="w-full gap-2" onClick={() => setPdfAberto(true)}>
+              <FileText className="w-5 h-5" />
+              <LocalizedText source={"ABRIR PDF"} /></Button>
+          </div>
+        )}
+
+        <PdfViewerDialog
+          url={pdfAberto && pdfGerado ? pdfGerado.url : null}
+          fileName={pdfGerado?.fileName}
+          title={uiText("Visita de Rotina")}
+          onClose={() => setPdfAberto(false)}
+        />
+
+
+
+      </main>
+    </div>
+  );
+}

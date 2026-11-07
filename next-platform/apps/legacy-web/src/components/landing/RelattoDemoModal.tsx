@@ -1,0 +1,94 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { beginDemoSession } from "@/lib/demoSession";
+import { sitePhrase, type SiteLanguage } from "@/lib/siteLanguage";
+
+interface Props {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  language?: SiteLanguage;
+}
+
+export default function RelattoDemoModal({ open, onOpenChange, language = "pt-BR" }: Props) {
+  const phrase = (text: string) => sitePhrase(language, text);
+  const navigate = useNavigate();
+  const [nome, setNome] = useState("");
+  const [sobrenome, setSobrenome] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function iniciarDemo(e: React.FormEvent) {
+    e.preventDefault();
+    if (nome.trim().length < 2 || sobrenome.trim().length < 2) {
+      toast.error(phrase("Informe nome e sobrenome."));
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("relatto-demo-signup", {
+        body: { nome: nome.trim(), sobrenome: sobrenome.trim() },
+      });
+      if (error) throw error;
+      const creds = data as { email?: string; senha?: string; error?: string };
+      if (!creds?.email || !creds?.senha) throw new Error(creds?.error || phrase("Falha ao criar demonstração"));
+
+      // Preserva a sessão real (se houver) antes de logar na conta de demo.
+      await beginDemoSession();
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: creds.email,
+        password: creds.senha,
+      });
+      if (signInError) throw signInError;
+
+      onOpenChange(false);
+      toast.success(language === "en-US"
+        ? `Welcome, ${nome.trim()}! Follow the three demo steps.`
+        : `Bem-vindo, ${nome.trim()}! Siga os 3 passos da demonstração.`);
+      navigate("/consultor");
+    } catch (err) {
+      console.error("[demo]", err);
+      toast.error(phrase("Não foi possível iniciar a demonstração. Tente novamente."));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{phrase("Testar o Relatto")}</DialogTitle>
+          <DialogDescription>
+            {phrase("Criamos uma conta de demonstração para você explorar o app. Os dados são apagados automaticamente em 24 horas.")}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={iniciarDemo} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="demo-nome">{phrase("Nome")}</Label>
+            <Input id="demo-nome" value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="demo-sobrenome">{phrase("Sobrenome")}</Label>
+            <Input id="demo-sobrenome" value={sobrenome} onChange={(e) => setSobrenome(e.target.value)} />
+          </div>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : phrase("Começar demonstração")}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

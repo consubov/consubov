@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="pt-BR" translate="no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="google" content="notranslate" />
+    <title>Consubov | Gestão Pecuária</title>
+    <meta name="description" content="Sistema de gestão pecuária Consubov.">
+    <meta name="robots" content="index,follow">
+    <meta name="author" content="Consubov" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#1B4332" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Consubov" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <script>
+      // Ajusta manifest/ícone/título por rota já na análise do HTML, para que o
+      // navegador capture os metadados corretos ao "Adicionar à Tela de Início".
+      (function () {
+        try {
+          var p = location.pathname.toLowerCase();
+          var isStandalone = false;
+          try {
+            isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+          } catch (e) {}
+
+          // Em modo instalado pelo ícone do dispositivo (standalone), a raiz e /baixar
+          // nunca devem renderizar a Landing Page — abrem direto o sistema nativo.
+          if ((p === '/' || p === '/index.html' || p === '/baixar') && isStandalone) {
+            var lastPwa = null;
+            var hasRelattoCookie = false;
+            try { lastPwa = localStorage.getItem('relatto:pwa-profile'); } catch (e) {}
+            try { hasRelattoCookie = /(?:^|;\s*)relatto_pwa_profile=relatto(?:;|$)/.test(document.cookie || ''); } catch (e) {}
+            if (lastPwa === 'relatto' || hasRelattoCookie || location.search.indexOf('pwa=relatto') !== -1 || location.search.indexOf('app=relatto') !== -1) {
+              location.replace('/consultor');
+              return;
+            }
+            location.replace('/app');
+            return;
+          }
+
+          var m = null;
+          if (p === '/relatto' || p.indexOf('/relatto/') === 0 || p.indexOf('/consultor') === 0 || (p === '/baixar' && location.search.toLowerCase().indexOf('app=relatto') !== -1)) {
+            m = { id: 'relatto', title: 'Relatto' };
+          } else if (p.indexOf('/maisarrobas') === 0 || p.indexOf('/mais-arrobas') === 0 || p.indexOf('/pecuarista') === 0 || p.indexOf('/pesador') === 0) {
+            m = { id: 'maisarrobas', title: 'Mais Arrobas' };
+          } else if (p.indexOf('/syncvet') === 0) {
+            m = { id: 'syncvet', title: 'SyncVet' };
+          }
+          if (!m) return;
+          document.title = m.title;
+          var man = document.querySelector('link[rel="manifest"]');
+          if (man) man.setAttribute('href', '/manifest-' + m.id + '.json');
+          var apple = document.querySelector('link[rel="apple-touch-icon"]');
+          if (apple) apple.setAttribute('href', '/icon-' + m.id + '-192.png');
+          var t = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+          if (t) t.setAttribute('content', m.title);
+          if (m.id === 'relatto') {
+            try { localStorage.setItem('relatto:pwa-profile', 'relatto'); } catch (e) {}
+            try { document.cookie = 'relatto_pwa_profile=relatto; Max-Age=31536000; Path=/; SameSite=Lax'; } catch (e) {}
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- CONSUBOV_BOOT_REPAIR_INLINE -->
+
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/9I4yD4OzLYZk2VxsfQ9NuzxDOVG2/social-images/social-1774918445072-CONSU.webp">
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/9I4yD4OzLYZk2VxsfQ9NuzxDOVG2/social-images/social-1774918445072-CONSU.webp">
+    <meta property="og:title" content="Consubov | Gestão Pecuária">
+  <meta name="twitter:title" content="Consubov | Gestão Pecuária">
+  <meta property="og:description" content="Inteligência nutricional">
+  <meta name="twitter:description" content="Inteligência nutricional">
+</head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

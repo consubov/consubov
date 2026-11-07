@@ -1,0 +1,121 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 120 5% 96%;
+    --foreground: 150 30% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 150 30% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 150 30% 10%;
+
+    --primary: 153 43% 18%;
+    --primary-foreground: 60 10% 95%;
+
+    --secondary: 45 76% 46%;
+    --secondary-foreground: 150 30% 10%;
+
+    --muted: 120 5% 91%;
+    --muted-foreground: 150 10% 40%;
+
+    --accent: 45 76% 46%;
+    --accent-foreground: 150 30% 10%;
+
+    --produto-1: 152 45% 32%;
+    --produto-2: 42 80% 45%;
+    --produto-3: 210 65% 45%;
+    --produto-4: 12 70% 50%;
+    --produto-5: 280 40% 48%;
+    --produto-6: 180 55% 35%;
+    --produto-7: 330 55% 48%;
+    --produto-8: 25 40% 38%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 120 5% 85%;
+    --input: 120 5% 85%;
+    --ring: 153 43% 18%;
+
+    --radius: 0.625rem;
+
+    --sidebar-background: 153 43% 14%;
+    --sidebar-foreground: 60 10% 95%;
+    --sidebar-primary: 45 76% 46%;
+    --sidebar-primary-foreground: 150 30% 10%;
+    --sidebar-accent: 153 30% 22%;
+    --sidebar-accent-foreground: 60 10% 95%;
+    --sidebar-border: 153 30% 22%;
+    --sidebar-ring: 45 76% 46%;
+  }
+
+  .dark {
+    --background: 150 20% 6%;
+    --foreground: 60 10% 95%;
+
+    --card: 150 20% 9%;
+    --card-foreground: 60 10% 95%;
+
+    --popover: 150 20% 9%;
+    --popover-foreground: 60 10% 95%;
+
+    --primary: 153 43% 25%;
+    --primary-foreground: 60 10% 95%;
+
+    --secondary: 45 76% 46%;
+    --secondary-foreground: 150 30% 10%;
+
+    --muted: 150 15% 15%;
+    --muted-foreground: 120 5% 55%;
+
+    --accent: 45 76% 46%;
+    --accent-foreground: 150 30% 10%;
+
+    --produto-1: 152 45% 32%;
+    --produto-2: 42 80% 45%;
+    --produto-3: 210 65% 45%;
+    --produto-4: 12 70% 50%;
+    --produto-5: 280 40% 48%;
+    --produto-6: 180 55% 35%;
+    --produto-7: 330 55% 48%;
+    --produto-8: 25 40% 38%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 60 10% 95%;
+
+    --border: 150 15% 18%;
+    --input: 150 15% 18%;
+    --ring: 45 76% 46%;
+
+    --sidebar-background: 150 20% 6%;
+    --sidebar-foreground: 60 10% 95%;
+    --sidebar-primary: 45 76% 46%;
+    --sidebar-primary-foreground: 150 30% 10%;
+    --sidebar-accent: 150 15% 15%;
+    --sidebar-accent-foreground: 60 10% 95%;
+    --sidebar-border: 150 15% 18%;
+    --sidebar-ring: 45 76% 46%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+
+  html.app-standalone,
+  html.app-standalone body {
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}

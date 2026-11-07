@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "bun run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/v1/shared/(.*)", "destination": "/api/shared?path=$1" },
+    { "source": "/storage/v1/object/public/(.*)", "destination": "/api/shared?path=storage/object/public/$1" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
+}

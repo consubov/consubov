@@ -1,0 +1,224 @@
+import { useTranslation } from "@/hooks/useTranslation";
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeft, Loader2, Scale, Search, Split } from "lucide-react";
+import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { dataLocalSP } from "@/lib/diasCalendario";
+import { dataEscolhidaParaIso } from "@/lib/pecuaristaData";
+import { enqueueMa, getMaPendingRows } from "@/lib/maisArrobasQueue";
+
+const CATEGORIAS_LABELS: Record<string, string> = {
+  boi_gordo: "Boi Gordo", vaca_gorda: "Vaca Gorda", vaca_magra: "Vaca Magra",
+  boi_magro: "Boi Magro", garrote: "Garrote", novilha: "Novilha",
+  bezerro: "Bezerro", bezerra: "Bezerra",
+};
+
+interface Lote {
+  id: string; codigo: string; nome_lote: string; categoria: string;
+  categoria_customizada_id: string | null; identificado: boolean; status: string;
+}
+
+interface UltimaPesagem {
+  id: string; data_pesagem: string; peso_medio: number; quantidade_animais: number; gmd: number | null;
+}
+
+export default function PecuaristaLoteDetalhePage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
+  const { fazendaId, loteId } = useParams<{ fazendaId: string; loteId: string }>();
+  const navigate = useNavigate();
+  const [lote, setLote] = useState<Lote | null>(null);
+  const [catNome, setCatNome] = useState<string>("");
+  const [ultima, setUltima] = useState<UltimaPesagem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [iniciando, setIniciando] = useState(false);
+  const [choiceOpen, setChoiceOpen] = useState(false);
+  const [tipoBalanca, setTipoBalanca] = useState<"individual" | "balancao">("individual");
+  const [qtdBalancao, setQtdBalancao] = useState<2 | 3 | 4 | 5>(2);
+  const hojeSP = dataLocalSP(new Date());
+  const [dataEscolhida, setDataEscolhida] = useState<string>(hojeSP);
+  const [avisoData, setAvisoData] = useState<null | "simples" | "apartacao">(null);
+
+  function seguir(acao: "simples" | "apartacao", confirmado = false) {
+    if (!dataEscolhida || dataEscolhida > hojeSP) return toast.error(uiText("Escolha uma data de hoje ou anterior."));
+    if (!confirmado && ultima && dataEscolhida < dataLocalSP(ultima.data_pesagem)) { setAvisoData(acao); return; }
+    setChoiceOpen(false);
+    if (acao === "simples") void iniciarPesagem();
+    else navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}/apartacao?data=${dataEscolhida}`);
+  }
+
+  useEffect(() => {
+    if (!loteId) return;
+    (async () => {
+      const pendingLotes = await getMaPendingRows("lotes_pecuarista");
+      const loteLocal = pendingLotes.find((row) => row.id === loteId) as Lote | undefined;
+      const { data: l } = loteLocal ? { data: null } : await maFrom("lotes_pecuarista")
+        .select("id, codigo, nome_lote, categoria, categoria_customizada_id, identificado, status")
+        .eq("id", loteId).maybeSingle();
+      const loteAtual = (l as Lote | null) ?? loteLocal ?? null;
+      setLote(loteAtual);
+      if (loteAtual?.categoria === "customizada" && loteAtual.categoria_customizada_id) {
+        const [{ data: c }, pendingCats] = await Promise.all([
+          maFrom("categorias_pecuarista").select("nome").eq("id", loteAtual.categoria_customizada_id).maybeSingle(),
+          getMaPendingRows("categorias_pecuarista"),
+        ]);
+        setCatNome((c as any)?.nome ?? pendingCats.find((row) => row.id === loteAtual.categoria_customizada_id)?.nome ?? "Personalizada");
+      }
+      const { data: p } = loteLocal ? { data: [] as any[] } : await maFrom("pesagens_lote_pecuarista")
+        .select("id, data_pesagem, peso_medio, quantidade_animais, gmd")
+        .eq("lote_id", loteId)
+        .gt("quantidade_animais", 0)
+        .order("data_pesagem", { ascending: false })
+        .limit(1);
+      setUltima(((p as any[]) ?? [])[0] ?? null);
+      setLoading(false);
+    })();
+  }, [loteId]);
+
+  async function iniciarPesagem() {
+    if (!loteId) return;
+    setIniciando(true);
+    const pesagemId = crypto.randomUUID();
+    enqueueMa(pesagemId, {
+      kind: "insert",
+      table: "pesagens_lote_pecuarista",
+      row: {
+        id: pesagemId,
+        lote_id: loteId,
+        data_pesagem: dataEscolhidaParaIso(dataEscolhida),
+        peso_total: 0, quantidade_animais: 0, peso_medio: 0,
+        tipo_balanca: tipoBalanca,
+        quantidade_padrao_balancao: tipoBalanca === "balancao" ? qtdBalancao : null,
+      },
+    });
+    setIniciando(false);
+    navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}/pesagem/${pesagemId}`);
+  }
+
+  if (loading || !lote) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+
+  const categoriaLabel = lote.categoria === "customizada" ? catNome : (CATEGORIAS_LABELS[lote.categoria] ?? lote.categoria);
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-4">
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon" onClick={() => navigate(`/pecuarista/fazendas/${fazendaId}`)}><ArrowLeft className="w-4 h-4" /></Button>
+        <h1 className="text-xl font-bold flex-1">{lote.nome_lote}</h1>
+      </div>
+
+      <Card className="p-4 space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant={lote.status === "ativo" ? "default" : "secondary"}>{lote.status === "ativo" ? "Ativo" : "Encerrado"}</Badge>
+          <Badge variant="outline">{lote.identificado ? "Identificado" : "Sem identificação"}</Badge>
+        </div>
+        <div className="text-sm text-muted-foreground"><LocalizedText source={"Categoria:"} />{" "}{categoriaLabel}</div>
+        {ultima && (
+          <div className="mt-2 text-sm border-t pt-2">
+            <div><LocalizedText source={"Última pesagem:"} />{" "}<strong>{new Date(ultima.data_pesagem).toLocaleDateString(language)}</strong></div>
+            <div><LocalizedText source={"Peso médio:"} />{" "}<strong>{Number(ultima.peso_medio).toFixed(1)} kg</strong> — {ultima.quantidade_animais} <LocalizedText source={"animais"} /></div>
+            {ultima.gmd != null && <div><LocalizedText source={"GMD do lote:"} />{" "}<strong>{Number(ultima.gmd).toFixed(3)} <LocalizedText source={"kg/dia"} /></strong></div>}
+          </div>
+        )}
+      </Card>
+
+      <div className="grid gap-2">
+        <Button size="lg" className="h-14 bg-primary hover:bg-primary/90" disabled={iniciando || lote.status !== "ativo"} onClick={() => setChoiceOpen(true)}>
+          <Scale className="w-5 h-5 mr-2" />
+          <LocalizedText source={"Iniciar Pesagem"} /></Button>
+        {lote.identificado && (
+          <Button size="lg" variant="outline" className="h-14" onClick={() => navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}/buscar`)}>
+            <Search className="w-5 h-5 mr-2" /> <LocalizedText source={"Buscar por animal"} /></Button>
+        )}
+      </div>
+
+      <Dialog open={choiceOpen} onOpenChange={setChoiceOpen}>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-md p-0 gap-0 max-h-[90vh] flex flex-col">
+          <DialogHeader className="sticky top-0 z-10 bg-background px-4 py-3 border-b">
+            <DialogTitle><LocalizedText source={"Tipo de pesagem"} /></DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 overflow-y-auto p-4">
+            <div className="grid gap-2 rounded-lg border p-3 bg-muted/40">
+              <label className="text-xs font-medium text-muted-foreground"><LocalizedText source={"Data da pesagem"} /></label>
+              <input
+                type="date"
+                value={dataEscolhida}
+                max={hojeSP}
+                onChange={(e) => setDataEscolhida(e.target.value)}
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm w-full"
+              />
+            </div>
+            <div className="grid gap-2 rounded-lg border p-3 bg-muted/40">
+              <label className="text-xs font-medium text-muted-foreground"><LocalizedText source={"Tipo de balança"} /></label>
+              <select
+                value={tipoBalanca}
+                onChange={(e) => setTipoBalanca(e.target.value as any)}
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm w-full"
+              >
+                <option value="individual"><LocalizedText source={"Balança individual"} /></option>
+                <option value="balancao"><LocalizedText source={"Balanção (vários animais por leitura)"} /></option>
+              </select>
+              {tipoBalanca === "balancao" && (
+                <>
+                  <label className="text-xs font-medium text-muted-foreground mt-1"><LocalizedText source={"Quantidade padrão por leitura"} /></label>
+                  <select
+                    value={qtdBalancao}
+                    onChange={(e) => setQtdBalancao(Number(e.target.value) as 2 | 3 | 4 | 5)}
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm w-full"
+                  >
+                    {[2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} <LocalizedText source={"animais"} /></option>)}
+                  </select>
+                </>
+              )}
+            </div>
+            <Button
+              size="lg"
+              className="h-auto min-h-16 justify-start bg-primary hover:bg-primary/90 py-3 whitespace-normal"
+              disabled={iniciando}
+              onClick={() => seguir("simples")}
+            >
+              {iniciando ? <Loader2 className="w-5 h-5 mr-2 animate-spin shrink-0" /> : <Scale className="w-5 h-5 mr-2 shrink-0" />}
+              <div className="text-left min-w-0">
+                <div className="font-semibold"><LocalizedText source={"Pesagem simples"} /></div>
+                <div className="text-xs opacity-90 font-normal"><LocalizedText source={"Só pesa o lote atual."} /></div>
+              </div>
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="h-auto min-h-16 justify-start py-3 whitespace-normal"
+              onClick={() => seguir("apartacao")}
+            >
+              <Split className="w-5 h-5 mr-2 shrink-0" />
+              <div className="text-left min-w-0">
+                <div className="font-semibold"><LocalizedText source={"Pesagem + Apartação"} /></div>
+                <div className="text-xs text-muted-foreground font-normal"><LocalizedText source={"Pesa e distribui em 2 ou 3 lotes de destino. (Apenas balança individual.)"} /></div>
+              </div>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!avisoData} onOpenChange={(o) => !o && setAvisoData(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle><LocalizedText source={"Data anterior à última pesagem"} /></AlertDialogTitle>
+            <AlertDialogDescription>
+              <LocalizedText source={"Essa data é anterior à última pesagem registrada em"} />{" "}{ultima ? new Date(ultima.data_pesagem).toLocaleDateString(language) : ""}<LocalizedText source={". O cálculo de GMD pode ficar incorreto. Confirma mesmo assim?"} /></AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel><LocalizedText source={"Voltar"} /></AlertDialogCancel>
+            <AlertDialogAction onClick={() => { const a = avisoData; setAvisoData(null); if (a) seguir(a, true); }}><LocalizedText source={"Confirmar"} /></AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

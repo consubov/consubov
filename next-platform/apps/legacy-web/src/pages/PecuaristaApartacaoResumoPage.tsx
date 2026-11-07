@@ -1,0 +1,224 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useTranslation } from "@/hooks/useTranslation";
+import { fetchPdfBinaryWithTimeout } from "@/lib/reportPdfExport";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { maFrom, maGetUser } from "@/lib/maOffline";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Loader2, ArrowRight, FileDown, Share2 } from "lucide-react";
+import { toast } from "sonner";
+import { downloadPdfFromUrl } from "@/lib/downloadPdf";
+import type { ApartacaoDestinoSection } from "@/lib/pecuaristaPdf";
+
+type NavState = {
+  pdfUrl?: string;
+  totalGeral: { quantidade: number; peso_total: number };
+  destinos: ApartacaoDestinoSection[];
+  dataFim?: string | null;
+  horaFim?: string | null;
+  horaInicio?: string | null;
+};
+
+type ApartacaoRegistro = {
+  pdf_url?: string | null;
+  data_apartacao?: string | null;
+  hora_inicio?: string | null;
+  hora_fim?: string | null;
+};
+
+type PesagemApartacaoRegistro = {
+  lote_id: string;
+  quantidade_animais: number | null;
+  peso_total: number | null;
+  peso_medio: number | null;
+  gmd: number | null;
+};
+
+type LoteRegistro = {
+  nome_lote?: string | null;
+  codigo?: string | null;
+  identificado?: boolean | null;
+};
+
+const fmt = (n: number, language: string, d = 2) =>
+  n.toLocaleString(language, { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtHora = (iso: string, language: string) => {
+  try { return new Date(iso).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
+};
+const fmtDataLinha = (fim: string | null | undefined, language: string) => {
+  if (!fim) return null;
+  return new Date(fim).toLocaleDateString(language);
+};
+const fmtHorarioLinha = (fim: string | null | undefined, ini: string | null | undefined, language: string) => {
+  if (!fim) return null;
+  const hFim = fmtHora(fim, language);
+  const hIni = ini ? fmtHora(ini, language) : "";
+  if (hIni && hFim) return `${language === "en-US" ? "Weighing started: " : "Início da pesagem: "}${hIni}${language === "en-US" ? "" : "h"} - ${language === "en-US" ? "Weighing ended: " : "Término da pesagem: "}${hFim}${language === "en-US" ? "" : "h"}`;
+  return null;
+};
+
+export default function PecuaristaApartacaoResumoPage() {
+  const { language } = useTranslation();
+  const uiText = useStaticUiText();
+  const { fazendaId, loteId, apartacaoId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const stateData = (location.state as NavState) || null;
+
+  const [loading, setLoading] = useState(!stateData);
+  const [data, setData] = useState<NavState | null>(stateData);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(stateData?.pdfUrl ?? null);
+  const [sharing, setSharing] = useState(false);
+
+  useEffect(() => {
+    if (data) return;
+    (async () => {
+      if (!apartacaoId) return;
+      const { data: ap } = await maFrom("apartacoes_pecuarista")
+        .select("pdf_url, data_apartacao, hora_inicio, hora_fim").eq("id", apartacaoId).maybeSingle();
+      const apRegistro = ap as unknown as ApartacaoRegistro | null;
+      setPdfUrl(apRegistro?.pdf_url ?? null);
+      const { data: pesagens } = await maFrom("pesagens_lote_pecuarista")
+        .select("lote_id, quantidade_animais, peso_total, peso_medio, gmd")
+        .eq("apartacao_id", apartacaoId);
+      const destinos: ApartacaoDestinoSection[] = [];
+      let totQ = 0, totP = 0;
+      for (const p of (pesagens ?? []) as unknown as PesagemApartacaoRegistro[]) {
+        const { data: lote } = await maFrom("lotes_pecuarista")
+          .select("nome_lote, codigo, identificado").eq("id", p.lote_id).maybeSingle();
+        const loteRegistro = lote as unknown as LoteRegistro | null;
+        destinos.push({
+          nome_lote: loteRegistro?.nome_lote ?? "—",
+          codigo: loteRegistro?.codigo ?? null,
+          identificado: !!loteRegistro?.identificado,
+          quantidade: Number(p.quantidade_animais),
+          peso_total: Number(p.peso_total),
+          peso_medio: Number(p.peso_medio),
+          gmd: p.gmd != null ? Number(p.gmd) : null,
+        });
+        totQ += Number(p.quantidade_animais);
+        totP += Number(p.peso_total);
+      }
+      setData({ totalGeral: { quantidade: totQ, peso_total: totP }, destinos, pdfUrl: apRegistro?.pdf_url ?? undefined, dataFim: apRegistro?.data_apartacao ?? null, horaInicio: apRegistro?.hora_inicio ?? null, horaFim: apRegistro?.hora_fim ?? null });
+      setLoading(false);
+    })();
+  }, [apartacaoId, data]);
+
+  async function handleShare() {
+    if (!pdfUrl) return;
+    setSharing(true);
+    try {
+      const blob = await fetchPdfBinaryWithTimeout(pdfUrl);
+      const file = new File([blob], `apartacao-${apartacaoId}.pdf`, { type: "application/pdf" });
+      const nav = navigator;
+      if (nav.canShare?.({ files: [file] }) && nav.share) {
+        await nav.share({ files: [file], title: uiText("Relatório de Apartação") });
+      } else if (nav.share) {
+        await nav.share({ title: uiText("Relatório de Apartação"), url: pdfUrl });
+      } else {
+        await navigator.clipboard.writeText(pdfUrl);
+        toast.success(uiText("Link copiado"));
+      }
+    } catch {/* ignore */} finally { setSharing(false); }
+  }
+
+  if (loading || !data) return (
+    <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+  );
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-4 pb-40 px-2">
+      <Card className="p-4">
+        <div className="text-xs uppercase text-muted-foreground"><LocalizedText source={"Apartação finalizada"} /></div>
+        {fmtDataLinha(data.dataFim, language) && (
+          <div className="text-xs text-muted-foreground mt-1">{fmtDataLinha(data.dataFim, language)}</div>
+        )}
+        {fmtHorarioLinha(data.horaFim ?? data.dataFim, data.horaInicio, language) && (
+          <div className="text-xs text-muted-foreground">{fmtHorarioLinha(data.horaFim ?? data.dataFim, data.horaInicio, language)}</div>
+        )}
+        <div className="grid grid-cols-2 gap-3 mt-2">
+          <div>
+            <div className="text-xs text-muted-foreground"><LocalizedText source={"Total animais"} /></div>
+            <div className="text-xl font-bold">{data.totalGeral.quantidade}</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground"><LocalizedText source={"Peso total"} /></div>
+            <div className="text-xl font-bold">{fmt(data.totalGeral.peso_total, language, 1)} kg</div>
+          </div>
+        </div>
+      </Card>
+
+      {data.destinos.map((d, i) => (
+        <Card key={i} className="p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-semibold">{d.nome_lote}</div>
+              <div className="text-xs text-muted-foreground">{uiText(d.identificado ? "Identificado" : "Sem identificação")}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-muted-foreground"><LocalizedText source={"Animais"} /></div>
+              <div className="font-bold">{d.quantidade}</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-center text-xs">
+            <div className="rounded bg-muted p-2">
+              <div className="text-muted-foreground"><LocalizedText source={"Peso total"} /></div>
+              <div className="font-semibold">{fmt(d.peso_total, language, 1)} kg</div>
+            </div>
+            <div className="rounded bg-muted p-2">
+              <div className="text-muted-foreground"><LocalizedText source={"Peso médio (kg)"} /></div>
+              <div className="font-semibold">{fmt(d.peso_medio, language, 1)} kg</div>
+            </div>
+            <div className="rounded bg-muted p-2">
+              <div className="text-muted-foreground"><LocalizedText source={"Peso médio (@)"} /></div>
+              <div className="font-semibold">{fmt(d.peso_medio / 30, language, 2)} @</div>
+            </div>
+            <div className="rounded bg-muted p-2">
+              <div className="text-muted-foreground"><LocalizedText source={"GMD"} /></div>
+              <div className="font-semibold">{d.gmd != null ? `${fmt(d.gmd, language, 3)}` : "—"}</div>
+            </div>
+          </div>
+
+          {d.identificado && d.identificados && d.identificados.length > 0 && (
+            <div className="max-h-48 overflow-y-auto text-xs mt-2">
+              <div className="grid grid-cols-[1fr_auto_auto] gap-2 font-semibold border-b py-1">
+                <span><LocalizedText source={"Nº"} /></span><span className="text-right"><LocalizedText source={"Peso"} /></span><span className="text-right"><LocalizedText source={"GMD"} /></span>
+              </div>
+              {d.identificados.map((r, j) => (
+                <div key={j} className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-border/40 py-1">
+                  <span>{r.numero}</span>
+                  <span className="text-right">{fmt(r.peso_kg, language, 1)} kg</span>
+                  <span className="text-right">{r.gmd_individual != null ? fmt(r.gmd_individual, language, 3) : "—"}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      ))}
+
+      <div
+        className="fixed left-0 right-0 px-4 pt-3 bg-background/95 backdrop-blur border-t space-y-2 z-50 shadow-lg"
+        style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))", paddingBottom: "1rem" }}
+      >
+        {pdfUrl ? (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" className="h-11" onClick={() => void downloadPdfFromUrl(pdfUrl!, `apartacao-${apartacaoId}.pdf`)}>
+                <FileDown className="w-4 h-4 mr-2" /> <LocalizedText source={"Baixar"} /></Button>
+              <Button variant="outline" className="h-11" onClick={handleShare} disabled={sharing}>
+                {sharing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Share2 className="w-4 h-4 mr-2" />} <LocalizedText source={"Compartilhar"} /></Button>
+            </div>
+            <Button className="w-full h-11" onClick={() => navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}`)}>
+              <LocalizedText source={"Concluir"} />{" "}<ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </>
+        ) : (
+          <Button className="w-full h-11" onClick={() => navigate(`/pecuarista/fazendas/${fazendaId}/lotes/${loteId}`)}>
+            <LocalizedText source={"Voltar ao lote"} /></Button>
+        )}
+      </div>
+    </div>
+  );
+}

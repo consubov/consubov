@@ -1,0 +1,482 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useEffect, useState, useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, Plus, Loader2, Clock, FileCheck, FileText, Download, Share2, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import PastoVisitaModal, { type VisitaPastoRow } from "@/components/consultor/PastoVisitaModal";
+import VisitaTopicosSection, { type Topico } from "@/components/consultor/VisitaTopicosSection";
+import { useNumeroMapFotos } from "@/hooks/useNumeroMapFotos";
+import ConfinamentoVisitaView from "@/components/consultor/ConfinamentoVisitaView";
+import FabricaVisitaView from "@/components/consultor/FabricaVisitaView";
+import { averageOf, formatAvg } from "@/components/consultor/ScoreSamplesInput";
+import { hasPendingLocalChanges, isVisitaDeleted, loadSnapshot, offlineDelete, offlineUpdate, patchSnapshot } from "@/lib/consultorOffline/snapshotStore";
+import PdfViewerDialog from "@/components/consultor/PdfViewerDialog";
+import { useCriticalOperation } from "@/lib/criticalOperations";
+
+interface Visita {
+  id: string;
+  tipo: string;
+  status: string;
+  hora_inicio: string;
+  hora_fim: string | null;
+  observacoes_gerais: string | null;
+  conclusao: string | null;
+  fazenda_consultor_id: string;
+  pdf_url: string | null;
+  deleted_at?: string | null;
+}
+interface Fazenda { id: string; nome_fazenda: string; proprietario?: string | null; responsavel?: string | null; municipio?: string | null; uf?: string | null; }
+
+function proximaLetra(pastos: VisitaPastoRow[]): string {
+  const usadas = new Set(pastos.map(p => p.letra.toUpperCase()));
+  for (let i = 0; i < 26; i++) {
+    const l = String.fromCharCode(65 + i);
+    if (!usadas.has(l)) return l;
+  }
+  return "";
+}
+
+export default function VisitaTecnicaPage() {
+  const uiText = useStaticUiText();
+  const { visitaId } = useParams<{ visitaId: string }>();
+  const navigate = useNavigate();
+  const [visita, setVisita] = useState<Visita | null>(null);
+  const [fazenda, setFazenda] = useState<Fazenda | null>(null);
+  const [pastos, setPastos] = useState<VisitaPastoRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingPasto, setEditingPasto] = useState<VisitaPastoRow | null>(null);
+  const [pastoExcluir, setPastoExcluir] = useState<VisitaPastoRow | null>(null);
+  const [excluindoPasto, setExcluindoPasto] = useState(false);
+  const [finalizarOpen, setFinalizarOpen] = useState(false);
+  const [obsGerais, setObsGerais] = useState("");
+  const [conclusao, setConclusao] = useState("");
+  const [finalizando, setFinalizando] = useState(false);
+  const [pdfVisualizar, setPdfVisualizar] = useState<{ url: string; nome: string } | null>(null);
+  const [topicos, setTopicos] = useState<Topico[]>([]);
+  const numeroMap = useNumeroMapFotos({
+    visitaId,
+    tipo: "rotina",
+    topicos: topicos.map(t => ({ id: t.id, ordem: t.ordem, zona: t.zona, fotos: t.fotos })),
+  });
+
+  useEffect(() => { if (visitaId) load(); }, [visitaId]);
+
+  const readOnly = false;
+
+  // Enquanto a visita estiver aberta, bloqueia auto-reload do PWA.
+  useCriticalOperation(true, "visita-consultor");
+
+  async function handleExcluirPasto() {
+    if (!pastoExcluir) return;
+    const alvo = pastoExcluir;
+    setExcluindoPasto(true);
+    try {
+      if (typeof navigator === "undefined" || navigator.onLine !== false) {
+        await supabase.from("avaliacoes_score").delete().eq("visita_pasto_id", alvo.id);
+      }
+
+      const { queued } = await offlineDelete({
+        visitaId: visitaId!,
+        table: "visita_pastos",
+        rowId: alvo.id,
+        applyToSnapshot: (curr) => ({
+          ...curr,
+          pastos: ((curr as any).pastos as any[] || []).filter((p: any) => p.id !== alvo.id),
+          avaliacoes_score: ((curr as any).avaliacoes_score as any[] || []).filter(
+            (s: any) => s.visita_pasto_id !== alvo.id,
+          ),
+        }) as any,
+      });
+
+      setPastos(prev => prev.filter(p => p.id !== alvo.id));
+      setPastoExcluir(null);
+      toast.success(uiText(queued ? "Pasto excluído (será sincronizado)" : "Pasto excluído"));
+      await load();
+    } catch (err) {
+      console.error("[visita] excluir pasto", err);
+      toast.error(uiText("Não foi possível excluir o pasto."));
+    } finally {
+      setExcluindoPasto(false);
+    }
+  }
+
+  async function load() {
+    setLoading(true);
+    const snap = await loadSnapshot(visitaId!);
+    const online = typeof navigator === "undefined" || navigator.onLine;
+    const preferLocal = !!snap?.visita && await hasPendingLocalChanges(visitaId!);
+    const vRes = online && !preferLocal
+      ? await supabase.from("visitas_tecnicas").select("*").eq("id", visitaId!).is("deleted_at", null).maybeSingle()
+      : { data: null };
+    const v = (preferLocal ? (snap?.visita as Visita | undefined) : (vRes.data as Visita | null) || (snap?.visita as Visita | undefined)) || null;
+    if (isVisitaDeleted(v as any)) { setVisita(null); setLoading(false); return; }
+    setVisita(v);
+    if (v) {
+      setObsGerais(v.observacoes_gerais || "");
+      setConclusao(v.conclusao || "");
+      const [fRes, pRes] = online && !preferLocal
+        ? await Promise.all([
+            supabase.from("fazendas_consultor").select("*").eq("id", v.fazenda_consultor_id).maybeSingle(),
+            supabase.from("visita_pastos").select("*").eq("visita_id", visitaId!).order("ordem"),
+          ])
+        : [{ data: null }, { data: null }];
+      const fazendaData = (fRes.data as Fazenda | null) || (snap?.fazenda as Fazenda | undefined) || null;
+      setFazenda(fazendaData);
+      let pastosData = (pRes.data as any[]) || [];
+      if (pastosData.length === 0 && snap?.pastos?.length) pastosData = snap.pastos as any[];
+      const ids = pastosData.map(p => p.id);
+
+      // Amostras: MESMA fonte de dados usada na tela de edição (avaliacoes_score).
+      // União (dedup por id) entre o que já está no servidor e o que ainda está
+      // apenas local (snapshot / fila off-line). Nunca usa média pré-calculada.
+      type Sample = { id?: string; nota: number };
+      const samplesByPasto: Record<string, { fezes: Sample[]; corporal: Sample[]; bebedouro: Sample[] }> = {};
+      const bucketOf = (pastoId: string) =>
+        (samplesByPasto[pastoId] ??= { fezes: [], corporal: [], bebedouro: [] });
+      const pushSample = (pastoId: string, tipo: string, s: Sample) => {
+        const bucket = bucketOf(pastoId);
+        if (!(tipo in bucket)) return;
+        const arr = bucket[tipo as keyof typeof bucket];
+        if (s.id && arr.some(x => x.id === s.id)) return;
+        if (typeof s.nota !== "number") return;
+        arr.push(s);
+      };
+
+      if (ids.length > 0 && online && !preferLocal) {
+        const { data: scoresData } = await supabase.from("avaliacoes_score")
+          .select("id, visita_pasto_id, tipo, nota")
+          .in("visita_pasto_id", ids);
+        (scoresData || []).forEach((s: any) => pushSample(s.visita_pasto_id, s.tipo, { id: s.id, nota: s.nota }));
+      }
+
+      // Amostras locais (ainda não sincronizadas ou modo off-line/preferLocal)
+      const snapScores = ((snap?.avaliacoes_score as any[]) || []);
+      snapScores.forEach((s: any) => pushSample(s.visita_pasto_id, s.tipo, { id: s.id, nota: s.nota }));
+      pastosData.forEach((p: any) => {
+        const snapSamples = (p as any).samples || {};
+        (["fezes", "corporal", "bebedouro"] as const).forEach(tipo => {
+          (snapSamples[tipo] || []).forEach((s: any) =>
+            pushSample(p.id, tipo, typeof s === "number" ? { nota: s } : { id: s.id, nota: s.nota }));
+        });
+      });
+
+      const builtPastos = pastosData.map(p => {
+        const samples = samplesByPasto[p.id] || { fezes: [], corporal: [], bebedouro: [] };
+        const notas = {
+          fezes: samples.fezes.map(s => s.nota),
+          corporal: samples.corporal.map(s => s.nota),
+          bebedouro: samples.bebedouro.map(s => s.nota),
+        };
+        return {
+          ...p,
+          samples,
+          scores: {
+            fezes: averageOf(notas.fezes),
+            corporal: averageOf(notas.corporal),
+            bebedouro: averageOf(notas.bebedouro),
+          },
+          _sampleCounts: notas,
+        } as any;
+      });
+      setPastos(builtPastos);
+      if (!preferLocal) {
+        void patchSnapshot(visitaId!, (current) => ({
+          ...current,
+          visita: v,
+          fazenda: fazendaData,
+          pastos: builtPastos,
+        })).catch(() => {});
+      }
+
+    }
+    setLoading(false);
+  }
+
+  const nextLetra = useMemo(() => proximaLetra(pastos), [pastos]);
+  const nextOrdem = useMemo(() => (pastos.length > 0 ? Math.max(...pastos.map(p => p.ordem)) + 1 : 0), [pastos]);
+
+  async function handleFinalizar() {
+    setFinalizando(true);
+    try {
+      const { queued } = await offlineUpdate({
+        visitaId: visitaId!,
+        table: "visitas_tecnicas",
+        rowId: visitaId!,
+        patch: {
+        status: "finalizada",
+        hora_fim: new Date().toISOString(),
+        observacoes_gerais: obsGerais.trim() || null,
+        conclusao: conclusao.trim() || null,
+        },
+      });
+      toast.success(uiText(queued ? "Visita salva off-line." : "Visita finalizada!"));
+      setFinalizarOpen(false);
+      load();
+    } catch (err: any) {
+      toast.error(uiText("Erro: ") + (err?.message || uiText("desconhecido")));
+    } finally { setFinalizando(false); }
+  }
+
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  if (!visita) return <div className="text-center text-muted-foreground py-12"><LocalizedText source={"Visita não encontrada"} /></div>;
+
+  if (visita.tipo === "confinamento") {
+    return <ConfinamentoVisitaView visitaId={visitaId!} visita={visita as any} fazenda={fazenda} />;
+  }
+  if (visita.tipo === "fabrica") {
+    return <FabricaVisitaView visitaId={visitaId!} visita={visita as any} fazenda={fazenda} />;
+  }
+
+
+  return (
+    <div className="space-y-4">
+      <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1 -ml-2">
+        <ArrowLeft className="w-4 h-4" /> <LocalizedText source={"Voltar"} />
+      </Button>
+
+      <Card className="p-3 bg-primary/5 border-primary/20">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="font-bold text-foreground truncate">{fazenda?.nome_fazenda || "—"}</div>
+            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+              <Clock className="w-3 h-3" />
+              <LocalizedText source={"Início:"} /> {format(new Date(visita.hora_inicio), "dd/MM 'às' HH:mm", { locale: ptBR })}
+              {visita.hora_fim && ` · Fim: ${format(new Date(visita.hora_fim), "HH:mm", { locale: ptBR })}`}
+            </div>
+          </div>
+          <Badge variant={readOnly ? "default" : "secondary"} className="capitalize shrink-0">
+            {visita.status}
+          </Badge>
+        </div>
+      </Card>
+
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-foreground"><LocalizedText source={"Pastos avaliados ("} />{pastos.length})</h2>
+        {!readOnly && (
+          <Button size="sm" onClick={() => { setEditingPasto(null); setModalOpen(true); }} className="gap-1.5 bg-primary hover:bg-primary/90">
+            <Plus className="w-4 h-4" /> <LocalizedText source={"Pasto"} />
+          </Button>
+        )}
+      </div>
+
+      {pastos.length === 0 ? (
+        <Card className="p-6 text-center text-sm text-muted-foreground">
+          <LocalizedText source={"Nenhum pasto adicionado ainda."} />
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {pastos.map(p => (
+            <Card
+              key={p.id}
+              className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => { setEditingPasto(p); setModalOpen(true); }}
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0">
+                  {p.letra}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-foreground">
+                    <LocalizedText source={"Pasto"} /> {p.num_pasto || "—"} · {p.qtd_animais ?? "—"} <LocalizedText source={"animais"} />
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {p.tipo_produto || "—"}{p.consumo_kg_dia ? ` · ${p.consumo_kg_dia} kg/dia` : ""}
+                  </div>
+                  <div className="flex gap-2 mt-1.5 text-[10px]">
+                    <ScorePill label="F" nota={p.scores?.fezes} />
+                    <ScorePill label="C" nota={p.scores?.corporal} />
+                    <ScorePill label="B" nota={p.scores?.bebedouro} />
+                  </div>
+                </div>
+                {!readOnly && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label={`Editar pasto ${p.num_pasto || p.letra}`}
+                      onClick={(e) => { e.stopPropagation(); setEditingPasto(p); setModalOpen(true); }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      aria-label={`Excluir pasto ${p.num_pasto || p.letra}`}
+                      onClick={(e) => { e.stopPropagation(); setPastoExcluir(p); }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <VisitaTopicosSection visitaId={visitaId!} onChange={setTopicos} numeroMap={numeroMap} />
+
+
+      {!readOnly && (
+        <div className="sticky bottom-16 pt-2 space-y-2">
+          <Button
+            onClick={() => navigate(`/consultor/visitas/${visitaId}/revisao`)}
+            className="w-full gap-2 bg-primary hover:bg-primary/90"
+            disabled={pastos.length === 0}
+          >
+            {visita.status === "revisao"
+              ? <><FileText className="w-4 h-4" /> <LocalizedText source={"Continuar Revisão / Gerar PDF"} /></>
+              : <><FileCheck className="w-4 h-4" /> <LocalizedText source={"Revisar Visita"} /></>}
+          </Button>
+          {pastos.length === 0 && (
+            <p className="text-xs text-center text-muted-foreground">
+              <LocalizedText source={"Adicione pelo menos um pasto para revisar"} />
+            </p>
+          )}
+        </div>
+      )}
+
+
+      {readOnly && visita.pdf_url && (
+        <Card className="p-3 space-y-2">
+          <div className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" /> <LocalizedText source={"Relatório em PDF disponível"} />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 gap-1.5"
+              onClick={() => setPdfVisualizar({ url: visita.pdf_url!, nome: fazenda?.nome_fazenda || "visita" })}
+            >
+              <FileText className="w-4 h-4" /> <LocalizedText source={"Ver / Baixar"} />
+            </Button>
+            <Button
+              size="sm"
+              className="flex-1 gap-1.5 bg-primary hover:bg-primary/90"
+              onClick={async () => {
+                try {
+                  if (navigator.share) {
+                    await navigator.share({ title: "Visita técnica Consubov", url: visita.pdf_url! });
+                  } else {
+                    await navigator.clipboard.writeText(visita.pdf_url!);
+                    toast.success(uiText("Link copiado!"));
+                  }
+                } catch { /* cancel */ }
+              }}
+            >
+              <Share2 className="w-4 h-4" /> <LocalizedText source={"Enviar"} />
+            </Button>
+          </div>
+        </Card>
+      )}
+
+
+      {readOnly && (visita.observacoes_gerais || visita.conclusao) && (
+        <Card className="p-3 space-y-2">
+          {visita.observacoes_gerais && (
+            <div>
+              <div className="text-xs font-semibold text-muted-foreground"><LocalizedText source={"Observações gerais"} /></div>
+              <div className="text-sm text-foreground whitespace-pre-wrap">{visita.observacoes_gerais}</div>
+            </div>
+          )}
+          {visita.conclusao && (
+            <div>
+              <div className="text-xs font-semibold text-muted-foreground"><LocalizedText source={"Conclusão"} /></div>
+              <div className="text-sm text-foreground whitespace-pre-wrap">{visita.conclusao}</div>
+            </div>
+          )}
+        </Card>
+      )}
+
+      <PastoVisitaModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        visitaId={visitaId!}
+        pasto={editingPasto}
+        proximaLetra={nextLetra}
+        proximaOrdem={nextOrdem}
+        onSaved={load}
+        readOnly={readOnly}
+      />
+
+      <AlertDialog open={!!pastoExcluir} onOpenChange={(v) => { if (!v) setPastoExcluir(null); }}>
+        <AlertDialogContent>
+          <AlertDialogTitle><LocalizedText source={"Excluir pasto"} /> {pastoExcluir?.num_pasto || pastoExcluir?.letra}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            <LocalizedText source={"As informações e notas deste pasto serão removidas desta visita. Esta ação não pode ser desfeita."} />
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluindoPasto}><LocalizedText source={"Cancelar"} /></AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); void handleExcluirPasto(); }}
+              disabled={excluindoPasto}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {excluindoPasto ? <Loader2 className="w-4 h-4 animate-spin" /> : uiText("Excluir")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
+
+      <Dialog open={finalizarOpen} onOpenChange={setFinalizarOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle><LocalizedText source={"Finalizar Visita"} /></DialogTitle>
+            <DialogDescription><LocalizedText source={"Adicione as observações gerais e a conclusão da visita."} /></DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label><LocalizedText source={"Observações gerais"} /></Label>
+              <Textarea rows={3} value={obsGerais} onChange={e => setObsGerais(e.target.value)} />
+            </div>
+            <div>
+              <Label><LocalizedText source={"Conclusão"} /></Label>
+              <Textarea rows={3} value={conclusao} onChange={e => setConclusao(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFinalizarOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
+            <Button onClick={handleFinalizar} disabled={finalizando} className="bg-primary hover:bg-primary/90">
+              {finalizando && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}<LocalizedText source={"Confirmar"} />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <PdfViewerDialog
+        url={pdfVisualizar?.url ?? null}
+        fileName={pdfVisualizar ? `visita-${pdfVisualizar.nome}.pdf` : undefined}
+        title={pdfVisualizar ? `${uiText("Relatório — ")}${pdfVisualizar.nome}` : undefined}
+        onClose={() => setPdfVisualizar(null)}
+      />
+    </div>
+  );
+}
+
+function ScorePill({ label, nota }: { label: string; nota?: number }) {
+  return (
+    <span className={`px-1.5 py-0.5 rounded font-semibold ${nota ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+      {label}: {formatAvg(nota)}
+    </span>
+  );
+}

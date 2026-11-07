@@ -1,0 +1,421 @@
+import { LocalizedText, useStaticUiText } from "@/components/i18n/LocalizedText";
+import { useEffect, useState, useMemo } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Map, TreePine, ListPlus, Settings, BarChart3 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import BulkPastosModal from "@/components/retiro/BulkPastosModal";
+import RetiroConfigSection from "@/components/retiro/RetiroConfigSection";
+import { toast } from "sonner";
+import { faltaCategoria, isCategoriaValida, MSG_CATEGORIA_OBRIGATORIA } from "@/lib/categoriaPasto";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Retiro = Tables<"retiros">;
+type Fazenda = Tables<"fazendas">;
+type Pasto = Tables<"pastos">;
+
+interface PastoForm {
+  nome: string;
+  num_animais: number;
+  peso_medio_kg: number | null;
+  categoria: string;
+  sexo: string;
+  ativo: boolean;
+  categoriaManual: boolean;
+}
+
+const emptyPastoForm: PastoForm = {
+  nome: "", num_animais: 0, peso_medio_kg: null, categoria: "", sexo: "Macho", ativo: true, categoriaManual: false,
+};
+
+function calcCategoria(peso: number | null, sexo: string): string {
+  if (peso === null || peso <= 0) return "";
+  if (sexo === "Fêmea") {
+    if (peso <= 220) return "Recria 1";
+    if (peso <= 299) return "Recria 2";
+    return "Engorda";
+  }
+  // Macho or default
+  if (peso <= 220) return "Recria 1";
+  if (peso <= 360) return "Recria 2";
+  return "Engorda";
+}
+
+function categoriaBadgeClass(cat: string) {
+  if (cat === "Recria 1") return "bg-blue-500 text-white";
+  if (cat === "Recria 2") return "bg-yellow-500 text-black";
+  if (cat === "Engorda") return "bg-green-600 text-white";
+  return "";
+}
+
+export default function RetiroDetailPage() {
+  const uiText = useStaticUiText();
+  const { fazendaId, retiroId } = useParams<{ fazendaId: string; retiroId: string }>();
+  const navigate = useNavigate();
+  const [retiro, setRetiro] = useState<Retiro | null>(null);
+  const [fazenda, setFazenda] = useState<Fazenda | null>(null);
+  const [pastos, setPastos] = useState<Pasto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<PastoForm>(emptyPastoForm);
+  const [saving, setSaving] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [configSummary, setConfigSummary] = useState("");
+
+  const categoriaCalculada = useMemo(() => calcCategoria(form.peso_medio_kg, form.sexo), [form.peso_medio_kg, form.sexo]);
+
+  async function loadData() {
+    if (!retiroId || !fazendaId) return;
+    try {
+      const [retRes, fazRes, pastosRes] = await Promise.all([
+        supabase.from("retiros").select("*").eq("id", retiroId).single(),
+        supabase.from("fazendas").select("*").eq("id", fazendaId).single(),
+        supabase.from("pastos").select("*").eq("retiro_id", retiroId).order("nome"),
+      ]);
+      if (retRes.error || fazRes.error) {
+        toast.error(uiText("Retiro não encontrado."));
+        navigate(`/admin/fazendas/${fazendaId}`);
+        return;
+      }
+      setRetiro(retRes.data);
+      setFazenda(fazRes.data);
+      setPastos(pastosRes.data ?? []);
+
+      // Build config summary
+      const r = retRes.data as any;
+      if (r.produto_id) {
+        const { data: prod } = await supabase.from("produtos").select("nome,peso_saco_kg,preco_por_kg").eq("id", r.produto_id).single();
+        if (prod) {
+          setConfigSummary(`Produto: ${prod.nome} · ${prod.peso_saco_kg}kg · R$${Number(prod.preco_por_kg ?? 0).toFixed(2)}/kg · Estoque: ${r.estoque_sacos ?? 0} sacos`);
+        } else {
+          setConfigSummary(`Estoque: ${r.estoque_sacos ?? 0} sacos`);
+        }
+      } else {
+        setConfigSummary("Nenhum produto configurado");
+      }
+    } catch (err) {
+      console.error("Erro ao carregar retiro:", err);
+      toast.error(uiText("Erro ao carregar dados."));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function reloadPastos() {
+    if (!retiroId) return;
+    try {
+      const { data } = await supabase.from("pastos").select("*").eq("retiro_id", retiroId).order("nome");
+      setPastos(data ?? []);
+    } catch (err) {
+      console.error("Erro ao recarregar pastos:", err);
+    }
+  }
+
+  useEffect(() => { loadData(); }, [retiroId, fazendaId]);
+
+  function openNew() {
+    setEditingId(null);
+    setForm(emptyPastoForm);
+    setDialogOpen(true);
+  }
+
+  function openEdit(p: Pasto) {
+    setEditingId(p.id);
+    setForm({
+      nome: p.nome, num_animais: p.num_animais, peso_medio_kg: p.peso_medio_kg ?? null,
+      categoria: p.categoria ?? "", sexo: p.sexo ?? "Macho", ativo: p.ativo ?? true, categoriaManual: false,
+    });
+    setDialogOpen(true);
+  }
+
+  function handlePesoChange(val: string) {
+    const peso = val ? parseFloat(val) : null;
+    const newForm = { ...form, peso_medio_kg: peso };
+    if (!form.categoriaManual) {
+      newForm.categoria = calcCategoria(peso, form.sexo);
+    }
+    setForm(newForm);
+  }
+
+  function handleSexoChange(val: string) {
+    const newForm = { ...form, sexo: val };
+    if (!form.categoriaManual) {
+      newForm.categoria = calcCategoria(form.peso_medio_kg, val);
+    }
+    setForm(newForm);
+  }
+
+  function handleCategoriaChange(val: string) {
+    setForm({ ...form, categoria: val, categoriaManual: true });
+  }
+
+  async function handleSave() {
+    if (!form.nome.trim()) { toast.error(uiText("O nome é obrigatório.")); return; }
+    if (faltaCategoria(form.num_animais, form.categoria)) { toast.error(uiText(MSG_CATEGORIA_OBRIGATORIA)); return; }
+    setSaving(true);
+    const payload = {
+      nome: form.nome.trim(),
+      retiro_id: retiroId!,
+      num_animais: form.num_animais,
+      peso_medio_kg: form.peso_medio_kg,
+      categoria: form.categoria || null,
+      sexo: form.sexo || null,
+      ativo: form.ativo,
+    };
+
+    try {
+      if (editingId) {
+        const { error } = await supabase.from("pastos").update(payload).eq("id", editingId);
+        if (error) throw error;
+
+        // Update local state directly
+        setPastos((prev) =>
+          prev.map((p) => (p.id === editingId ? { ...p, ...payload } : p))
+        );
+        toast.success(uiText("Pasto atualizado!"));
+      } else {
+        const { data, error } = await supabase
+          .from("pastos")
+          .insert(payload)
+          .select("*")
+          .single();
+
+        if (error || !data) throw error || new Error("Dados não retornados");
+
+        setPastos((prev) => [...prev, data].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
+        toast.success(uiText("Pasto criado!"));
+      }
+
+      setDialogOpen(false);
+      setForm(emptyPastoForm);
+    } catch (err: any) {
+      console.error("Erro Supabase pastos:", err);
+      toast.error(`${uiText("Erro: ")}${err?.message || uiText("Erro desconhecido")}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm(uiText("Deseja realmente excluir este pasto?"))) return;
+    const { error } = await supabase.from("pastos").delete().eq("id", id);
+    if (error) { toast.error(uiText("Erro ao excluir pasto.")); return; }
+    setPastos((prev) => prev.filter((p) => p.id !== id));
+    toast.success(uiText("Pasto excluído."));
+  }
+
+  if (loading) {
+    return <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  }
+
+  if (!retiro || !fazenda) return null;
+
+  return (
+    <div className="max-w-5xl mx-auto">
+      <Breadcrumb className="mb-4">
+        <BreadcrumbList>
+          <BreadcrumbItem><BreadcrumbLink asChild><Link to="/admin/fazendas"><LocalizedText source={"Fazendas"} /></Link></BreadcrumbLink></BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem><BreadcrumbLink asChild><Link to={`/admin/fazendas/${fazendaId}`}>{fazenda.nome}</Link></BreadcrumbLink></BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem><BreadcrumbPage>{retiro.nome}</BreadcrumbPage></BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      <Button variant="ghost" size="sm" className="mb-4 gap-1.5" onClick={() => navigate(`/admin/fazendas/${fazendaId}`)}>
+        <ArrowLeft className="w-4 h-4" /> <LocalizedText source={"Voltar"} /></Button>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2"><Map className="w-5 h-5" /> {retiro.nome}</CardTitle>
+            <Badge variant={retiro.ativo ? "default" : "secondary"}>{uiText(retiro.ativo ? "Ativo" : "Inativo")}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div><span className="text-muted-foreground"><LocalizedText source={"Fazenda:"} /></span> {fazenda.nome}</div>
+            <div><span className="text-muted-foreground"><LocalizedText source={"Capataz:"} /></span> {retiro.capataz}</div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Collapsible open={configOpen} onOpenChange={setConfigOpen} className="mb-4">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-foreground"><LocalizedText source={"Pastos deste Retiro"} /></h2>
+          <div className="flex gap-2">
+            <Button onClick={() => {
+              if (!retiroId) {
+                toast.error(uiText("Retiro inválido."));
+                return;
+              }
+
+              navigate(`/dashboard/retiro/${retiroId}`);
+            }} size="sm" variant="default" className="gap-1.5">
+              <BarChart3 className="w-4 h-4" /> <LocalizedText source={"Ver Painel"} /></Button>
+            <Button onClick={() => navigate(`/admin/fazendas/${fazendaId}/retiros/${retiroId}/mapa`)} size="sm" variant="outline" className="gap-1.5">
+              <Map className="w-4 h-4" /> <LocalizedText source={"Ver Mapa"} /></Button>
+            <CollapsibleTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-1.5">
+                <Settings className="w-4 h-4" /> <LocalizedText source={"Configurações"} /></Button>
+            </CollapsibleTrigger>
+            <Button onClick={() => setBulkOpen(true)} size="sm" variant="outline" className="gap-1.5"><ListPlus className="w-4 h-4" /> <LocalizedText source={"Vários"} /></Button>
+            <Button onClick={openNew} size="sm" variant="outline" className="gap-1.5"><Plus className="w-4 h-4" /> <LocalizedText source={"Novo Pasto"} /></Button>
+          </div>
+        </div>
+
+        {!configOpen && configSummary && (
+          <p className="text-xs text-muted-foreground mb-4 px-1">{configSummary === "Nenhum produto configurado" ? uiText(configSummary) : configSummary.replace(/^Produto: /, uiText("Produto: ")).replace(/^Estoque: /, uiText("Estoque: ")).replace(" · Estoque: ", uiText(" · Estoque: ")).replace(/ sacos$/, uiText(" sacos"))}</p>
+        )}
+
+        <CollapsibleContent>
+          <div className="mb-6">
+            <RetiroConfigSection retiroId={retiroId!} />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {pastos.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <TreePine className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+            <p className="text-muted-foreground text-sm"><LocalizedText source={"Nenhum pasto cadastrado neste retiro."} /></p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead><LocalizedText source={"Nome"} /></TableHead>
+                  <TableHead><LocalizedText source={"Animais"} /></TableHead>
+                  <TableHead><LocalizedText source={"Peso Médio"} /></TableHead>
+                  <TableHead><LocalizedText source={"Categoria"} /></TableHead>
+                  <TableHead><LocalizedText source={"Status"} /></TableHead>
+                  <TableHead className="w-24 text-right"><LocalizedText source={"Ações"} /></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pastos.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>
+                      <Link to={`/admin/fazendas/${fazendaId}/retiros/${retiroId}/pastos/${p.id}`} className="font-medium text-primary hover:underline">
+                        {p.nome}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{p.num_animais}</TableCell>
+                    <TableCell>{p.peso_medio_kg ? `${p.peso_medio_kg} kg` : "—"}</TableCell>
+                    <TableCell>
+                      {p.categoria ? (
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${categoriaBadgeClass(p.categoria)}`}>
+                          {p.categoria}
+                        </span>
+                      ) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={p.ativo ? "default" : "secondary"}>{uiText(p.ativo ? "Ativo" : "Inativo")}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(p)}><Pencil className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)} className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      )}
+
+      <BulkPastosModal open={bulkOpen} onOpenChange={setBulkOpen} retiroId={retiroId!} onCreated={reloadPastos} />
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-md" aria-describedby="pasto-dialog-desc">
+          <DialogHeader>
+            <DialogTitle>{uiText(editingId ? "Editar Pasto" : "Novo Pasto")}</DialogTitle>
+            <DialogDescription id="pasto-dialog-desc">
+              <LocalizedText source={"Preencha os dados do pasto. A categoria é calculada automaticamente pelo peso e sexo."} /></DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="nome"><LocalizedText source={"Nome *"} /></Label>
+              <Input id="nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder={uiText("Ex: Pasto A1")} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="num_animais"><LocalizedText source={"Nº Animais"} /></Label>
+                <Input id="num_animais" type="number" value={form.num_animais} onChange={(e) => setForm({ ...form, num_animais: parseInt(e.target.value) || 0 })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="peso_medio"><LocalizedText source={"Peso Médio (kg)"} /></Label>
+                <Input id="peso_medio" type="number" value={form.peso_medio_kg ?? ""} onChange={(e) => handlePesoChange(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label><LocalizedText source={"Sexo"} /></Label>
+                <Select value={form.sexo} onValueChange={handleSexoChange}>
+                  <SelectTrigger><SelectValue placeholder={uiText("Selecione")} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Macho"><LocalizedText source={"Macho"} /></SelectItem>
+                    <SelectItem value="Fêmea"><LocalizedText source={"Fêmea"} /></SelectItem>
+                    <SelectItem value="Misto"><LocalizedText source={"Misto"} /></SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label><LocalizedText source={"Categoria"} /></Label>
+                <Select value={form.categoria} onValueChange={handleCategoriaChange}>
+                  <SelectTrigger><SelectValue placeholder={uiText("Automática")} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Recria 1"><LocalizedText source={"Recria 1"} /></SelectItem>
+                    <SelectItem value="Recria 2"><LocalizedText source={"Recria 2"} /></SelectItem>
+                    <SelectItem value="Engorda"><LocalizedText source={"Engorda"} /></SelectItem>
+                    <SelectItem value="Cria"><LocalizedText source={"Cria"} /></SelectItem>
+                    
+                  </SelectContent>
+                </Select>
+                {categoriaCalculada && (
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold mt-1 ${categoriaBadgeClass(categoriaCalculada)}`}>
+                    {categoriaCalculada}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="ativo"><LocalizedText source={"Ativo"} /></Label>
+              <Switch id="ativo" checked={form.ativo} onCheckedChange={(checked) => setForm({ ...form, ativo: checked })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}><LocalizedText source={"Cancelar"} /></Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <LocalizedText source={"Salvar"} />}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

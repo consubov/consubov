@@ -1,0 +1,256 @@
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/hooks/useTranslation";
+import { RequestCancelledError, RequestTimeoutError, runWithDeadline } from "@/lib/requestDeadline";
+import { DashboardQueryError, requireDashboardCount, requireAnimalTotal } from "@/lib/adminDashboardMetrics";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Landmark, Map, TreePine, Package, CalendarDays, ClipboardList, QrCode, Brain, Beef, Factory, ScanLine, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import CriarAdminModal from "@/components/admin/CriarAdminModal";
+import AdminListSection from "@/components/admin/AdminListSection";
+
+interface Stats {
+  fazendas: number;
+  retiros: number;
+  pastos: number;
+  produtos: number;
+  ciclosAbertos: number;
+  lancamentos: number;
+  animais: number;
+  fabricas: number;
+}
+
+export default function AdminDashboard() {
+  // Null means no verified count. A failed request must never become a fake zero.
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const { user: sessionUser } = useAuth();
+  const { t } = useTranslation();
+  const sessionUserId = sessionUser?.id;
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [adminRefreshKey, setAdminRefreshKey] = useState(0);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const showCriarAdmin = searchParams.get("criar-admin") === "1";
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    const deadline = <T,>(fn: (signal: AbortSignal) => PromiseLike<T>): Promise<T> =>
+      runWithDeadline(fn, { signal: controller.signal, timeoutMs: 12000 });
+
+    async function load() {
+      setLoading(true);
+      setLoadError(null);
+      setStats(null);
+      try {
+        // AuthProvider already established the session before entering /admin.
+        // The user id is only a selector: PostgREST JWT + RLS verifies membership.
+        // Do not require an extra /auth/v1/user request to render this page.
+        if (!sessionUserId) throw new DashboardQueryError("permission");
+        const admin = await deadline(signal =>
+          supabase.from("administradores").select("id")
+            .eq("user_id", sessionUserId).eq("ativo", true)
+            .abortSignal(signal).maybeSingle(),
+        );
+        if (admin.error) {
+          throw new DashboardQueryError(
+            admin.status === 401 || admin.status === 403 || admin.error.code === "42501"
+              ? "permission" : "network",
+          );
+        }
+        if (!admin.data) throw new DashboardQueryError("permission");
+
+        const [fazendas, retiros, pastos, produtos, ciclos, lancamentos, animais, fabricas] = await Promise.all([
+          deadline(signal => supabase.from("fazendas").select("id", { count: "exact", head: true }).eq("ativo", true).abortSignal(signal)),
+          deadline(signal => supabase.from("retiros").select("id", { count: "exact", head: true }).eq("ativo", true).abortSignal(signal)),
+          deadline(signal => supabase.from("pastos").select("id", { count: "exact", head: true }).eq("ativo", true).abortSignal(signal)),
+          deadline(signal => supabase.from("produtos").select("id", { count: "exact", head: true }).eq("ativo", true).abortSignal(signal)),
+          deadline(signal => supabase.from("ciclos").select("id", { count: "exact", head: true }).eq("fechado", false).abortSignal(signal)),
+          deadline(signal => supabase.from("lancamentos").select("id", { count: "exact", head: true }).abortSignal(signal)),
+          deadline(signal => supabase.from("pastos").select("num_animais").eq("ativo", true).abortSignal(signal)),
+          deadline(signal => supabase.from("fabricas").select("id", { count: "exact", head: true }).eq("ativo", true).abortSignal(signal)),
+        ]);
+
+        const verified: Stats = {
+          fazendas: requireDashboardCount(fazendas),
+          retiros: requireDashboardCount(retiros),
+          pastos: requireDashboardCount(pastos),
+          produtos: requireDashboardCount(produtos),
+          ciclosAbertos: requireDashboardCount(ciclos),
+          lancamentos: requireDashboardCount(lancamentos),
+          animais: requireAnimalTotal(animais),
+          fabricas: requireDashboardCount(fabricas),
+        };
+        if (active) setStats(verified);
+      } catch (err) {
+        if (!active || err instanceof RequestCancelledError) return;
+        const message = err instanceof RequestTimeoutError
+          ? "admin.timeout"
+          : err instanceof DashboardQueryError && err.kind === "permission"
+          ? "admin.permission"
+          : "admin.dbError";
+        setStats(null);
+        setLoadError(message);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [refreshKey, sessionUserId]);
+
+  // Realtime notifications do not start concurrent requests or write stale data.
+  useEffect(() => {
+    let queued: ReturnType<typeof setTimeout> | undefined;
+    const scheduleReload = () => {
+      if (queued !== undefined) clearTimeout(queued);
+      queued = setTimeout(() => setRefreshKey((n) => n + 1), 400);
+    };
+    const channel = supabase.channel("admin-dashboard-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "pastos" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "retiros" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "lancamentos" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ciclos" }, scheduleReload)
+      .subscribe();
+    return () => {
+      if (queued !== undefined) clearTimeout(queued);
+      void supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const cards = [
+    { label: "nav.farms", value: stats?.fazendas, icon: Landmark, color: "text-primary", to: "/admin/fazendas" },
+    { label: "manager.ranches", value: stats?.retiros, icon: Map, color: "text-secondary", to: "/admin/fazendas" },
+    { label: "admin.activePastures", value: stats?.pastos, icon: TreePine, color: "text-primary", to: "/admin/fazendas" },
+    { label: "nav.products", value: stats?.produtos, icon: Package, color: "text-secondary", to: "/admin/produtos" },
+    { label: "manager.animals", value: stats?.animais, icon: Beef, color: "text-primary", to: "/admin/fazendas" },
+    { label: "admin.openCycles", value: stats?.ciclosAbertos, icon: CalendarDays, color: "text-secondary", to: "/admin/ciclos" },
+    { label: "admin.entries", value: stats?.lancamentos, icon: ClipboardList, color: "text-primary", to: "/admin/lancamento-manual" },
+    { label: "admin.factories", value: stats?.fabricas, icon: Factory, color: "text-secondary", to: "/admin/fabricas" },
+  ];
+
+  const actionCards = [
+    {
+      title: "nav.nutrition",
+      description: "admin.nutritionDesc",
+      icon: Brain,
+      to: "/admin/inteligencia",
+      iconBg: "bg-primary",
+      iconColor: "text-primary-foreground",
+      buttonClass: "text-primary hover:bg-primary/10",
+    },
+    {
+      title: "nav.inspection",
+      description: "admin.inspectionDesc",
+      icon: ScanLine,
+      to: "/conferencia",
+      iconBg: "bg-primary/20",
+      iconColor: "text-primary",
+      buttonClass: "text-primary hover:bg-primary/10",
+    },
+    {
+      title: "admin.scanQR",
+      description: "admin.qrDesc",
+      icon: QrCode,
+      to: "/admin/qrcodes",
+      iconBg: "bg-secondary",
+      iconColor: "text-secondary-foreground",
+      buttonClass: "text-secondary hover:bg-secondary/10",
+    },
+  ];
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-foreground">{t("admin.overview")}</h1>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        {actionCards.map((c) => (
+          <Card
+            key={c.title}
+            className="hover:shadow-md hover:border-primary/40 transition-all cursor-pointer flex flex-col"
+          >
+            <CardHeader className="pb-0 pt-3 px-3">
+              <div className="flex items-start gap-2">
+                <div className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center ${c.iconBg} ${c.iconColor}`}>
+                  <c.icon className="w-3.5 h-3.5" />
+                </div>
+                <CardTitle className="text-xs font-semibold text-foreground leading-tight">{t(c.title)}</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="px-3 pb-1">
+              <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">{t(c.description)}</p>
+            </CardContent>
+            <CardFooter className="pt-0 pb-3 px-3 mt-auto">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`w-full h-auto py-1 px-2 text-xs font-semibold justify-between ${c.buttonClass}`}
+                onClick={() => navigate(c.to)}
+                disabled={loading || !!loadError || !stats}
+              >
+                {t("admin.open")}
+                <ArrowRight className="w-3 h-3" />
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
+
+      {loadError ? (
+        <Card role="alert">
+          <CardContent className="p-6 space-y-3">
+            <p className="text-destructive font-medium">{t("admin.unavailable")}</p>
+            <p className="text-sm text-muted-foreground">{t(loadError)}</p>
+            <Button onClick={() => setRefreshKey((n) => n + 1)} variant="outline">
+              {t("manager.retry")}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="animate-pulse"><CardContent className="p-6 h-24" /></Card>
+          ))}
+        </div>
+      ) : stats ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {cards.map((c) => (
+            <Card
+              key={c.label}
+              onClick={() => navigate(c.to)}
+              className="hover:shadow-md hover:border-primary/40 transition-all cursor-pointer active:scale-[0.98]"
+            >
+              <CardHeader className="pb-2 pt-4 px-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">{t(c.label)}</CardTitle>
+                  <c.icon className={`w-5 h-5 ${c.color}`} />
+                </div>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <p className="text-3xl font-bold text-foreground">{c.value}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : null}
+
+      {!loading && !loadError && stats && <AdminListSection refreshKey={adminRefreshKey} />}
+
+      <CriarAdminModal
+        open={!!stats && !loadError && !loading && showCriarAdmin}
+        onOpenChange={(open) => { if (!open) navigate("/admin", { replace: true }); }}
+        onCreated={() => setAdminRefreshKey((k) => k + 1)}
+      />
+    </div>
+  );
+}
