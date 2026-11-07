@@ -1,5 +1,5 @@
 import {describe,expect,test} from 'bun:test';
-import entry from '../api/shared';
+import entry from '../src/server/shared-entry';
 const ROOT='https://consubov-f23-fazendas-teste-suporteagrodigital.vercel.app';
 describe('F23 test-only serverless adapter refuses unknown hosts and disabled access',()=>{
   test('foreign Vercel, production or arbitrary host is denied before any upstream connection',async()=>{
